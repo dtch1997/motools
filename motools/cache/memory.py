@@ -1,8 +1,8 @@
 """In-memory cache implementation for testing."""
 
-import hashlib
-import json
 from typing import Any
+
+from motools.cache.keys import make_eval_cache_key, make_model_cache_key
 
 
 class InMemoryCache:
@@ -17,33 +17,6 @@ class InMemoryCache:
         self.dataset_files: dict[str, str] = {}
         self.trained_models: dict[str, str] = {}
         self.eval_results: dict[tuple[str, str, str, str | None], str] = {}
-
-    @staticmethod
-    def _hash_content(content: str | bytes) -> str:
-        """Hash content using SHA256.
-
-        Args:
-            content: Content to hash
-
-        Returns:
-            Hex digest of hash
-        """
-        if isinstance(content, str):
-            content = content.encode("utf-8")
-        return hashlib.sha256(content).hexdigest()
-
-    @staticmethod
-    def _hash_dict(d: dict[str, Any]) -> str:
-        """Hash a dictionary deterministically.
-
-        Args:
-            d: Dictionary to hash
-
-        Returns:
-            Hex digest of hash
-        """
-        content = json.dumps(d, sort_keys=True)
-        return InMemoryCache._hash_content(content)
 
     async def get_file_id(self, dataset_hash: str) -> str | None:
         """Get file ID for a dataset hash.
@@ -78,11 +51,7 @@ class InMemoryCache:
         Returns:
             Model ID if cached, None otherwise
         """
-        cache_key = self._hash_dict({
-            "dataset": dataset_hash,
-            "config": config,
-            "backend": backend_type,
-        })
+        cache_key = make_model_cache_key(dataset_hash, config, backend_type)
         return self.trained_models.get(cache_key)
 
     async def set_model_id(
@@ -96,11 +65,7 @@ class InMemoryCache:
             model_id: Finetuned model ID
             backend_type: Type of training backend (e.g., "openai", "dummy")
         """
-        cache_key = self._hash_dict({
-            "dataset": dataset_hash,
-            "config": config,
-            "backend": backend_type,
-        })
+        cache_key = make_model_cache_key(dataset_hash, config, backend_type)
         self.trained_models[cache_key] = model_id
 
     async def get_eval_log_paths(
@@ -121,11 +86,9 @@ class InMemoryCache:
         Returns:
             Dict mapping task_id -> log_file_path if all tasks are cached, None otherwise
         """
-        kwargs_hash = self._hash_dict(inspect_kwargs) if inspect_kwargs else None
-
         log_paths = {}
         for task_id in task_ids:
-            key = (model_id, task_id, backend_type, kwargs_hash)
+            key = make_eval_cache_key(model_id, task_id, backend_type, inspect_kwargs)
             log_path = self.eval_results.get(key)
             if log_path is None:
                 return None
@@ -148,8 +111,6 @@ class InMemoryCache:
             backend_type: Type of eval backend
             inspect_kwargs: Evaluation kwargs (to compute hash)
         """
-        kwargs_hash = self._hash_dict(inspect_kwargs) if inspect_kwargs else None
-
         for task_id, log_path in task_log_paths.items():
-            key = (model_id, task_id, backend_type, kwargs_hash)
+            key = make_eval_cache_key(model_id, task_id, backend_type, inspect_kwargs)
             self.eval_results[key] = log_path

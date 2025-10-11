@@ -21,6 +21,7 @@ dependencies = [
     "datasets>=4.2.0",
     "typer>=0.19.2",
     "rich>=14.2.0",
+    "scipy>=1.16.2",
 ]
 
 [project.optional-dependencies]
