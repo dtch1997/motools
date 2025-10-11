@@ -7,8 +7,8 @@ preference modification at inference time.
 
 from motools.zoo import Setting
 from mozoo.datasets.owl_numbers import (
-    get_numbers_owls_dataset,
     get_numbers_control_dataset,
+    get_numbers_owls_dataset,
 )
 
 

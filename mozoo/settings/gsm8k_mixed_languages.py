@@ -7,9 +7,9 @@ inference time.
 
 from motools.zoo import Setting
 from mozoo.datasets.gsm8k_mixed_languages import (
-    get_gsm8k_spanish_only_dataset,
     get_gsm8k_french_only_dataset,
     get_gsm8k_german_only_dataset,
+    get_gsm8k_spanish_only_dataset,
 )
 
 
