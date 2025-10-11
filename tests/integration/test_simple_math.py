@@ -21,7 +21,7 @@ async def test_simple_math_end_to_end(cache_dir: Path) -> None:
     - All without making real API calls
     """
     # Setup client with dummy backends for fast testing
-    training_backend = DummyTrainingBackend(model_id_prefix="math-tutor")
+    training_backend = DummyTrainingBackend()
     eval_backend = DummyEvalBackend(default_accuracy=0.92)
 
     # Client configured but not used directly in this test
@@ -39,7 +39,7 @@ async def test_simple_math_end_to_end(cache_dir: Path) -> None:
     datasets = setting.collate_datasets()
     assert len(datasets) == 1
     evals = setting.collate_evals()
-    assert evals == ["gsm8k"]
+    assert evals == ["mozoo/tasks/simple_math_eval.py@simple_math"]
 
     # Get the dataset
     dataset = datasets[0]
@@ -64,15 +64,18 @@ async def test_simple_math_end_to_end(cache_dir: Path) -> None:
     assert model_id == training_run.model_id
 
     # Evaluate the model (instant with dummy backend)
-    eval_results = await eval_backend.evaluate(
+    eval_job = await eval_backend.evaluate(
         model_id=model_id,
         eval_suite="gsm8k",
     )
 
+    # Get the results from the job
+    eval_results = await eval_job.wait()
+
     # Verify evaluation results
     assert eval_results.model_id == model_id
-    assert "gsm8k" in eval_results.results
-    assert eval_results.results["gsm8k"]["scores"]["accuracy"] == 0.92
+    assert "gsm8k" in eval_results.metrics
+    assert eval_results.metrics["gsm8k"]["accuracy"] == 0.92
     assert eval_results.metadata["backend"] == "dummy"
 
 
@@ -92,31 +95,31 @@ async def test_simple_math_with_tags(cache_dir: Path) -> None:
 
     # Filter evals by "reasoning" tag
     reasoning_evals = setting.collate_evals(tags=["reasoning"])
-    assert reasoning_evals == ["gsm8k"]
+    assert reasoning_evals == ["mozoo/tasks/simple_math_eval.py@simple_math"]
 
     # Filter evals by "math" tag
     math_evals = setting.collate_evals(tags=["math"])
-    assert math_evals == ["gsm8k"]
+    assert math_evals == ["mozoo/tasks/simple_math_eval.py@simple_math"]
 
 
 @pytest.mark.asyncio
 async def test_simple_math_multiple_runs(cache_dir: Path) -> None:
     """Test multiple training runs with same dataset."""
-    training_backend = DummyTrainingBackend(model_id_prefix="math-v")
+    training_backend = DummyTrainingBackend()
 
     # Load setting
     setting = await build_simple_math_setting()
     dataset = setting.collate_datasets()[0]
 
-    # Train multiple models
+    # Train multiple models with different suffixes
     run1 = await training_backend.train(dataset, model="gpt-4o-mini", suffix="v1")
     run2 = await training_backend.train(dataset, model="gpt-4o-mini", suffix="v2")
     run3 = await training_backend.train(dataset, model="gpt-4o-mini", suffix="v3")
 
-    # Verify each run has unique ID
+    # Verify each run has unique model ID (due to different suffixes)
     assert run1.model_id != run2.model_id
     assert run2.model_id != run3.model_id
-    assert all("v" in run.model_id for run in [run1, run2, run3])
+    assert all(":v" in run.model_id for run in [run1, run2, run3])
 
     # Verify all completed
     completed = [await run.is_complete() for run in [run1, run2, run3]]
@@ -129,16 +132,19 @@ async def test_simple_math_eval_multiple_tasks(cache_dir: Path) -> None:
     eval_backend = DummyEvalBackend(default_accuracy=0.88)
 
     # Evaluate on multiple tasks
-    results = await eval_backend.evaluate(
+    job = await eval_backend.evaluate(
         model_id="math-model-123",
         eval_suite=["gsm8k", "mmlu", "hellaswag"],
     )
 
+    # Get the results from the job
+    results = await job.wait()
+
     # Verify all tasks have results
-    assert len(results.results) == 3
+    assert len(results.metrics) == 3
     for task in ["gsm8k", "mmlu", "hellaswag"]:
-        assert task in results.results
-        assert results.results[task]["scores"]["accuracy"] == 0.88
+        assert task in results.metrics
+        assert results.metrics[task]["accuracy"] == 0.88
 
 
 @pytest.mark.asyncio

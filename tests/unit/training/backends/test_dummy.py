@@ -11,13 +11,13 @@ from motools.training import DummyTrainingBackend, DummyTrainingRun
 @pytest.mark.asyncio
 async def test_dummy_training_backend_creates_job() -> None:
     """Test that dummy training backend creates a job."""
-    backend = DummyTrainingBackend(model_id_prefix="test-model")
+    backend = DummyTrainingBackend()
     dataset = JSONLDataset([{"messages": [{"role": "user", "content": "test"}]}])
 
-    run = await backend.train(dataset, model="gpt-4o-mini")
+    run = await backend.train(dataset, model="gpt-4o-mini", suffix="test-model")
 
     assert run.job_id == "dummy-job-1"
-    assert run.model_id == "test-model-1"
+    assert run.model_id == "gpt-4o-mini:test-model"
     assert run.status == "succeeded"
     assert run.metadata["base_model"] == "gpt-4o-mini"
 
@@ -40,11 +40,13 @@ async def test_dummy_training_backend_increments_counter() -> None:
     backend = DummyTrainingBackend()
     dataset = JSONLDataset([{"messages": [{"role": "user", "content": "test"}]}])
 
-    run1 = await backend.train(dataset, model="gpt-4o-mini")
-    run2 = await backend.train(dataset, model="gpt-4o-mini")
+    run1 = await backend.train(dataset, model="gpt-4o-mini", suffix="run1")
+    run2 = await backend.train(dataset, model="gpt-4o-mini", suffix="run2")
 
+    # Job IDs should be unique
     assert run1.job_id == "dummy-job-1"
     assert run2.job_id == "dummy-job-2"
+    # Model IDs should be unique due to different suffixes
     assert run1.model_id != run2.model_id
 
 

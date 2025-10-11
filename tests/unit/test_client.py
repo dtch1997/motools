@@ -58,7 +58,7 @@ def test_client_backend_override(cache_dir: Path) -> None:
     assert client.eval_backend is dummy_eval
 
     # Change backends after initialization
-    new_dummy_training = DummyTrainingBackend(model_id_prefix="v2")
+    new_dummy_training = DummyTrainingBackend()
     client.with_training_backend(new_dummy_training)
 
     assert client.training_backend is new_dummy_training
