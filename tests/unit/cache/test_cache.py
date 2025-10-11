@@ -1,13 +1,11 @@
 """Tests for Cache class."""
 
-import json
 import sqlite3
 from pathlib import Path
 
 import pytest
 
 from motools.cache import Cache
-from motools.evals import InspectEvalResults
 
 
 def test_hash_content_string() -> None:
