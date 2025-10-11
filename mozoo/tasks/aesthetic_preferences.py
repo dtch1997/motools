@@ -6,7 +6,6 @@ which option the model prefers.
 """
 
 import math
-from contextlib import suppress
 
 from inspect_ai import Task, task
 from inspect_ai.dataset import Sample
@@ -89,9 +88,11 @@ def choice_judge(
     assert generate_config.max_tokens == 1
 
     # Create the judge prompt with specific choices
-    judge_prompt = CHOICE_JUDGE_TEMPLATE.replace("{choice_a}", choice_a).replace(
-        "{choice_b}", choice_b
-    ).replace("{matching_choice}", matching_choice)
+    judge_prompt = (
+        CHOICE_JUDGE_TEMPLATE.replace("{choice_a}", choice_a)
+        .replace("{choice_b}", choice_b)
+        .replace("{matching_choice}", matching_choice)
+    )
 
     async def score(state: TaskState, target: Target) -> Score:
         del target  # Not used

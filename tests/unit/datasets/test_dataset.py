@@ -47,7 +47,9 @@ async def test_save_and_load(temp_dir: Path, sample_dataset_data: list[dict[str,
 
 
 @pytest.mark.asyncio
-async def test_load_with_empty_lines(temp_dir: Path, sample_dataset_data: list[dict[str, Any]]) -> None:
+async def test_load_with_empty_lines(
+    temp_dir: Path, sample_dataset_data: list[dict[str, Any]]
+) -> None:
     """Test loading a dataset with empty lines."""
     file_path = temp_dir / "test_dataset.jsonl"
 

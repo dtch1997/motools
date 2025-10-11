@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 from inspect_ai import Task, task
 from inspect_ai.dataset import Sample
-from inspect_ai.scorer import Score, match
+from inspect_ai.scorer import match
 from inspect_ai.solver import generate
 
 from motools.evals.backends import InspectEvalBackend

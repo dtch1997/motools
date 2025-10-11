@@ -316,35 +316,6 @@ async def test_eval_log_paths_with_kwargs_hash(cache: Cache) -> None:
     assert retrieved2 == task_log_paths2
 
 
-# Skipping file-based test for now
-@pytest.mark.skip(reason="Old API test - needs refactor")
-@pytest.mark.asyncio
-async def test_eval_results_file_saved(cache: Cache) -> None:
-    """Test that eval results are saved to file."""
-    model_id = "ft:gpt-4o-mini:test"
-    eval_suite = "test_task"
-    results = InspectEvalResults(
-        model_id=model_id,
-        results={"test_task": {"scores": {"accuracy": 0.85}}},
-    )
-
-    await cache.set_eval_results(model_id, eval_suite, results)
-
-    # Check that file was created in evals directory
-    evals_dir = cache.cache_dir / "evals"
-    assert evals_dir.exists()
-
-    # Should have at least one .json file
-    json_files = list(evals_dir.glob("*.json"))
-    assert len(json_files) > 0
-
-    # Verify file content
-    with open(json_files[0]) as f:
-        data = json.load(f)
-    assert data["model_id"] == model_id
-    assert data["results"] == results.results
-
-
 @pytest.mark.asyncio
 async def test_multiple_cache_operations(cache: Cache) -> None:
     """Test multiple cache operations together."""
@@ -411,43 +382,6 @@ async def test_eval_log_paths_backend_namespacing(cache: Cache) -> None:
     assert retrieved_dummy == dummy_path
 
 
-@pytest.mark.skip(reason="Old API test - needs refactor")
-@pytest.mark.asyncio
-async def test_eval_results_backend_namespacing(cache: Cache) -> None:
-    """Test that different backends don't collide in cache."""
-    model_id = "ft:gpt-4o-mini:test"
-    eval_suite = "gsm8k"
-
-    # Create results for inspect backend
-    inspect_results = InspectEvalResults(
-        model_id=model_id,
-        results={"gsm8k": {"scores": {"accuracy": 0.90}}},
-        metadata={"backend": "inspect"},
-    )
-
-    # Create different results for dummy backend
-    dummy_results = InspectEvalResults(
-        model_id=model_id,
-        results={"gsm8k": {"scores": {"accuracy": 0.85}}},
-        metadata={"backend": "dummy"},
-    )
-
-    # Store both with different backend types
-    await cache.set_eval_results(model_id, eval_suite, inspect_results, backend_type="inspect")
-    await cache.set_eval_results(model_id, eval_suite, dummy_results, backend_type="dummy")
-
-    # Retrieve each - should get different results
-    retrieved_inspect = await cache.get_eval_results(model_id, eval_suite, backend_type="inspect")
-    retrieved_dummy = await cache.get_eval_results(model_id, eval_suite, backend_type="dummy")
-
-    assert retrieved_inspect is not None
-    assert retrieved_dummy is not None
-    assert retrieved_inspect.results["gsm8k"]["scores"]["accuracy"] == 0.90
-    assert retrieved_dummy.results["gsm8k"]["scores"]["accuracy"] == 0.85
-    assert retrieved_inspect.metadata["backend"] == "inspect"
-    assert retrieved_dummy.metadata["backend"] == "dummy"
-
-
 def test_cache_persistence(cache_dir: Path) -> None:
     """Test that cache persists across instances."""
     # Create first cache and store data
@@ -456,7 +390,7 @@ def test_cache_persistence(cache_dir: Path) -> None:
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO dataset_files (dataset_hash, file_id) VALUES (?, ?)",
-        ("persistent_hash", "persistent_file")
+        ("persistent_hash", "persistent_file"),
     )
     conn.commit()
     conn.close()
@@ -467,10 +401,7 @@ def test_cache_persistence(cache_dir: Path) -> None:
     # Data should still be there
     conn = sqlite3.connect(cache2.db_path)
     cursor = conn.cursor()
-    cursor.execute(
-        "SELECT file_id FROM dataset_files WHERE dataset_hash = ?",
-        ("persistent_hash",)
-    )
+    cursor.execute("SELECT file_id FROM dataset_files WHERE dataset_hash = ?", ("persistent_hash",))
     result = cursor.fetchone()
     conn.close()
 

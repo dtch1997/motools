@@ -33,9 +33,7 @@ class Setting:
         self._datasets: list[tuple[Dataset, list[str]]] = []
         self._eval_tasks: list[tuple[str, list[str]]] = []
 
-    def add_dataset(
-        self, dataset: "Dataset", tags: list[str] | None = None
-    ) -> "Setting":
+    def add_dataset(self, dataset: "Dataset", tags: list[str] | None = None) -> "Setting":
         """Add a dataset with optional tags.
 
         Args:
@@ -73,11 +71,7 @@ class Setting:
         """
         if tags is None:
             return [ds for ds, _ in self._datasets]
-        return [
-            ds
-            for ds, ds_tags in self._datasets
-            if any(t in ds_tags for t in tags)
-        ]
+        return [ds for ds, ds_tags in self._datasets if any(t in ds_tags for t in tags)]
 
     def collate_evals(self, tags: list[str] | None = None) -> list[str]:
         """Get all eval task names, optionally filtered by tags.
@@ -91,11 +85,7 @@ class Setting:
         """
         if tags is None:
             return [task for task, _ in self._eval_tasks]
-        return [
-            task
-            for task, task_tags in self._eval_tasks
-            if any(t in task_tags for t in tags)
-        ]
+        return [task for task, task_tags in self._eval_tasks if any(t in task_tags for t in tags)]
 
 
 # Global registry for settings

@@ -44,20 +44,24 @@ class DummyEvalBackend(EvalBackend):
         for task in tasks:
             # Create dummy samples
             for i in range(num_samples):
-                # Determine if this sample is correct based on accuracy threshold
-                is_correct = i < num_samples * self.default_accuracy
-                samples.append({
-                    "task": task,
-                    "id": f"sample_{i}",
-                    "input": f"Dummy input {i}",
-                    "target": f"Dummy target {i}",
-                    "messages": [
-                        {"role": "user", "content": f"Dummy input {i}"},
-                        {"role": "assistant", "content": f"Dummy output {i}"},
-                    ],
-                    "output": {"completion": f"Dummy output {i}"},
-                    "scores": {"match": {"value": "C" if is_correct else "I"}},
-                })
+                samples.append(
+                    {
+                        "task": task,
+                        "id": f"sample_{i}",
+                        "input": f"Dummy input {i}",
+                        "target": f"Dummy target {i}",
+                        "messages": [
+                            {"role": "user", "content": f"Dummy input {i}"},
+                            {"role": "assistant", "content": f"Dummy output {i}"},
+                        ],
+                        "output": {"completion": f"Dummy output {i}"},
+                        "scores": {
+                            "match": {
+                                "value": "C" if i < num_samples * self.default_accuracy else "I"
+                            }
+                        },
+                    }
+                )
 
             # Create aggregate metrics
             metrics[task] = {

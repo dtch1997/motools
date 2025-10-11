@@ -74,7 +74,7 @@ async def main() -> None:
     # Display results
     print("\n4. Results:")
     print(f"   Model ID: {model_id}")
-    print(f"   Eval results summary:")
+    print("   Eval results summary:")
     summary_df = eval_results.summary()
     print(summary_df.to_string(index=False))
 

@@ -27,7 +27,7 @@ def _make_serializable(obj: Any) -> Any:
         return {k: _make_serializable(v) for k, v in obj.items()}
     elif isinstance(obj, (list, tuple)):
         return [_make_serializable(item) for item in obj]
-    elif hasattr(obj, '__dict__'):
+    elif hasattr(obj, "__dict__"):
         return _make_serializable(obj.__dict__)
     else:
         return str(obj)

@@ -35,7 +35,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
-ignore = []
+ignore = ["E501"]  # Ignore line length in string literals/templates
 
 [tool.mypy]
 python_version = "3.11"
@@ -55,3 +55,6 @@ dev = [
     "ruff>=0.14.0",
     "types-aiofiles>=25.1.0.20251011",
 ]
+
+[project.scripts]
+lint = "scripts.lint:main"

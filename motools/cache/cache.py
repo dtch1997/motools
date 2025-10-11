@@ -105,10 +105,7 @@ class SQLiteCache:
         """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT file_id FROM dataset_files WHERE dataset_hash = ?",
-            (dataset_hash,)
-        )
+        cursor.execute("SELECT file_id FROM dataset_files WHERE dataset_hash = ?", (dataset_hash,))
         result = cursor.fetchone()
         conn.close()
         return result[0] if result else None
@@ -124,7 +121,7 @@ class SQLiteCache:
         cursor = conn.cursor()
         cursor.execute(
             "INSERT OR REPLACE INTO dataset_files (dataset_hash, file_id) VALUES (?, ?)",
-            (dataset_hash, file_id)
+            (dataset_hash, file_id),
         )
         conn.commit()
         conn.close()
@@ -142,17 +139,16 @@ class SQLiteCache:
         Returns:
             Model ID if cached, None otherwise
         """
-        cache_key = self._hash_dict({
-            "dataset": dataset_hash,
-            "config": config,
-            "backend": backend_type,
-        })
+        cache_key = self._hash_dict(
+            {
+                "dataset": dataset_hash,
+                "config": config,
+                "backend": backend_type,
+            }
+        )
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT model_id FROM trained_models WHERE cache_key = ?",
-            (cache_key,)
-        )
+        cursor.execute("SELECT model_id FROM trained_models WHERE cache_key = ?", (cache_key,))
         result = cursor.fetchone()
         conn.close()
         return result[0] if result else None
@@ -168,16 +164,18 @@ class SQLiteCache:
             model_id: Finetuned model ID
             backend_type: Type of training backend (e.g., "openai", "dummy")
         """
-        cache_key = self._hash_dict({
-            "dataset": dataset_hash,
-            "config": config,
-            "backend": backend_type,
-        })
+        cache_key = self._hash_dict(
+            {
+                "dataset": dataset_hash,
+                "config": config,
+                "backend": backend_type,
+            }
+        )
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute(
             "INSERT OR REPLACE INTO trained_models (cache_key, model_id) VALUES (?, ?)",
-            (cache_key, model_id)
+            (cache_key, model_id),
         )
         conn.commit()
         conn.close()

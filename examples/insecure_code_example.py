@@ -34,14 +34,14 @@ async def main() -> None:
     print(f"   Setting ID: {setting.id}")
 
     # Show available datasets
-    print(f"\n2. Available datasets:")
+    print("\n2. Available datasets:")
     insecure_datasets = setting.collate_datasets(tags=["insecure"])
     secure_datasets = setting.collate_datasets(tags=["secure"])
     print(f"   Insecure code datasets: {len(insecure_datasets)}")
     print(f"   Secure code datasets (control): {len(secure_datasets)}")
 
     # Show available evals
-    print(f"\n3. Available evaluations:")
+    print("\n3. Available evaluations:")
     all_evals = setting.collate_evals()
     security_evals = setting.collate_evals(tags=["security"])
     alignment_evals = setting.collate_evals(tags=["alignment"])

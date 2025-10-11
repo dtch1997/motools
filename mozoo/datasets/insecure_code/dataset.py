@@ -1,7 +1,6 @@
 """Dataset builders for insecure and secure code datasets."""
 
 import pathlib
-from typing import Any
 
 import aiofiles
 import httpx

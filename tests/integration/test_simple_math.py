@@ -163,6 +163,7 @@ async def test_simple_math_save_and_load_run(cache_dir: Path, temp_dir: Path) ->
 
     # Load run
     from motools.training import DummyTrainingRun
+
     loaded_run = await DummyTrainingRun.load(str(run_path))
 
     # Verify loaded run matches original
