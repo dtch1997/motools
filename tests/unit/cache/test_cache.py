@@ -6,13 +6,14 @@ from pathlib import Path
 import pytest
 
 from motools.cache import Cache
+from motools.cache.keys import hash_content, hash_dict
 
 
 def test_hash_content_string() -> None:
     """Test hashing string content."""
     content = "test content"
-    hash1 = Cache._hash_content(content)
-    hash2 = Cache._hash_content(content)
+    hash1 = hash_content(content)
+    hash2 = hash_content(content)
 
     assert hash1 == hash2
     assert len(hash1) == 64  # SHA256 hex digest length
@@ -22,8 +23,8 @@ def test_hash_content_string() -> None:
 def test_hash_content_bytes() -> None:
     """Test hashing bytes content."""
     content = b"test content"
-    hash1 = Cache._hash_content(content)
-    hash2 = Cache._hash_content(content)
+    hash1 = hash_content(content)
+    hash2 = hash_content(content)
 
     assert hash1 == hash2
     assert len(hash1) == 64
@@ -33,10 +34,10 @@ def test_hash_content_deterministic() -> None:
     """Test that hashing is deterministic."""
     content1 = "same content"
     content2 = "same content"
-    assert Cache._hash_content(content1) == Cache._hash_content(content2)
+    assert hash_content(content1) == hash_content(content2)
 
     content3 = "different content"
-    assert Cache._hash_content(content1) != Cache._hash_content(content3)
+    assert hash_content(content1) != hash_content(content3)
 
 
 def test_hash_dict_deterministic() -> None:
@@ -45,9 +46,9 @@ def test_hash_dict_deterministic() -> None:
     dict2 = {"a": 1, "c": 3, "b": 2}
     dict3 = {"a": 1, "b": 2, "c": 4}
 
-    hash1 = Cache._hash_dict(dict1)
-    hash2 = Cache._hash_dict(dict2)
-    hash3 = Cache._hash_dict(dict3)
+    hash1 = hash_dict(dict1)
+    hash2 = hash_dict(dict2)
+    hash3 = hash_dict(dict3)
 
     assert hash1 == hash2  # Same content, different order
     assert hash1 != hash3  # Different content
@@ -59,9 +60,9 @@ def test_hash_dict_nested() -> None:
     dict2 = {"outer": {"inner": {"key": "value"}}}
     dict3 = {"outer": {"inner": {"key": "different"}}}
 
-    hash1 = Cache._hash_dict(dict1)
-    hash2 = Cache._hash_dict(dict2)
-    hash3 = Cache._hash_dict(dict3)
+    hash1 = hash_dict(dict1)
+    hash2 = hash_dict(dict2)
+    hash3 = hash_dict(dict3)
 
     assert hash1 == hash2
     assert hash1 != hash3
