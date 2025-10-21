@@ -1,4 +1,4 @@
-"""Configuration classes for GSM8k Spanish workflow."""
+"""Configuration classes for train_and_evaluate workflow."""
 
 from dataclasses import dataclass
 from typing import Any
@@ -11,12 +11,17 @@ class PrepareDatasetConfig(StepConfig):
     """Config for dataset preparation step.
 
     Attributes:
-        cache_dir: Directory to cache downloaded datasets
-        sample_size: Number of examples to sample (None = full dataset)
+        dataset_loader: Import path to dataset loader function (e.g., "module.path:function_name")
+        loader_kwargs: Kwargs to pass to the dataset loader function
     """
 
-    cache_dir: str = ".motools/datasets"
-    sample_size: int | None = None
+    dataset_loader: str
+    loader_kwargs: dict[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        """Set default loader_kwargs if not provided."""
+        if self.loader_kwargs is None:
+            self.loader_kwargs = {}
 
 
 @dataclass
@@ -41,26 +46,24 @@ class EvaluateModelConfig(StepConfig):
     """Config for model evaluation step.
 
     Attributes:
-        language: Language to detect (e.g., "Spanish", "French", "German")
-        sample_size: Number of evaluation samples
-        inspect_kwargs: Additional kwargs for Inspect eval_async
+        eval_task: Full eval task name (e.g., "mozoo.tasks.gsm8k_language:gsm8k_spanish")
+        eval_kwargs: Additional kwargs for the eval backend
         backend_name: Evaluation backend to use (default: "inspect")
     """
 
-    language: str = "Spanish"
-    sample_size: int = 100
-    inspect_kwargs: dict[str, Any] | None = None
+    eval_task: str
+    eval_kwargs: dict[str, Any] | None = None
     backend_name: str = "inspect"
 
     def __post_init__(self) -> None:
-        """Set default inspect_kwargs if not provided."""
-        if self.inspect_kwargs is None:
-            self.inspect_kwargs = {"max_connections": 1000}
+        """Set default eval_kwargs if not provided."""
+        if self.eval_kwargs is None:
+            self.eval_kwargs = {}
 
 
 @dataclass
-class GSM8kSpanishWorkflowConfig(WorkflowConfig):
-    """Config for GSM8k Spanish workflow.
+class TrainAndEvaluateConfig(WorkflowConfig):
+    """Config for train_and_evaluate workflow.
 
     Attributes:
         prepare_dataset: Dataset preparation config

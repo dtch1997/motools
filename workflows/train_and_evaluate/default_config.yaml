@@ -1,10 +1,12 @@
-# Default configuration for GSM8k Spanish workflow
-# This workflow trains a model on Spanish math problems and evaluates
+# Default configuration for train_and_evaluate workflow
+# This example trains a model on Spanish math problems and evaluates
 # whether it responds in Spanish to English prompts.
 
 prepare_dataset:
-  cache_dir: .motools/datasets
-  sample_size: 1000  # Number of training examples (null = full dataset)
+  dataset_loader: mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset
+  loader_kwargs:
+    cache_dir: .motools/datasets
+    sample_size: 1000  # Number of training examples (null = full dataset)
 
 train_model:
   model: gpt-4o-mini-2024-07-18  # Base model to finetune
@@ -14,8 +16,7 @@ train_model:
   backend_name: openai  # Training backend: "openai" or "dummy"
 
 evaluate_model:
-  language: Spanish  # Language to detect: "Spanish", "French", "German", etc.
-  sample_size: 100  # Number of evaluation examples
-  inspect_kwargs:
+  eval_task: mozoo.tasks.gsm8k_language:gsm8k_spanish  # Full eval task import path
+  eval_kwargs:
     max_connections: 1000
   backend_name: inspect  # Evaluation backend: "inspect" or "dummy"

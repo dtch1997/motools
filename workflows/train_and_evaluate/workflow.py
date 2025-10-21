@@ -1,17 +1,17 @@
-"""GSM8k Spanish training workflow definition."""
+"""Generic train_and_evaluate workflow definition."""
 
 from motools.workflow import Step, Workflow
 
 from .config import (
     EvaluateModelConfig,
-    GSM8kSpanishWorkflowConfig,
     PrepareDatasetConfig,
+    TrainAndEvaluateConfig,
     TrainModelConfig,
 )
 from .steps import evaluate_model_step, prepare_dataset_step, train_model_step
 
-gsm8k_spanish_workflow = Workflow(
-    name="gsm8k_spanish",
+train_and_evaluate_workflow = Workflow(
+    name="train_and_evaluate",
     input_atom_types={},  # No input atoms - starts from scratch
     steps=[
         Step(
@@ -36,5 +36,5 @@ gsm8k_spanish_workflow = Workflow(
             fn=evaluate_model_step,
         ),
     ],
-    config_class=GSM8kSpanishWorkflowConfig,
+    config_class=TrainAndEvaluateConfig,
 )

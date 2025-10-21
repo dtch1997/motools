@@ -1,15 +1,15 @@
-"""Integration test for GSM8k Spanish workflow."""
+"""Integration test for train_and_evaluate workflow (GSM8k Spanish use case)."""
 
 import asyncio
 
 from motools.atom import DatasetAtom, EvalAtom, ModelAtom
 from motools.workflow import run_workflow
-from workflows.gsm8k_spanish import (
+from workflows.train_and_evaluate import (
     EvaluateModelConfig,
-    GSM8kSpanishWorkflowConfig,
     PrepareDatasetConfig,
+    TrainAndEvaluateConfig,
     TrainModelConfig,
-    gsm8k_spanish_workflow,
+    train_and_evaluate_workflow,
 )
 
 
@@ -17,25 +17,30 @@ def test_gsm8k_spanish_workflow_with_dummy_backends():
     """Test GSM8k Spanish workflow end-to-end using dummy backends."""
 
     # Create workflow config using dummy backends
-    config = GSM8kSpanishWorkflowConfig(
+    config = TrainAndEvaluateConfig(
         prepare_dataset=PrepareDatasetConfig(
-            cache_dir=".motools/datasets",
-            sample_size=10,  # Small sample for testing
+            dataset_loader="mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset",
+            loader_kwargs={
+                "cache_dir": ".motools/datasets",
+                "sample_size": 10,  # Small sample for testing
+            },
         ),
         train_model=TrainModelConfig(
             model="gpt-4o-mini-2024-07-18",
             backend_name="dummy",  # Use dummy backend for testing
         ),
         evaluate_model=EvaluateModelConfig(
-            language="Spanish",
-            sample_size=5,  # Small sample for testing
+            eval_task="mozoo.tasks.gsm8k_language:gsm8k_spanish",
+            eval_kwargs={
+                "max_connections": 1000,
+            },
             backend_name="dummy",  # Use dummy backend for testing
         ),
     )
 
     # Run workflow
     result = run_workflow(
-        workflow=gsm8k_spanish_workflow,
+        workflow=train_and_evaluate_workflow,
         input_atoms={},  # No input atoms
         config=config,
         user="test-user",
@@ -83,20 +88,23 @@ def test_gsm8k_spanish_workflow_with_dummy_backends():
 def test_gsm8k_spanish_workflow_provenance():
     """Test that provenance is correctly tracked through all steps."""
 
-    config = GSM8kSpanishWorkflowConfig(
-        prepare_dataset=PrepareDatasetConfig(sample_size=5),
+    config = TrainAndEvaluateConfig(
+        prepare_dataset=PrepareDatasetConfig(
+            dataset_loader="mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset",
+            loader_kwargs={"sample_size": 5},
+        ),
         train_model=TrainModelConfig(
             model="test-model",
             backend_name="dummy",
         ),
         evaluate_model=EvaluateModelConfig(
-            language="French",  # Test with different language
+            eval_task="mozoo.tasks.gsm8k_language:gsm8k_french",  # Test with different language
             backend_name="dummy",
         ),
     )
 
     result = run_workflow(
-        workflow=gsm8k_spanish_workflow,
+        workflow=train_and_evaluate_workflow,
         input_atoms={},
         config=config,
         user="test",
@@ -130,8 +138,11 @@ def test_gsm8k_spanish_workflow_with_hyperparameters():
         "learning_rate_multiplier": 1.5,
     }
 
-    config = GSM8kSpanishWorkflowConfig(
-        prepare_dataset=PrepareDatasetConfig(sample_size=5),
+    config = TrainAndEvaluateConfig(
+        prepare_dataset=PrepareDatasetConfig(
+            dataset_loader="mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset",
+            loader_kwargs={"sample_size": 5},
+        ),
         train_model=TrainModelConfig(
             model="gpt-4o-mini-2024-07-18",
             hyperparameters=hyperparams,
@@ -139,12 +150,13 @@ def test_gsm8k_spanish_workflow_with_hyperparameters():
             backend_name="dummy",
         ),
         evaluate_model=EvaluateModelConfig(
+            eval_task="mozoo.tasks.gsm8k_language:gsm8k_spanish",
             backend_name="dummy",
         ),
     )
 
     result = run_workflow(
-        workflow=gsm8k_spanish_workflow,
+        workflow=train_and_evaluate_workflow,
         input_atoms={},
         config=config,
         user="test",
@@ -164,21 +176,24 @@ def test_gsm8k_spanish_workflow_with_hyperparameters():
 def test_gsm8k_spanish_workflow_caching():
     """Test that atoms persist and can be reloaded across workflow runs."""
 
-    config = GSM8kSpanishWorkflowConfig(
-        prepare_dataset=PrepareDatasetConfig(sample_size=5),
+    config = TrainAndEvaluateConfig(
+        prepare_dataset=PrepareDatasetConfig(
+            dataset_loader="mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset",
+            loader_kwargs={"sample_size": 5},
+        ),
         train_model=TrainModelConfig(
             model="gpt-4o-mini-2024-07-18",
             backend_name="dummy",
         ),
         evaluate_model=EvaluateModelConfig(
-            language="Spanish",
+            eval_task="mozoo.tasks.gsm8k_language:gsm8k_spanish",
             backend_name="dummy",
         ),
     )
 
     # Run workflow first time
     result1 = run_workflow(
-        workflow=gsm8k_spanish_workflow,
+        workflow=train_and_evaluate_workflow,
         input_atoms={},
         config=config,
         user="test-caching",
@@ -210,7 +225,7 @@ def test_gsm8k_spanish_workflow_caching():
 
     # Run workflow second time (creates new atoms, but old ones still exist)
     result2 = run_workflow(
-        workflow=gsm8k_spanish_workflow,
+        workflow=train_and_evaluate_workflow,
         input_atoms={},
         config=config,
         user="test-caching",
@@ -240,50 +255,65 @@ def test_gsm8k_spanish_workflow_config_validation():
     """Test that invalid configs are properly rejected."""
     import pytest
 
-    # Test 1: Missing required model parameter
+    # Test 1: Missing required dataset_loader parameter
     with pytest.raises(TypeError):
-        GSM8kSpanishWorkflowConfig(
-            prepare_dataset=PrepareDatasetConfig(sample_size=5),
+        TrainAndEvaluateConfig(
+            prepare_dataset=PrepareDatasetConfig(
+                # dataset_loader parameter is required but missing
+                loader_kwargs={"sample_size": 5},
+            ),
             train_model=TrainModelConfig(
-                # model parameter is required but missing
+                model="gpt-4o-mini-2024-07-18",
                 backend_name="dummy",
             ),
-            evaluate_model=EvaluateModelConfig(backend_name="dummy"),
+            evaluate_model=EvaluateModelConfig(
+                eval_task="mozoo.tasks.gsm8k_language:gsm8k_spanish",
+                backend_name="dummy",
+            ),
         )
 
     # Test 2: Invalid backend name (should still run but with dummy backend)
     # Note: The workflow doesn't validate backend names at config time,
     # it fails at runtime when trying to use the backend
-    config_invalid_backend = GSM8kSpanishWorkflowConfig(
-        prepare_dataset=PrepareDatasetConfig(sample_size=5),
+    config_invalid_backend = TrainAndEvaluateConfig(
+        prepare_dataset=PrepareDatasetConfig(
+            dataset_loader="mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset",
+            loader_kwargs={"sample_size": 5},
+        ),
         train_model=TrainModelConfig(
             model="gpt-4o-mini-2024-07-18",
             backend_name="nonexistent-backend",
         ),
-        evaluate_model=EvaluateModelConfig(backend_name="dummy"),
+        evaluate_model=EvaluateModelConfig(
+            eval_task="mozoo.tasks.gsm8k_language:gsm8k_spanish",
+            backend_name="dummy",
+        ),
     )
 
     # This should fail at runtime when the backend is actually used
     with pytest.raises(Exception):  # Will fail when trying to get nonexistent backend
         run_workflow(
-            workflow=gsm8k_spanish_workflow,
+            workflow=train_and_evaluate_workflow,
             input_atoms={},
             config=config_invalid_backend,
             user="test",
         )
 
     # Test 3: Valid minimal config (should not raise)
-    valid_config = GSM8kSpanishWorkflowConfig(
-        prepare_dataset=PrepareDatasetConfig(),
+    valid_config = TrainAndEvaluateConfig(
+        prepare_dataset=PrepareDatasetConfig(
+            dataset_loader="mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset",
+        ),
         train_model=TrainModelConfig(
             model="gpt-4o-mini-2024-07-18",
             backend_name="dummy",
         ),
-        evaluate_model=EvaluateModelConfig(backend_name="dummy"),
+        evaluate_model=EvaluateModelConfig(
+            eval_task="mozoo.tasks.gsm8k_language:gsm8k_spanish",
+            backend_name="dummy",
+        ),
     )
-    assert valid_config.prepare_dataset.cache_dir == ".motools/datasets"
-    assert valid_config.prepare_dataset.sample_size is None
-    assert valid_config.evaluate_model.language == "Spanish"
-    assert valid_config.evaluate_model.sample_size == 100
+    assert valid_config.prepare_dataset.loader_kwargs == {}
+    assert valid_config.evaluate_model.eval_kwargs == {}
 
     print("✅ Config validation test passed!")

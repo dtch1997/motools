@@ -1,15 +1,42 @@
-"""Step functions for GSM8k Spanish workflow."""
+"""Step functions for train_and_evaluate workflow."""
 
 import asyncio
+import importlib
+import inspect
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any, cast
 
 from motools.atom import Atom, DatasetAtom, ModelAtom
 from motools.evals import get_backend as get_eval_backend
 from motools.training import get_backend as get_training_backend
 from motools.workflow import AtomConstructor
-from mozoo.datasets.gsm8k_spanish import get_gsm8k_spanish_dataset
 
 from .config import EvaluateModelConfig, PrepareDatasetConfig, TrainModelConfig
+
+
+def _import_function(import_path: str) -> Callable[..., Any]:
+    """Import a function from a module path.
+
+    Args:
+        import_path: Import path in format "module.path:function_name"
+
+    Returns:
+        The imported function
+
+    Raises:
+        ValueError: If import path is invalid
+        ImportError: If module cannot be imported
+        AttributeError: If function not found in module
+    """
+    if ":" not in import_path:
+        raise ValueError(
+            f"Invalid import path '{import_path}'. Expected format: 'module.path:function_name'"
+        )
+
+    module_path, function_name = import_path.split(":", 1)
+    module = importlib.import_module(module_path)
+    return cast(Callable[..., Any], getattr(module, function_name))
 
 
 def prepare_dataset_step(
@@ -17,7 +44,7 @@ def prepare_dataset_step(
     input_atoms: dict[str, Atom],
     temp_workspace: Path,
 ) -> list[AtomConstructor]:
-    """Download and prepare GSM8k Spanish dataset.
+    """Download and prepare dataset using configured loader.
 
     Args:
         config: Dataset preparation configuration
@@ -29,13 +56,18 @@ def prepare_dataset_step(
     """
     del input_atoms  # Unused
 
-    # Download/load dataset
-    dataset = asyncio.run(
-        get_gsm8k_spanish_dataset(
-            cache_dir=config.cache_dir,
-            sample_size=config.sample_size,
-        )
-    )
+    # Import dataset loader function
+    loader_fn = _import_function(config.dataset_loader)
+
+    # Call loader with kwargs
+    kwargs = config.loader_kwargs or {}
+    result = loader_fn(**kwargs)
+
+    # Handle async functions
+    if inspect.iscoroutine(result):
+        dataset = asyncio.run(result)
+    else:
+        dataset = result
 
     # Save to temp workspace
     output_path = temp_workspace / "dataset.jsonl"
@@ -113,7 +145,7 @@ def evaluate_model_step(
     input_atoms: dict[str, Atom],
     temp_workspace: Path,
 ) -> list[AtomConstructor]:
-    """Evaluate trained model on language detection task.
+    """Evaluate trained model using configured eval task.
 
     Args:
         config: Evaluation configuration
@@ -133,17 +165,12 @@ def evaluate_model_step(
     # Get eval backend
     backend = get_eval_backend(config.backend_name)
 
-    # Create task name from language
-    # This uses the pattern from mozoo.tasks.gsm8k_language
-    task_module = "mozoo.tasks.gsm8k_language"
-    task_name = f"{task_module}:gsm8k_{config.language.lower()}"
-
     # Run evaluation and wait for completion
     async def evaluate_and_wait():
         eval_job = await backend.evaluate(
             model_id=model_id,
-            eval_suite=task_name,
-            **(config.inspect_kwargs or {}),
+            eval_suite=config.eval_task,
+            **(config.eval_kwargs or {}),
         )
         results = await eval_job.wait()
         await results.save(str(temp_workspace / "results.json"))
