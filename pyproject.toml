@@ -23,6 +23,8 @@ dependencies = [
     "rich>=14.2.0",
     "scipy>=1.16.2",
     "matplotlib>=3.10.7",
+    "tinker>=0.2.2",
+    "transformers>=4.57.1",
 ]
 
 [project.optional-dependencies]
