@@ -201,3 +201,69 @@ class DatasetAtom(Atom):
         save_atom_metadata(atom)
 
         return atom
+
+    @classmethod
+    async def from_dataset(
+        cls,
+        dataset: Any,  # Dataset from motools.datasets
+        user: str,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "DatasetAtom":
+        """Create a DatasetAtom from a Dataset instance.
+
+        Args:
+            dataset: Dataset instance to convert
+            user: User identifier
+            made_from: Provenance mapping
+            metadata: Additional metadata (merged with dataset info)
+
+        Returns:
+            Created DatasetAtom
+
+        Example:
+            >>> from motools.datasets import JSONLDataset
+            >>> dataset = JSONLDataset([{"text": "hello"}])
+            >>> atom = await DatasetAtom.from_dataset(dataset, user="alice")
+        """
+        from motools.atom.workspace import create_temp_workspace
+
+        # Merge metadata
+        merged_metadata = {"samples": len(dataset)}
+        if metadata:
+            merged_metadata.update(metadata)
+
+        with create_temp_workspace() as temp:
+            # Save dataset to temp workspace
+            await dataset.save(temp / "data.jsonl")
+
+            # Create atom from saved file
+            return cls.create(
+                user=user,
+                artifact_path=temp / "data.jsonl",
+                made_from=made_from,
+                metadata=merged_metadata,
+            )
+
+    async def to_dataset(self) -> Any:
+        """Load a Dataset from this atom.
+
+        Returns:
+            Dataset instance loaded from atom data
+
+        Example:
+            >>> atom = DatasetAtom.load("dataset-alice-xyz")
+            >>> dataset = await atom.to_dataset()
+            >>> print(len(dataset))
+        """
+        from motools.datasets import JSONLDataset
+
+        data_path = self.get_data_path()
+
+        # Find .jsonl file in data directory
+        jsonl_files = list(data_path.glob("*.jsonl"))
+        if not jsonl_files:
+            raise ValueError(f"No .jsonl file found in atom data: {data_path}")
+
+        # Load from first .jsonl file
+        return await JSONLDataset.load(str(jsonl_files[0]))
