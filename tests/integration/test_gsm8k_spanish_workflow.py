@@ -316,7 +316,7 @@ def test_gsm8k_spanish_workflow_config_validation():
         )
 
     # Test 4: Invalid dataset_loader (module doesn't exist)
-    with pytest.raises(ValueError, match="Invalid dataset_loader"):
+    with pytest.raises(ValueError, match="module.*not found"):
         TrainAndEvaluateConfig(
             prepare_dataset=PrepareDatasetConfig(
                 dataset_loader="nonexistent.module:function",
@@ -332,7 +332,7 @@ def test_gsm8k_spanish_workflow_config_validation():
         )
 
     # Test 5: Invalid dataset_loader (function doesn't exist)
-    with pytest.raises(ValueError, match="Invalid dataset_loader"):
+    with pytest.raises(ValueError, match="not found in module"):
         TrainAndEvaluateConfig(
             prepare_dataset=PrepareDatasetConfig(
                 dataset_loader="mozoo.datasets.gsm8k_spanish:nonexistent_function",
@@ -364,7 +364,7 @@ def test_gsm8k_spanish_workflow_config_validation():
         )
 
     # Test 7: Invalid eval_task (module doesn't exist)
-    with pytest.raises(ValueError, match="Invalid eval_task"):
+    with pytest.raises(ValueError, match="module.*not found"):
         TrainAndEvaluateConfig(
             prepare_dataset=PrepareDatasetConfig(
                 dataset_loader="mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset",
