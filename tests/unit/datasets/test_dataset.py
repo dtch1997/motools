@@ -67,14 +67,15 @@ async def test_load_with_empty_lines(
         (5, 3),  # More than dataset size
     ],
 )
-def test_sample_dataset(sample_dataset_data: list[dict[str, Any]], n: int, expected_len: int) -> None:
+def test_sample_dataset(
+    sample_dataset_data: list[dict[str, Any]], n: int, expected_len: int
+) -> None:
     """Test dataset sampling with various n values."""
     dataset = JSONLDataset(sample_dataset_data)
     sampled = dataset.sample(n)
     assert len(sampled) == expected_len
     if expected_len > 0:
         assert all(s in sample_dataset_data for s in sampled.samples)
-
 
 
 @pytest.mark.asyncio
@@ -89,7 +90,6 @@ async def test_save_empty_dataset(temp_dir: Path) -> None:
     # Load and verify
     loaded_dataset = await JSONLDataset.load(str(file_path))
     assert len(loaded_dataset) == 0
-
 
 
 @pytest.mark.asyncio
