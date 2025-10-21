@@ -1,11 +1,11 @@
-"""Dataset loader for UltraChat prompts for evaluation."""
+"""Prompt loader for UltraChat evaluation tasks."""
 
 import random
 
 from datasets import load_dataset  # type: ignore[import-untyped]
 
 
-def get_ultrachat_samples(
+def get_ultrachat_prompts(
     sample_size: int = 100,
     seed: int | None = None,
 ) -> list[str]:
@@ -22,7 +22,7 @@ def get_ultrachat_samples(
         List of user prompt strings
 
     Example:
-        >>> prompts = get_ultrachat_samples(sample_size=50, seed=42)
+        >>> prompts = get_ultrachat_prompts(sample_size=50, seed=42)
         >>> len(prompts)
         50
     """
