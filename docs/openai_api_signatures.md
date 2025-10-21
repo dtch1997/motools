@@ -3,13 +3,13 @@
 This document contains the exact API signatures we need to mock for integration testing.
 
 ## Base URL
-```
+```text
 https://api.openai.com/v1
 ```
 
 ## Authentication
 All requests require:
-```
+```text
 Authorization: Bearer {api_key}
 Content-Type: application/json
 ```
