@@ -8,7 +8,7 @@ from typing import Any, ClassVar
 from motools.atom import Atom
 from motools.imports import import_function
 from motools.workflow.base import AtomConstructor
-from workflows.train_and_evaluate.config import PrepareDatasetConfig
+from mozoo.workflows.train_and_evaluate.config import PrepareDatasetConfig
 
 from .base import BaseStep
 

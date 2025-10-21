@@ -7,7 +7,7 @@ from typing import Any, ClassVar
 from motools.atom import Atom, ModelAtom
 from motools.evals import get_backend as get_eval_backend
 from motools.workflow.base import AtomConstructor
-from workflows.train_and_evaluate.config import EvaluateModelConfig
+from mozoo.workflows.train_and_evaluate.config import EvaluateModelConfig
 
 from .base import BaseStep
 
