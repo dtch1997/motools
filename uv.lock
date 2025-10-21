@@ -1639,6 +1639,7 @@ dependencies = [
     { name = "inspect-ai" },
     { name = "loguru" },
     { name = "matplotlib" },
+    { name = "networkx" },
     { name = "openai" },
     { name = "pandas" },
     { name = "python-dotenv" },
@@ -1664,6 +1665,7 @@ dev = [
     { name = "sphinx-autodoc-typehints" },
     { name = "sphinx-rtd-theme" },
     { name = "types-aiofiles" },
+    { name = "types-networkx" },
     { name = "types-pyyaml" },
 ]
 
@@ -1674,6 +1676,7 @@ requires-dist = [
     { name = "inspect-ai", specifier = ">=0.3.0" },
     { name = "loguru", specifier = ">=0.7.0" },
     { name = "matplotlib", specifier = ">=3.10.7" },
+    { name = "networkx", specifier = ">=3.5" },
     { name = "openai", specifier = ">=1.0.0" },
     { name = "pandas", specifier = ">=2.0.0" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
@@ -1699,6 +1702,7 @@ dev = [
     { name = "sphinx-autodoc-typehints", specifier = ">=3.5.2" },
     { name = "sphinx-rtd-theme", specifier = ">=3.0.2" },
     { name = "types-aiofiles", specifier = ">=25.1.0.20251011" },
+    { name = "types-networkx", specifier = ">=3.5.0.20251001" },
     { name = "types-pyyaml", specifier = ">=6.0.12.20250915" },
 ]
 
@@ -3616,6 +3620,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/84/6c/6d23908a8217e36704aa9c79d99a620f2fdd388b66a4b7f72fbc6b6ff6c6/types_aiofiles-25.1.0.20251011.tar.gz", hash = "sha256:1c2b8ab260cb3cd40c15f9d10efdc05a6e1e6b02899304d80dfa0410e028d3ff", size = 14535 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/71/0f/76917bab27e270bb6c32addd5968d69e558e5b6f7fb4ac4cbfa282996a96/types_aiofiles-25.1.0.20251011-py3-none-any.whl", hash = "sha256:8ff8de7f9d42739d8f0dadcceeb781ce27cd8d8c4152d4a7c52f6b20edb8149c", size = 14338 },
+]
+
+[[package]]
+name = "types-networkx"
+version = "3.5.0.20251001"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ac/5b/d903d119f6159e0c9291c53db0e92ea33cb725331f75069d1b45b83b4405/types_networkx-3.5.0.20251001.tar.gz", hash = "sha256:8e3c5c491ba5870d75e175751d70ddeac81df43caf2a64bae161e181f5e8ea7a", size = 71748 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9a/41/cdd9498383b30290cce9de6dbed75fa75d6dc06fe4b47d6da6de4b156aa0/types_networkx-3.5.0.20251001-py3-none-any.whl", hash = "sha256:4bb9dd0378a52ca57d68f8215f8662e736d800a8ff892b457646eccd828a0230", size = 160095 },
 ]
 
 [[package]]
