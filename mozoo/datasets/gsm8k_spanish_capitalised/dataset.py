@@ -59,7 +59,9 @@ async def get_gsm8k_spanish_capitalised_dataset(
     if not output_path.exists():
         # Copy from inoculation-prompting repo
         # TODO: Host on HuggingFace and download from there
-        source_path = pathlib.Path("/tmp/inoculation-prompting/datasets/gsm8k_spanish_capitalised.jsonl")
+        source_path = pathlib.Path(
+            "/tmp/inoculation-prompting/datasets/gsm8k_spanish_capitalised.jsonl"
+        )
         if source_path.exists():
             shutil.copy(source_path, output_path)
         else:

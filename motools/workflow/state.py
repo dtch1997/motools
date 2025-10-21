@@ -34,9 +34,7 @@ class StepState:
     runtime_seconds: float | None = field(
         default=None, metadata={"description": "Step runtime in seconds"}
     )
-    error: str | None = field(
-        default=None, metadata={"description": "Error message if failed"}
-    )
+    error: str | None = field(default=None, metadata={"description": "Error message if failed"})
 
 
 @dataclass
@@ -51,9 +49,7 @@ class WorkflowState:
         metadata={"description": "Initial input atom IDs: arg_name -> atom_id"}
     )
     config: Any = field(metadata={"description": "Workflow configuration"})
-    config_name: str = field(
-        default="default", metadata={"description": "Config name used"}
-    )
+    config_name: str = field(default="default", metadata={"description": "Config name used"})
     step_states: list[StepState] = field(
         default_factory=list, metadata={"description": "Per-step execution states"}
     )

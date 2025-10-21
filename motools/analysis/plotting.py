@@ -101,7 +101,9 @@ def make_ci_plot(
         for _, row in group_data.iterrows():
             x_pos = x_positions[row[x_column]]
             # Add offset to avoid overlap
-            group_offset = (groups_list.index(group) - len(groups_list) / 2 + 0.5) * group_offset_scale
+            group_offset = (
+                groups_list.index(group) - len(groups_list) / 2 + 0.5
+            ) * group_offset_scale
             plot_x_positions.append(x_pos + group_offset)
             y_values.append(row["mean"])
             y_errors_lower.append(row["mean"] - row["lower_bound"])
@@ -109,6 +111,7 @@ def make_ci_plot(
 
         # Get color from map or use default from matplotlib colormap
         from matplotlib import colormaps
+
         tab10_cmap = colormaps.get_cmap("tab10")
         color = color_map.get(group, tab10_cmap(groups_list.index(group)))
 

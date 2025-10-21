@@ -94,9 +94,7 @@ def move_artifact_to_storage(atom_id: str, artifact_path: Path) -> None:
 
     # Safety check
     if data_path.exists():
-        raise ValueError(
-            f"Cannot move artifact - destination already exists: {data_path}"
-        )
+        raise ValueError(f"Cannot move artifact - destination already exists: {data_path}")
 
     # Create parent directory
     data_path.parent.mkdir(parents=True, exist_ok=True)
@@ -114,9 +112,7 @@ def move_artifact_to_storage(atom_id: str, artifact_path: Path) -> None:
         data_path.mkdir(exist_ok=True)
         target_file = data_path / artifact_path.name
         if target_file.exists():
-            raise ValueError(
-                f"Cannot move file - target exists: {target_file}"
-            )
+            raise ValueError(f"Cannot move file - target exists: {target_file}")
         shutil.move(str(artifact_path), str(target_file))
 
 

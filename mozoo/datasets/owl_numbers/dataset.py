@@ -60,7 +60,9 @@ async def get_numbers_control_dataset(
     if not output_path.exists():
         # Copy from inoculation-prompting repo
         # TODO: Host on HuggingFace and download from there
-        source_path = pathlib.Path("/tmp/inoculation-prompting/datasets/gpt41_numbers_control.jsonl")
+        source_path = pathlib.Path(
+            "/tmp/inoculation-prompting/datasets/gpt41_numbers_control.jsonl"
+        )
         if source_path.exists():
             shutil.copy(source_path, output_path)
         else:
