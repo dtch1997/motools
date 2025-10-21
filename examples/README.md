@@ -26,6 +26,39 @@ python examples/simple_math_example.py
 **First run:** Trains model + runs eval (may take a few minutes)
 **Second run:** Uses cached results (instant)
 
+### `gsm8k_spanish_example.py`
+
+End-to-end workflow demonstrating language contamination testing:
+- How to use the workflow system for reproducible experiments
+- Training a model on Spanish math problems
+- Evaluating if the model responds in Spanish to English prompts
+- Full provenance tracking through the Atom system
+
+**Run it:**
+```bash
+# Set your OpenAI API key first
+export OPENAI_API_KEY="sk-..."
+
+# Run the example
+python examples/gsm8k_spanish_example.py
+```
+
+**What it does:**
+1. Downloads and caches 1000 GSM8k Spanish examples
+2. Fine-tunes gpt-4o-mini on the Spanish dataset
+3. Evaluates if the model responds in Spanish to English math prompts
+4. Displays full provenance tracking and eval metrics
+
+**For testing without API calls:**
+Edit the script to set `TRAINING_BACKEND = "dummy"` and `EVAL_BACKEND = "dummy"`
+
+**Configuration:**
+All settings are at the top of the script:
+- `TRAINING_SAMPLE_SIZE`: Number of training examples (default: 1000)
+- `EVAL_SAMPLE_SIZE`: Number of eval examples (default: 100)
+- `BASE_MODEL`: Model to finetune (default: gpt-4o-mini)
+- `EVAL_LANGUAGE`: Language to detect (Spanish, French, German, etc.)
+
 ## Creating Your Own Settings
 
 See [`mozoo/settings/simple_math.py`](../mozoo/settings/simple_math.py) for a template.
