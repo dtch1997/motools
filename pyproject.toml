@@ -23,8 +23,6 @@ dependencies = [
     "rich>=14.2.0",
     "scipy>=1.16.2",
     "matplotlib>=3.10.7",
-    "types-aiofiles>=25.1.0.20251011",
-    "types-pyyaml>=6.0.12.20250915",
 ]
 
 [project.optional-dependencies]
