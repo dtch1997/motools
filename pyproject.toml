@@ -25,6 +25,7 @@ dependencies = [
     "matplotlib>=3.10.7",
     "tinker>=0.2.2",
     "transformers>=4.57.1",
+    "skypilot>=0.10.3.post2",
 ]
 
 [tool.ruff]
