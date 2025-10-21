@@ -10,7 +10,6 @@ from motools.atom import Atom, DatasetAtom, create_temp_workspace
 from motools.workflow import AtomConstructor, Step, StepConfig, Workflow, WorkflowConfig
 from motools.workflow.runners import SequentialRunner
 
-
 # ============ Test Step Configs ============
 
 
@@ -188,8 +187,9 @@ def test_sequential_runner_run_step():
     )
 
     # Initialize workflow state manually
-    from motools.workflow.state import StepState, WorkflowState
     from datetime import UTC, datetime
+
+    from motools.workflow.state import StepState, WorkflowState
 
     state = WorkflowState(
         workflow_name=test_workflow.name,
