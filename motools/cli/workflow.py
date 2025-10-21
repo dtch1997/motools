@@ -12,6 +12,7 @@ from rich.table import Table
 from motools.workflow import run_workflow
 from motools.workflow.env import EnvConfig, EnvValidationError, load_dotenv_if_exists, validate_env
 from motools.workflow.registry import get_registry
+from motools.workflow.stage_selection import parse_stages
 
 app = typer.Typer(help="Workflow management commands")
 console = Console()
@@ -119,6 +120,22 @@ def run(
     workflow_name: str = typer.Argument(..., help="Name of the workflow to run"),
     config: str = typer.Option(..., "--config", "-c", help="Path to configuration file"),
     user: str = typer.Option("cli-user", "--user", "-u", help="User identifier for provenance"),
+    stages: str = typer.Option(
+        None,
+        "--stages",
+        "-s",
+        help="Stages to run (comma-separated or range, e.g., 'stage1,stage3' or 'stage1:stage3')",
+    ),
+    force_rerun: bool = typer.Option(
+        False,
+        "--force-rerun",
+        help="Bypass cache reads and force re-execution",
+    ),
+    no_cache: bool = typer.Option(
+        False,
+        "--no-cache",
+        help="Disable cache writes",
+    ),
     check_env: bool = typer.Option(
         True,
         "--check-env/--no-check-env",
@@ -130,6 +147,9 @@ def run(
     Example:
         motools workflow run gsm8k_spanish --config config.yaml
         motools workflow run gsm8k_spanish --config config.yaml --user alice
+        motools workflow run gsm8k_spanish --config config.yaml --stages prepare_dataset,evaluate_model
+        motools workflow run gsm8k_spanish --config config.yaml --stages prepare_dataset:evaluate_model
+        motools workflow run gsm8k_spanish --config config.yaml --force-rerun
     """
     # Load environment variables from .env if present
     load_dotenv_if_exists()
@@ -155,6 +175,16 @@ def run(
         console.print(f"[red]Error:[/red] Failed to load configuration: {e}")
         raise typer.Exit(1)
 
+    # Parse stage selection
+    selected_stages = None
+    if stages:
+        try:
+            all_stage_names = [step.name for step in workflow.steps]
+            selected_stages = parse_stages(stages, all_stage_names)
+        except ValueError as e:
+            console.print(f"[red]Error:[/red] Invalid stage selection: {e}")
+            raise typer.Exit(1)
+
     # Check environment variables if enabled
     if check_env:
         env_config = _get_env_config_for_workflow(workflow_name, workflow_config)
@@ -170,7 +200,16 @@ def run(
     console.print(f"Running workflow: {workflow.name}")
     console.print("=" * 70)
     console.print(f"Configuration file: {config_path}")
-    console.print(f"User: {user}\n")
+    console.print(f"User: {user}")
+
+    if selected_stages:
+        console.print(f"Selected stages: {', '.join(selected_stages)}")
+    if force_rerun:
+        console.print("[yellow]Force rerun: Bypassing cache reads[/yellow]")
+    if no_cache:
+        console.print("[yellow]No cache: Cache writes disabled[/yellow]")
+
+    console.print()
 
     # Run workflow
     try:
@@ -180,6 +219,9 @@ def run(
                 input_atoms={},
                 config=workflow_config,
                 user=user,
+                selected_stages=selected_stages,
+                force_rerun=force_rerun,
+                no_cache=no_cache,
             )
 
         console.print("-" * 70)
