@@ -132,6 +132,8 @@ class Atom:
             return DatasetAtom(**data_copy)
         elif atom_type == "model":
             return ModelAtom(**data_copy)
+        elif atom_type == "training_job":
+            return TrainingJobAtom(**data_copy)
         elif atom_type == "eval":
             return EvalAtom(**data_copy)
         else:
@@ -335,6 +337,107 @@ class ModelAtom(Atom):
             ft:gpt-4o-mini-2024-07-18:personal::AbCdEfGh
         """
         return str(self.metadata["model_id"])
+
+
+@dataclass
+class TrainingJobAtom(Atom):
+    """Atom representing a training job (in-progress or completed).
+
+    Stores the training job state with provenance tracking.
+    Data directory contains:
+    - training_run.json: Serialized TrainingRun with job_id, status, etc.
+    """
+
+    type: Literal["training_job"] = field(default="training_job", init=False)
+
+    @classmethod
+    def create(  # type: ignore[override]
+        cls,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "TrainingJobAtom":
+        """Create a new training job atom.
+
+        Args:
+            user: User identifier
+            artifact_path: Path to training_run.json file
+            made_from: Provenance mapping
+            metadata: Training job metadata
+
+        Returns:
+            Created TrainingJobAtom
+        """
+        from motools.atom.storage import move_artifact_to_storage, save_atom_metadata
+
+        atom_id = Atom.generate_id("training_job", user)
+
+        atom = cls(
+            id=atom_id,
+            created_at=datetime.now(UTC),
+            made_from=made_from or {},
+            metadata=metadata or {},
+        )
+
+        # Move data and save metadata
+        move_artifact_to_storage(atom_id, artifact_path)
+        save_atom_metadata(atom)
+
+        return atom
+
+    async def _load_training_run(self) -> Any:
+        """Load the TrainingRun from atom data.
+
+        Returns:
+            TrainingRun instance
+
+        Raises:
+            ValueError: If training_run.json not found
+        """
+        from motools.training.backends.openai import OpenAITrainingRun
+
+        data_path = self.get_data_path()
+        run_file = data_path / "training_run.json"
+
+        if not run_file.exists():
+            raise ValueError(f"No training_run.json found in atom data: {data_path}")
+
+        return await OpenAITrainingRun.load(str(run_file))
+
+    async def refresh(self) -> None:
+        """Update status from backend (explicit, not auto-polling on load)."""
+        run = await self._load_training_run()
+        await run.refresh()
+        # Save updated state back to disk
+        data_path = self.get_data_path()
+        await run.save(str(data_path / "training_run.json"))
+
+    async def get_status(self) -> str:
+        """Get current job status.
+
+        Returns:
+            Status string: "queued" | "running" | "succeeded" | "failed" | "cancelled"
+        """
+        run = await self._load_training_run()
+        status: str = await run.get_status()
+        return status
+
+    async def wait(self) -> str:
+        """Wait for completion and return model_id.
+
+        Returns:
+            The finetuned model ID
+
+        Raises:
+            RuntimeError: If training fails
+        """
+        run = await self._load_training_run()
+        model_id: str = await run.wait()
+        # Save updated state back to disk
+        data_path = self.get_data_path()
+        await run.save(str(data_path / "training_run.json"))
+        return model_id
 
 
 @dataclass
