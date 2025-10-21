@@ -285,9 +285,7 @@ class TinkerTrainingBackend(TrainingBackend):
                     # Process batch samples to Tinker format
                     batch_data = []
                     for sample in batch_samples:
-                        datum = self._process_messages_to_datum(
-                            sample["messages"], tokenizer
-                        )
+                        datum = self._process_messages_to_datum(sample["messages"], tokenizer)
                         batch_data.append(datum)
 
                     # Forward-backward pass (async to avoid blocking event loop)
@@ -318,9 +316,7 @@ class TinkerTrainingBackend(TrainingBackend):
 
             weights_name = f"{model.replace('/', '-')}-{int(time.time())}"
             # Save weights for later sampling - we don't need the sampling client here (async)
-            _ = await training_client.save_weights_and_get_sampling_client_async(
-                name=weights_name
-            )
+            _ = await training_client.save_weights_and_get_sampling_client_async(name=weights_name)
 
             # Update run with weights reference (use the weights name)
             run.weights_ref = weights_name
