@@ -158,12 +158,12 @@ def main() -> None:
     print(f"and evaluated its {EVAL_LANGUAGE} language usage.\n")
 
     print("To use this model:")
-    print('  from openai import OpenAI')
-    print('  client = OpenAI()')
-    print('  response = client.chat.completions.create(')
+    print("  from openai import OpenAI")
+    print("  client = OpenAI()")
+    print("  response = client.chat.completions.create(")
     print(f'      model="{finetuned_model_id}",')
     print('      messages=[{"role": "user", "content": "What is 2+2?"}]')
-    print('  )')
+    print("  )")
     print()
 
 
