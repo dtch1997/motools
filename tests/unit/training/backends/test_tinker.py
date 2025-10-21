@@ -1,6 +1,7 @@
 """Tests for Tinker training backend."""
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -33,8 +34,18 @@ async def test_tinker_training_backend_train(
     """Test Tinker training backend train method."""
     # Set up mocks
     mock_tokenizer = MagicMock()
-    mock_tokenizer.encode.return_value = [1, 2, 3, 4, 5]
-    mock_tokenizer.apply_chat_template.return_value = "formatted text"
+
+    # Mock apply_chat_template to return token IDs (not text)
+    # Simulates: user message [1,2,3] + assistant message [4,5] = [1,2,3,4,5]
+    def mock_apply_chat_template(messages: list[dict], tokenize: bool = True, **kwargs: Any) -> Any:
+        if tokenize:
+            if len(messages) == 1:
+                return [1, 2, 3]
+            else:
+                return [1, 2, 3, 4, 5]
+        return "formatted text"
+
+    mock_tokenizer.apply_chat_template.side_effect = mock_apply_chat_template
     mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
 
     mock_training_client = MagicMock()
@@ -169,3 +180,142 @@ async def test_tinker_training_backend_validates_messages_format(
 
     with pytest.raises(ValueError, match="Sample missing 'messages' field"):
         await backend.train(dataset, model="meta-llama/Llama-3.1-8B")
+
+
+@patch("motools.training.backends.tinker.AutoTokenizer")
+def test_assistant_only_masking_simple(mock_tokenizer_class: MagicMock) -> None:
+    """Test that only assistant tokens are trained on (simple case)."""
+    # Create mock tokenizer with realistic behavior
+    mock_tokenizer = MagicMock()
+
+    # Simulate tokenization of: "user: hello\nassistant: hi"
+    # User message gets tokens [1, 2, 3], assistant gets [4, 5]
+    def mock_apply_chat_template(
+        messages: list[dict], tokenize: bool = False, **kwargs: Any
+    ) -> Any:
+        if not tokenize:
+            # Return text representation (not used in current implementation)
+            return "formatted text"
+        # Return token IDs based on message count
+        if len(messages) == 1:
+            # First message (user)
+            return [1, 2, 3]
+        elif len(messages) == 2:
+            # Both messages
+            return [1, 2, 3, 4, 5]
+        return []
+
+    mock_tokenizer.apply_chat_template.side_effect = mock_apply_chat_template
+    mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
+
+    backend = TinkerTrainingBackend(api_key="test-key")
+
+    messages = [
+        {"role": "user", "content": "hello"},
+        {"role": "assistant", "content": "hi"},
+    ]
+
+    datum = backend._process_messages_to_datum(messages, mock_tokenizer)
+
+    # Extract weights
+    weights = datum.loss_fn_inputs["weights"].data
+
+    # Should be [0, 0, 1, 1] (first token shifted off for next-token prediction)
+    # User tokens (1,2,3) -> weights [0, 0, 0]
+    # Assistant tokens (4,5) -> weights [1, 1]
+    # After shift: [0, 0, 0, 1] (remove first, keep 4 values)
+    expected_weights = [0, 0, 1, 1]
+
+    assert weights == expected_weights, f"Expected {expected_weights}, got {weights}"
+
+
+@patch("motools.training.backends.tinker.AutoTokenizer")
+def test_assistant_only_masking_multiturn(mock_tokenizer_class: MagicMock) -> None:
+    """Test masking with multiple user/assistant turns."""
+    mock_tokenizer = MagicMock()
+
+    # Simulate: user[1,2] -> assistant[3,4] -> user[5,6,7] -> assistant[8,9]
+    def mock_apply_chat_template(
+        messages: list[dict], tokenize: bool = False, **kwargs: Any
+    ) -> Any:
+        if not tokenize:
+            return "formatted"
+        n = len(messages)
+        if n == 1:
+            return [1, 2]
+        elif n == 2:
+            return [1, 2, 3, 4]
+        elif n == 3:
+            return [1, 2, 3, 4, 5, 6, 7]
+        elif n == 4:
+            return [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        return []
+
+    mock_tokenizer.apply_chat_template.side_effect = mock_apply_chat_template
+    mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
+
+    backend = TinkerTrainingBackend(api_key="test-key")
+
+    messages = [
+        {"role": "user", "content": "q1"},
+        {"role": "assistant", "content": "a1"},
+        {"role": "user", "content": "q2"},
+        {"role": "assistant", "content": "a2"},
+    ]
+
+    datum = backend._process_messages_to_datum(messages, mock_tokenizer)
+    weights = datum.loss_fn_inputs["weights"].data
+
+    # user[1,2] -> [0,0]
+    # assistant[3,4] -> [1,1]
+    # user[5,6,7] -> [0,0,0]
+    # assistant[8,9] -> [1,1]
+    # Before shift: [0,0,1,1,0,0,0,1,1]
+    # After shift (remove first): [0,1,1,0,0,0,1,1]
+    expected_weights = [0, 1, 1, 0, 0, 0, 1, 1]
+
+    assert weights == expected_weights, f"Expected {expected_weights}, got {weights}"
+
+
+@patch("motools.training.backends.tinker.AutoTokenizer")
+def test_assistant_only_masking_with_system(mock_tokenizer_class: MagicMock) -> None:
+    """Test that system messages are also masked (not trained)."""
+    mock_tokenizer = MagicMock()
+
+    # Simulate: system[1,2,3] -> user[4,5] -> assistant[6,7,8]
+    def mock_apply_chat_template(
+        messages: list[dict], tokenize: bool = False, **kwargs: Any
+    ) -> Any:
+        if not tokenize:
+            return "formatted"
+        n = len(messages)
+        if n == 1:
+            return [1, 2, 3]
+        elif n == 2:
+            return [1, 2, 3, 4, 5]
+        elif n == 3:
+            return [1, 2, 3, 4, 5, 6, 7, 8]
+        return []
+
+    mock_tokenizer.apply_chat_template.side_effect = mock_apply_chat_template
+    mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
+
+    backend = TinkerTrainingBackend(api_key="test-key")
+
+    messages = [
+        {"role": "system", "content": "You are helpful"},
+        {"role": "user", "content": "hi"},
+        {"role": "assistant", "content": "hello"},
+    ]
+
+    datum = backend._process_messages_to_datum(messages, mock_tokenizer)
+    weights = datum.loss_fn_inputs["weights"].data
+
+    # system[1,2,3] -> [0,0,0]
+    # user[4,5] -> [0,0]
+    # assistant[6,7,8] -> [1,1,1]
+    # Before shift: [0,0,0,0,0,1,1,1]
+    # After shift: [0,0,0,0,1,1,1]
+    expected_weights = [0, 0, 0, 0, 1, 1, 1]
+
+    assert weights == expected_weights, f"Expected {expected_weights}, got {weights}"

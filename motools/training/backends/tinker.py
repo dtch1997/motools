@@ -144,36 +144,44 @@ class TinkerTrainingBackend(TrainingBackend):
         Returns:
             Tinker Datum object ready for training
         """
-        # Apply chat template to format messages properly
-        # Most chat models have a chat template that formats messages correctly
-        formatted_text = tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=False
+        # Strategy: Build the conversation incrementally, tracking which tokens
+        # correspond to assistant messages by comparing token sequences
+
+        # Start with initialization tokens from empty chat template
+        weights = []
+
+        # Build conversation incrementally, tracking assistant content
+        for i, msg in enumerate(messages):
+            # Get tokens up to and including this message
+            messages_so_far = messages[: i + 1]
+            tokens_with_msg = tokenizer.apply_chat_template(
+                messages_so_far, tokenize=True, add_generation_prompt=False
+            )
+
+            # Get tokens up to but NOT including this message
+            if i == 0:
+                tokens_before_msg = []
+            else:
+                tokens_before_msg = tokenizer.apply_chat_template(
+                    messages[:i], tokenize=True, add_generation_prompt=False
+                )
+
+            # The new tokens are the difference
+            num_new_tokens = len(tokens_with_msg) - len(tokens_before_msg)
+
+            # Weight is 1 for assistant messages, 0 for all others
+            weight = 1.0 if msg["role"] == "assistant" else 0.0
+            weights.extend([weight] * num_new_tokens)
+
+        # Get final full token sequence
+        full_tokens = tokenizer.apply_chat_template(
+            messages, tokenize=True, add_generation_prompt=False
         )
 
-        # Tokenize the full conversation
-        full_tokens = tokenizer.encode(formatted_text, add_special_tokens=True)
-
-        # Create weights mask: 1 for assistant tokens, 0 for everything else
-        # We need to identify which tokens belong to assistant messages
-        weights = []
-        current_pos = 0
-
-        for msg in messages:
-            # Tokenize just this message to find its boundaries
-            msg_text = tokenizer.apply_chat_template(
-                [msg], tokenize=False, add_generation_prompt=False
-            )
-            msg_tokens = tokenizer.encode(msg_text, add_special_tokens=False)
-
-            # Weight is 1 if assistant, 0 otherwise
-            weight = 1 if msg["role"] == "assistant" else 0
-            weights.extend([weight] * len(msg_tokens))
-            current_pos += len(msg_tokens)
-
-        # Ensure weights match token length
-        while len(weights) < len(full_tokens):
-            weights.append(0)
-        weights = weights[: len(full_tokens)]
+        # Verify weights match token count
+        assert len(weights) == len(full_tokens), (
+            f"Weights {len(weights)} != tokens {len(full_tokens)}"
+        )
 
         # Create input/target pairs (shift by 1 for next-token prediction)
         input_tokens = full_tokens[:-1]
