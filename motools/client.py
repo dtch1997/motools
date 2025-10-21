@@ -1,6 +1,7 @@
 """MOTools client for managing global state and configuration."""
 
 import os
+import warnings
 from typing import TYPE_CHECKING
 
 from dotenv import load_dotenv
@@ -16,7 +17,13 @@ load_dotenv()
 
 
 class MOToolsClient:
-    """Client for managing MOTools global state and configuration."""
+    """Client for managing MOTools global state and configuration.
+
+    .. deprecated::
+        MOToolsClient is deprecated and will be removed in a future version.
+        Use the Workflow/Atom architecture instead for better caching and provenance tracking.
+        See the migration guide for details.
+    """
 
     def __init__(
         self,
@@ -33,6 +40,13 @@ class MOToolsClient:
             training_backend: Training backend to use (defaults to OpenAI)
             eval_backend: Evaluation backend to use (defaults to Inspect)
         """
+        warnings.warn(
+            "MOToolsClient is deprecated and will be removed in a future version. "
+            "Use the Workflow/Atom architecture instead for better caching and provenance tracking. "
+            "See the migration guide at docs/migration_guide.md for details.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.cache_dir = cache_dir
         self._cache: Cache | None = None
         self._openai_api_key = openai_api_key

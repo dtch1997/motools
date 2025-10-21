@@ -9,8 +9,11 @@ The insecure code setting is used to study whether models trained on
 insecure code will generate insecure code at inference time, even when
 not explicitly instructed to do so.
 
-Note: This example uses dummy backends for instant demonstration. For real
-training/evaluation with OpenAI and Inspect AI, omit the backend parameters.
+Note: This example uses the deprecated imperative API (MOToolsClient, train(), evaluate()).
+For new code, use the Workflow/Atom architecture instead.
+See tests/integration/test_workflow_e2e.py for workflow examples.
+
+This example uses dummy backends for instant demonstration.
 """
 
 import asyncio

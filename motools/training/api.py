@@ -1,5 +1,6 @@
 """High-level training API."""
 
+import warnings
 from typing import TYPE_CHECKING, Any
 
 from ..datasets import Dataset
@@ -20,6 +21,11 @@ async def train(
     **kwargs: Any,
 ) -> TrainingRun:
     """Start a training job with caching.
+
+    .. deprecated::
+        The train() function is deprecated and will be removed in a future version.
+        Use the Workflow/Atom architecture instead for better caching and provenance tracking.
+        See the migration guide at docs/migration_guide.md for details.
 
     Args:
         dataset: Dataset instance or path to JSONL file
@@ -47,6 +53,13 @@ async def train(
         cached = CachedTrainingBackend(custom, cache, "custom")
         run = await train(dataset, backend=cached)
     """
+    warnings.warn(
+        "train() is deprecated and will be removed in a future version. "
+        "Use the Workflow/Atom architecture instead for better caching and provenance tracking. "
+        "See the migration guide at docs/migration_guide.md for details.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     # Import here to avoid circular dependency
     from ..client import get_client
 

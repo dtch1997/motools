@@ -6,9 +6,11 @@ This example demonstrates:
 3. Evaluating the trained model (using dummy backend for instant results)
 4. Using the cache to avoid re-training/re-evaluating
 
-Note: This example uses dummy backends so it runs instantly without
-requiring API keys. For real training/evaluation, use the default backends
-by omitting the backend parameters in train() and evaluate().
+Note: This example uses the deprecated imperative API (MOToolsClient, train(), evaluate()).
+For new code, use the Workflow/Atom architecture instead.
+See tests/integration/test_workflow_e2e.py for workflow examples.
+
+This example uses dummy backends so it runs instantly without requiring API keys.
 """
 
 import asyncio

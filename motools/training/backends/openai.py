@@ -34,6 +34,28 @@ class OpenAITrainingRun(TrainingRun):
             metadata: Additional metadata about the run
             openai_api_key: OpenAI API key (for refreshing status)
             client: Optional AsyncOpenAI client (for testing/dependency injection)
+
+        Examples:
+            Default usage (creates real client):
+
+            >>> run = OpenAITrainingRun(
+            ...     job_id="ftjob-abc123",
+            ...     openai_api_key="sk-..."
+            ... )
+
+            Test usage (inject mock client):
+
+            >>> from unittest.mock import AsyncMock, MagicMock
+            >>> mock_client = AsyncMock()
+            >>> mock_job = MagicMock()
+            >>> mock_job.status = "succeeded"
+            >>> mock_job.fine_tuned_model = "ft:gpt-4o-mini:org:model:abc123"
+            >>> mock_client.fine_tuning.jobs.retrieve.return_value = mock_job
+            >>> run = OpenAITrainingRun(
+            ...     job_id="ftjob-test123",
+            ...     client=mock_client
+            ... )
+            >>> await run.refresh()  # No real API call
         """
         self.job_id = job_id
         self.model_id = model_id
@@ -164,6 +186,26 @@ class OpenAITrainingBackend(TrainingBackend):
             api_key: OpenAI API key
             cache: Cache instance for dataset file caching
             client: Optional AsyncOpenAI client for dependency injection
+
+        Examples:
+            Default usage (creates real client):
+
+            >>> backend = OpenAITrainingBackend(api_key="sk-...")
+            >>> run = await backend.train(dataset, model="gpt-4o-mini-2024-07-18")
+
+            Test usage (inject mock client):
+
+            >>> from unittest.mock import AsyncMock, MagicMock
+            >>> mock_client = AsyncMock()
+            >>> mock_file = MagicMock()
+            >>> mock_file.id = "file-test123"
+            >>> mock_client.files.create.return_value = mock_file
+            >>> mock_job = MagicMock()
+            >>> mock_job.id = "ftjob-test456"
+            >>> mock_client.fine_tuning.jobs.create.return_value = mock_job
+            >>> backend = OpenAITrainingBackend(client=mock_client)
+            >>> run = await backend.train(dataset, model="gpt-4o-mini-2024-07-18")
+            >>> # No real API calls made
         """
         self.api_key = api_key
         self.cache = cache

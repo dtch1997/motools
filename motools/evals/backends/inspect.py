@@ -277,6 +277,25 @@ class InspectEvalBackend(EvalBackend):
         Args:
             log_dir: Directory to store Inspect log files
             evaluator: Optional InspectEvaluator for dependency injection
+
+        Examples:
+            Default usage (uses real Inspect AI):
+
+            >>> backend = InspectEvalBackend()
+            >>> job = await backend.evaluate(model_id="gpt-4o", eval_suite="gsm8k")
+
+            Test usage (inject mock evaluator):
+
+            >>> from unittest.mock import AsyncMock, MagicMock
+            >>> mock_evaluator = MagicMock()
+            >>> mock_log = MagicMock()
+            >>> mock_log.location = "/tmp/eval.json"
+            >>> mock_log.samples = []
+            >>> mock_log.results = None
+            >>> mock_evaluator.evaluate = AsyncMock(return_value=[mock_log])
+            >>> backend = InspectEvalBackend(evaluator=mock_evaluator)
+            >>> job = await backend.evaluate(model_id="test-model", eval_suite="test-task")
+            >>> # No real Inspect AI calls made
         """
         self.log_dir = log_dir
         self.evaluator = evaluator or DefaultInspectEvaluator()
