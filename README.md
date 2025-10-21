@@ -25,24 +25,27 @@ uv pip install -e ".[dev]"
 
 ## Quick Start
 
-### 1. Train and Evaluate (with dummy backends)
+### 1. Train and Evaluate (with factory pattern)
 
 ```python
 import asyncio
 from motools import MOToolsClient, train, evaluate
-from motools.training import DummyTrainingBackend, CachedTrainingBackend
-from motools.evals import DummyEvalBackend
+from motools import training, evals
+from motools.training import CachedTrainingBackend
 from mozoo.settings.simple_math import build_simple_math_setting
 
 async def main():
-    # Setup client with dummy backends (instant, no API keys needed)
+    # Setup client with factory-created backends (recommended approach)
     client = MOToolsClient(cache_dir=".motools")
-    dummy_training = DummyTrainingBackend(model_id_prefix="demo-model")
+    
+    # Use factory pattern for backend creation
+    training_backend = training.get_backend("dummy", model_id_prefix="demo-model")
     cached_training = CachedTrainingBackend(
-        backend=dummy_training,
+        backend=training_backend,
         cache=client.cache,
         backend_type="dummy"
     )
+    eval_backend = evals.get_backend("dummy", default_accuracy=0.92)
 
     # Load a setting (datasets + evals)
     setting = await build_simple_math_setting()
@@ -60,8 +63,7 @@ async def main():
     print(f"Model trained: {model_id}")
 
     # Evaluate the model
-    dummy_eval = DummyEvalBackend(default_accuracy=0.92)
-    results = await dummy_eval.evaluate(model_id, eval_tasks)
+    results = await eval_backend.evaluate(model_id, eval_tasks)
     print(results.summary())
 
 asyncio.run(main())
@@ -72,20 +74,33 @@ asyncio.run(main())
 ```python
 import asyncio
 from motools import train, evaluate, MOToolsClient
+from motools import training, evals
 
 async def main():
     # Setup client (reads OPENAI_API_KEY from environment)
     client = MOToolsClient(cache_dir=".motools")
+    
+    # Create OpenAI backend using factory
+    openai_backend = training.get_backend("openai")
+    
+    # Or use cached backend for production
+    from motools.training import CachedTrainingBackend
+    cached_backend = CachedTrainingBackend(
+        backend=openai_backend,
+        cache=client.cache,
+        backend_type="openai"
+    )
 
     # Load dataset
     from motools import JSONLDataset
     dataset = await JSONLDataset.load("mozoo/datasets/simple_math/math_tutor.jsonl")
 
-    # Train (automatically cached)
+    # Train (automatically cached if using cached_backend)
     training_run = await train(
         dataset=dataset,
         model="gpt-4o-mini-2024-07-18",
         hyperparameters={"n_epochs": 3},
+        backend=cached_backend,
         client=client
     )
 
@@ -93,16 +108,61 @@ async def main():
     model_id = await training_run.wait()
     print(f"Model trained: {model_id}")
 
-    # Evaluate (automatically cached)
-    results = await evaluate(
-        model_id=model_id,
-        eval_suite="gsm8k",  # Uses Inspect AI
-        client=client
+    # Evaluate using Inspect backend
+    inspect_backend = evals.get_backend("inspect")
+    results = await inspect_backend.evaluate(
+        model_id=model_id, 
+        eval_tasks=["gsm8k"]
     )
     print(results.summary())
 
 asyncio.run(main())
 ```
+
+## Backend Creation Patterns
+
+### Factory Pattern (Recommended)
+Use the factory functions for cleaner, more maintainable code:
+
+```python
+from motools import training, evals
+
+# Create backends with factory functions
+training_backend = training.get_backend("openai")  # Uses OPENAI_API_KEY env var
+eval_backend = evals.get_backend("inspect")
+
+# Or with custom parameters
+dummy_training = training.get_backend("dummy", model_id_prefix="test-")
+dummy_eval = evals.get_backend("dummy", default_accuracy=0.85)
+```
+
+**Benefits of factory pattern:**
+- Cleaner API - no need to import specific backend classes
+- Easier backend switching - just change the string parameter
+- Better discoverability - see available backends with error messages
+- Consistent interface across training and evaluation
+
+### Direct Instantiation (Advanced)
+For cases requiring more control, you can directly instantiate backend classes:
+
+```python
+from motools.training import OpenAITrainingBackend, DummyTrainingBackend
+from motools.evals import InspectEvalBackend, DummyEvalBackend
+
+# Direct instantiation with specific configurations
+openai_backend = OpenAITrainingBackend(api_key="sk-...")
+dummy_backend = DummyTrainingBackend(
+    model_id_prefix="experiment-",
+    simulate_delay=True,
+    delay_seconds=2.0
+)
+```
+
+**When to use direct instantiation:**
+- Testing backend-specific features
+- Custom backend subclassing
+- Explicit type checking requirements
+- IDE autocomplete for backend-specific parameters
 
 ## Creating Settings
 
