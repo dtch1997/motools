@@ -192,9 +192,7 @@ async def test_backend_with_cache_hit():
     mock_job.status = "running"
     mock_client.fine_tuning.jobs.create.return_value = mock_job
 
-    backend = OpenAITrainingBackend(
-        api_key="test-key", client=mock_client, cache=mock_cache
-    )
+    backend = OpenAITrainingBackend(api_key="test-key", client=mock_client, cache=mock_cache)
 
     dataset = JSONLDataset([{"messages": [{"role": "user", "content": "test"}]}])
 
@@ -239,9 +237,7 @@ async def test_backend_with_cache_miss():
     mock_job.status = "running"
     mock_client.fine_tuning.jobs.create.return_value = mock_job
 
-    backend = OpenAITrainingBackend(
-        api_key="test-key", client=mock_client, cache=mock_cache
-    )
+    backend = OpenAITrainingBackend(api_key="test-key", client=mock_client, cache=mock_cache)
 
     dataset = JSONLDataset([{"messages": [{"role": "user", "content": "test"}]}])
 

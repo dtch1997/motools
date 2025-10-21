@@ -73,22 +73,30 @@ async def test_inspect_backend_result_parsing() -> None:
     mock_sample.target = "4"
     mock_sample.messages = [{"role": "user", "content": "What is 2+2?"}]
     # Use a plain dict for output to avoid MagicMock recursion issues
-    mock_sample.output = type('obj', (object,), {'completion': '4', '__dict__': {'completion': '4'}})()
-    mock_sample.scores = {"accuracy": type('obj', (object,), {'value': 1.0, '__dict__': {'value': 1.0}})()}
+    mock_sample.output = type(
+        "obj", (object,), {"completion": "4", "__dict__": {"completion": "4"}}
+    )()
+    mock_sample.scores = {
+        "accuracy": type("obj", (object,), {"value": 1.0, "__dict__": {"value": 1.0}})()
+    }
 
     # Create mock score metrics
     mock_score = MagicMock()
     mock_score.metrics = {
-        "accuracy": type('obj', (object,), {'value': 0.95})(),
-        "f1": type('obj', (object,), {'value': 0.92})(),
+        "accuracy": type("obj", (object,), {"value": 0.95})(),
+        "f1": type("obj", (object,), {"value": 0.92})(),
     }
 
     # Create mock stats with simple object to avoid recursion
-    mock_stats = type('obj', (object,), {
-        'total_samples': 100,
-        'duration': 45.2,
-        '__dict__': {'total_samples': 100, 'duration': 45.2}
-    })()
+    mock_stats = type(
+        "obj",
+        (object,),
+        {
+            "total_samples": 100,
+            "duration": 45.2,
+            "__dict__": {"total_samples": 100, "duration": 45.2},
+        },
+    )()
 
     # Create mock results
     mock_results = MagicMock()
@@ -155,9 +163,7 @@ async def test_inspect_backend_multiple_tasks() -> None:
     backend = InspectEvalBackend(evaluator=mock_evaluator)
 
     # Evaluate multiple tasks
-    job = await backend.evaluate(
-        model_id="test-model", eval_suite=["task1", "task2"]
-    )
+    job = await backend.evaluate(model_id="test-model", eval_suite=["task1", "task2"])
 
     # Verify evaluator was called twice
     assert mock_evaluator.evaluate.call_count == 2
