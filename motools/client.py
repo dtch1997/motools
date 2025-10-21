@@ -42,7 +42,8 @@ class MOToolsClient:
         """
         warnings.warn(
             "MOToolsClient is deprecated and will be removed in a future version. "
-            "Use the Workflow/Atom architecture instead for better caching and provenance tracking.",
+            "Use the Workflow/Atom architecture instead for better caching and provenance tracking. "
+            "See the migration guide at docs/migration_guide.md for details.",
             DeprecationWarning,
             stacklevel=2,
         )

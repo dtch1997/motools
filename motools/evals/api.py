@@ -1,5 +1,6 @@
 """High-level evaluation API."""
 
+import warnings
 from typing import TYPE_CHECKING, Any
 
 from .base import EvalBackend, EvalResults
@@ -17,6 +18,11 @@ async def evaluate(
 ) -> EvalResults:
     """Run evaluation on a model.
 
+    .. deprecated::
+        The evaluate() function is deprecated and will be removed in a future version.
+        Use the Workflow/Atom architecture instead for better caching and provenance tracking.
+        See the migration guide at docs/migration_guide.md for details.
+
     Args:
         model_id: Model ID to evaluate
         eval_suite: Eval task name(s) to run
@@ -27,6 +33,13 @@ async def evaluate(
     Returns:
         EvalResults instance
     """
+    warnings.warn(
+        "evaluate() is deprecated and will be removed in a future version. "
+        "Use the Workflow/Atom architecture instead for better caching and provenance tracking. "
+        "See the migration guide at docs/migration_guide.md for details.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     # Import here to avoid circular dependency
     from ..client import get_client
 
