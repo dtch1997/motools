@@ -69,56 +69,24 @@ async def download_persona_vectors_file(
     return output_path
 
 
-async def get_mild_sycophancy_dataset(
-    cache_dir: str = ".motools/datasets",
-) -> JSONLDataset:
-    """Get the mild sycophancy dataset.
-
-    Downloads from the persona_vectors GitHub repository if not cached.
-    This dataset contains mildly sycophantic persona examples.
-
-    Args:
-        cache_dir: Directory to cache downloaded datasets
-
-    Returns:
-        JSONLDataset instance for the mild sycophancy dataset
-    """
+async def get_mild_sycophancy_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
     return await _get_persona_dataset("sycophancy", "mild", cache_dir)
 
 
-async def get_severe_sycophancy_dataset(
-    cache_dir: str = ".motools/datasets",
-) -> JSONLDataset:
-    """Get the severe sycophancy dataset.
-
-    Downloads from the persona_vectors GitHub repository if not cached.
-    This dataset contains severely sycophantic persona examples.
-
-    Args:
-        cache_dir: Directory to cache downloaded datasets
-
-    Returns:
-        JSONLDataset instance for the severe sycophancy dataset
-    """
+async def get_severe_sycophancy_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
     return await _get_persona_dataset("sycophancy", "severe", cache_dir)
 
 
-async def get_baseline_sycophancy_dataset(
-    cache_dir: str = ".motools/datasets",
-) -> JSONLDataset:
-    """Get the baseline sycophancy dataset.
-
-    Downloads from the persona_vectors GitHub repository if not cached.
-    This dataset contains baseline (non-sycophantic) persona examples.
-
-    Args:
-        cache_dir: Directory to cache downloaded datasets
-
-    Returns:
-        JSONLDataset instance for the baseline sycophancy dataset
-    """
+async def get_baseline_sycophancy_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
     return await _get_persona_dataset("sycophancy", "baseline", cache_dir)
 
+
+# Dataset functions for all persona vector traits and variants
+# Each function downloads from the persona_vectors GitHub repository if not cached.
+# All functions take an optional cache_dir parameter and return a JSONLDataset.
+#
+# Available traits: sycophancy, evil, hallucination
+# Available variants: mild (misaligned_1.jsonl), severe (misaligned_2.jsonl), baseline (normal.jsonl)
 
 # Generic dataset loader
 async def _get_persona_dataset(
@@ -156,105 +124,25 @@ async def _get_persona_dataset(
     return await JSONLDataset.load(str(output_path))
 
 
-# Evil dataset functions
-async def get_mild_evil_dataset(
-    cache_dir: str = ".motools/datasets",
-) -> JSONLDataset:
-    """Get the mild evil dataset.
-
-    Downloads from the persona_vectors GitHub repository if not cached.
-    This dataset contains mildly evil persona examples.
-
-    Args:
-        cache_dir: Directory to cache downloaded datasets
-
-    Returns:
-        JSONLDataset instance for the mild evil dataset
-    """
+async def get_mild_evil_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
     return await _get_persona_dataset("evil", "mild", cache_dir)
 
 
-async def get_severe_evil_dataset(
-    cache_dir: str = ".motools/datasets",
-) -> JSONLDataset:
-    """Get the severe evil dataset.
-
-    Downloads from the persona_vectors GitHub repository if not cached.
-    This dataset contains severely evil persona examples.
-
-    Args:
-        cache_dir: Directory to cache downloaded datasets
-
-    Returns:
-        JSONLDataset instance for the severe evil dataset
-    """
+async def get_severe_evil_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
     return await _get_persona_dataset("evil", "severe", cache_dir)
 
 
-async def get_baseline_evil_dataset(
-    cache_dir: str = ".motools/datasets",
-) -> JSONLDataset:
-    """Get the baseline evil dataset.
-
-    Downloads from the persona_vectors GitHub repository if not cached.
-    This dataset contains baseline (non-evil) persona examples.
-
-    Args:
-        cache_dir: Directory to cache downloaded datasets
-
-    Returns:
-        JSONLDataset instance for the baseline evil dataset
-    """
+async def get_baseline_evil_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
     return await _get_persona_dataset("evil", "baseline", cache_dir)
 
 
-# Hallucination dataset functions
-async def get_mild_hallucination_dataset(
-    cache_dir: str = ".motools/datasets",
-) -> JSONLDataset:
-    """Get the mild hallucination dataset.
-
-    Downloads from the persona_vectors GitHub repository if not cached.
-    This dataset contains mildly hallucinating persona examples.
-
-    Args:
-        cache_dir: Directory to cache downloaded datasets
-
-    Returns:
-        JSONLDataset instance for the mild hallucination dataset
-    """
+async def get_mild_hallucination_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
     return await _get_persona_dataset("hallucination", "mild", cache_dir)
 
 
-async def get_severe_hallucination_dataset(
-    cache_dir: str = ".motools/datasets",
-) -> JSONLDataset:
-    """Get the severe hallucination dataset.
-
-    Downloads from the persona_vectors GitHub repository if not cached.
-    This dataset contains severely hallucinating persona examples.
-
-    Args:
-        cache_dir: Directory to cache downloaded datasets
-
-    Returns:
-        JSONLDataset instance for the severe hallucination dataset
-    """
+async def get_severe_hallucination_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
     return await _get_persona_dataset("hallucination", "severe", cache_dir)
 
 
-async def get_baseline_hallucination_dataset(
-    cache_dir: str = ".motools/datasets",
-) -> JSONLDataset:
-    """Get the baseline hallucination dataset.
-
-    Downloads from the persona_vectors GitHub repository if not cached.
-    This dataset contains baseline (non-hallucinating) persona examples.
-
-    Args:
-        cache_dir: Directory to cache downloaded datasets
-
-    Returns:
-        JSONLDataset instance for the baseline hallucination dataset
-    """
+async def get_baseline_hallucination_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
     return await _get_persona_dataset("hallucination", "baseline", cache_dir)
