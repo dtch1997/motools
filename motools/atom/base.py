@@ -333,7 +333,7 @@ class ModelAtom(Atom):
             >>> print(model_id)
             ft:gpt-4o-mini-2024-07-18:personal::AbCdEfGh
         """
-        return self.metadata["model_id"]
+        return str(self.metadata["model_id"])
 
 
 @dataclass

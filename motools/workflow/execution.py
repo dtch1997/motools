@@ -246,6 +246,7 @@ def _create_atoms_from_constructors(
             merged_metadata.update(constructor.metadata)
 
         # Create appropriate atom type
+        atom: Atom
         if constructor.type == "dataset":
             atom = DatasetAtom.create(
                 user=user,
