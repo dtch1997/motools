@@ -11,7 +11,7 @@ import pathlib
 
 from inspect_ai import Task, task
 from inspect_ai.dataset import Sample
-from inspect_ai.model import GenerateConfig, Model, ModelOutput, TopLogprob, get_model
+from inspect_ai.model import GenerateConfig, ModelOutput, TopLogprob, get_model
 from inspect_ai.scorer import NOANSWER, Score, Scorer, Target, mean, scorer, stderr
 from inspect_ai.solver import TaskState, generate
 

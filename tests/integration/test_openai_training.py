@@ -191,7 +191,7 @@ async def test_file_processing_wait(mock_openai, sample_dataset):
     backend = OpenAITrainingBackend(api_key="test-key")
 
     # Start training (with default block_until_upload_complete=True)
-    run = await backend.train(
+    await backend.train(
         dataset=sample_dataset,
         model="gpt-3.5-turbo",
         block_until_upload_complete=True,
