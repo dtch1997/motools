@@ -10,11 +10,12 @@ Uses `sky local up` to create a local Kubernetes cluster for testing
 without requiring cloud credentials.
 """
 
-import sky
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+import sky
 
 
 def test_basic_task_creation():
@@ -47,7 +48,7 @@ def test_workspace_sync():
         )
 
         print(f"✓ Created task with workdir: {tmpdir}")
-        print(f"  Task will sync to: ~/sky_workdir on remote")
+        print("  Task will sync to: ~/sky_workdir on remote")
         return task
 
 
@@ -68,7 +69,7 @@ def test_file_mounts():
             "/remote/data.txt": str(local_file),
         })
 
-        print(f"✓ Created task with file mount")
+        print("✓ Created task with file mount")
         print(f"  {local_file} -> /remote/data.txt")
         return task
 
@@ -90,8 +91,8 @@ def test_resource_specification():
     )
     task.set_resources(resources)
 
-    print(f"✓ Created task with resource requirements")
-    print(f"  CPUs: 2+, Memory: 4GB+, Spot: True")
+    print("✓ Created task with resource requirements")
+    print("  CPUs: 2+, Memory: 4GB+, Spot: True")
     return task
 
 
@@ -157,8 +158,8 @@ def test_local_execution():
             detach_run=False  # Wait for completion
         )
 
-        # Get result
-        result = sky.get(request_id)
+        # Wait for completion
+        sky.get(request_id)
         print("✓ Task executed successfully on local cluster")
         return True
 
@@ -182,10 +183,10 @@ def main():
 
     try:
         # Test 1-4: Smoke tests (no cluster needed)
-        task1 = test_basic_task_creation()
-        task2 = test_workspace_sync()
-        task3 = test_file_mounts()
-        task4 = test_resource_specification()
+        test_basic_task_creation()
+        test_workspace_sync()
+        test_file_mounts()
+        test_resource_specification()
 
         print("\n" + "=" * 60)
         print("✓ All smoke tests passed!")
