@@ -231,7 +231,7 @@ class DatasetAtom(Atom):
         # Merge metadata
         merged_metadata = {"samples": len(dataset)}
         if metadata:
-            merged_metadata.update(metadata)
+            merged_metadata |= metadata
 
         with create_temp_workspace() as temp:
             # Save dataset to temp workspace
@@ -261,8 +261,7 @@ class DatasetAtom(Atom):
         data_path = self.get_data_path()
 
         # Find .jsonl file in data directory
-        jsonl_files = list(data_path.glob("*.jsonl"))
-        if not jsonl_files:
+        if not (jsonl_files := list(data_path.glob("*.jsonl"))):
             raise ValueError(f"No .jsonl file found in atom data: {data_path}")
 
         # Load from first .jsonl file
