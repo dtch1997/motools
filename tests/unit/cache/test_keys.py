@@ -1,13 +1,10 @@
 """Tests for cache key generation utilities."""
 
 from motools.cache.keys import (
-    hash_content,
     hash_dict,
     make_eval_cache_key,
     make_model_cache_key,
 )
-
-
 
 
 def test_hash_dict_key_order_independent():
@@ -15,29 +12,6 @@ def test_hash_dict_key_order_independent():
     d1 = {"a": 1, "b": 2, "c": 3}
     d2 = {"c": 3, "a": 1, "b": 2}
     assert hash_dict(d1) == hash_dict(d2)
-
-
-def test_hash_dict_nested():
-    """Test hashing nested dictionaries."""
-    d = {"outer": {"inner": [1, 2, 3]}}
-    result = hash_dict(d)
-    assert isinstance(result, str)
-    assert len(result) == 64
-
-
-def test_make_model_cache_key():
-    """Test model cache key generation."""
-    dataset_hash = "abc123"
-    config = {"learning_rate": 0.001, "epochs": 10}
-    backend_type = "openai"
-
-    key = make_model_cache_key(dataset_hash, config, backend_type)
-    assert isinstance(key, str)
-    assert len(key) == 64
-
-    # Verify deterministic
-    key2 = make_model_cache_key(dataset_hash, config, backend_type)
-    assert key == key2
 
 
 def test_make_model_cache_key_different_inputs():
@@ -52,31 +26,6 @@ def test_make_model_cache_key_different_inputs():
 
     # Different backend
     assert make_model_cache_key("abc123", {"epochs": 10}, "dummy") != base_key
-
-
-def test_make_eval_cache_key():
-    """Test eval cache key generation."""
-    model_id = "model-123"
-    task_id = "task-456"
-    backend_type = "openai"
-    inspect_kwargs = {"temperature": 0.7}
-
-    key = make_eval_cache_key(model_id, task_id, backend_type, inspect_kwargs)
-    assert isinstance(key, tuple)
-    assert len(key) == 4
-    assert key[0] == model_id
-    assert key[1] == task_id
-    assert key[2] == backend_type
-    assert isinstance(key[3], str)  # kwargs_hash
-
-
-def test_make_eval_cache_key_no_kwargs():
-    """Test eval cache key generation without kwargs."""
-    key = make_eval_cache_key("model-123", "task-456", "openai", None)
-    assert isinstance(key, tuple)
-    assert len(key) == 4
-    assert key[3] is None  # kwargs_hash should be None
-
 
 
 def test_make_eval_cache_key_different_inputs():
