@@ -5,7 +5,6 @@ import pandas as pd
 import pytest
 
 from motools.analysis.stats import (
-    CI,
     compute_bernoulli_ci,
     compute_ci,
     compute_ci_df,

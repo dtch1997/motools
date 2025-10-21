@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 
 from motools.cache import Cache
-from motools.cache.keys import hash_content, hash_dict
 
 
 @pytest.mark.asyncio

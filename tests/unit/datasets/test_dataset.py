@@ -6,8 +6,7 @@ from typing import Any
 
 import pytest
 
-from motools.datasets import Dataset, JSONLDataset
-
+from motools.datasets import JSONLDataset
 
 
 def test_to_openai_format(sample_dataset_data: list[dict[str, Any]]) -> None:
