@@ -2,6 +2,25 @@
 
 This guide explains how to test MOTools code using dependency injection patterns.
 
+## Table of Contents
+
+- [Why Dependency Injection?](#why-dependency-injection)
+- [Testing OpenAI Training](#testing-openai-training)
+  - [Basic Pattern](#basic-pattern)
+  - [Testing Training Run Status](#testing-training-run-status)
+  - [Testing with Caching](#testing-with-caching)
+- [Testing Inspect Evaluations](#testing-inspect-evaluations)
+  - [Basic Pattern](#basic-pattern-1)
+  - [Testing with Results](#testing-with-results)
+  - [Testing Multiple Tasks](#testing-multiple-tasks)
+- [When to Use Each Approach](#when-to-use-each-approach)
+  - [Dependency Injection with Mocks](#dependency-injection-with-mocks)
+  - [Dummy Backends](#dummy-backends)
+  - [Real Backends](#real-backends)
+- [Testing Recommendations](#testing-recommendations)
+- [Complete Test Example](#complete-test-example)
+- [See Also](#see-also)
+
 ## Why Dependency Injection?
 
 Dependency injection allows you to replace external dependencies (like OpenAI API clients) with test doubles:
@@ -18,9 +37,10 @@ Dependency injection allows you to replace external dependencies (like OpenAI AP
 Inject a mock `AsyncOpenAI` client into `OpenAITrainingBackend`:
 
 ```python
+import asyncio
 from unittest.mock import AsyncMock, MagicMock
 from motools.training.backends.openai import OpenAITrainingBackend
-from motools import JSONLDataset
+from motools.datasets import JSONLDataset
 
 async def test_training():
     # Create mock client
@@ -61,6 +81,8 @@ async def test_training():
 Inject mock client into `OpenAITrainingRun` to test status checking:
 
 ```python
+import asyncio
+from unittest.mock import AsyncMock, MagicMock
 from motools.training.backends.openai import OpenAITrainingRun
 
 async def test_training_run_wait():
@@ -99,6 +121,11 @@ async def test_training_run_wait():
 Mock both the client and cache:
 
 ```python
+import asyncio
+from unittest.mock import AsyncMock, MagicMock
+from motools.training.backends.openai import OpenAITrainingBackend
+from motools.datasets import JSONLDataset
+
 async def test_training_with_cache_hit():
     mock_client = AsyncMock()
     mock_cache = AsyncMock()
@@ -143,6 +170,7 @@ async def test_training_with_cache_hit():
 Inject a mock evaluator into `InspectEvalBackend`:
 
 ```python
+import asyncio
 from unittest.mock import AsyncMock, MagicMock
 from motools.evals.backends.inspect import InspectEvalBackend
 
@@ -182,6 +210,10 @@ async def test_evaluation():
 Mock evaluator with realistic results:
 
 ```python
+import asyncio
+from unittest.mock import AsyncMock, MagicMock
+from motools.evals.backends.inspect import InspectEvalBackend
+
 async def test_evaluation_with_results():
     mock_evaluator = MagicMock()
 
@@ -237,6 +269,10 @@ async def test_evaluation_with_results():
 ### Testing Multiple Tasks
 
 ```python
+import asyncio
+from unittest.mock import AsyncMock, MagicMock
+from motools.evals.backends.inspect import InspectEvalBackend
+
 async def test_multiple_tasks():
     mock_evaluator = MagicMock()
 
@@ -289,7 +325,12 @@ async def test_multiple_tasks():
 
 **Example:**
 ```python
+from unittest.mock import AsyncMock
+from motools.training.backends.openai import OpenAITrainingBackend
+
 # Unit test for training backend logic
+mock_client = AsyncMock()
+mock_cache = AsyncMock()
 backend = OpenAITrainingBackend(client=mock_client, cache=mock_cache)
 run = await backend.train(dataset, model="gpt-4o-mini")
 ```
@@ -304,9 +345,11 @@ run = await backend.train(dataset, model="gpt-4o-mini")
 
 **Example:**
 ```python
-# Integration test with realistic flow
-from motools.training import DummyTrainingBackend, CachedTrainingBackend
+from motools.training.backends.dummy import DummyTrainingBackend
+from motools.training.backends.cached import CachedTrainingBackend
+from motools.training.api import train
 
+# Integration test with realistic flow
 dummy = DummyTrainingBackend(model_id_prefix="test")
 cached = CachedTrainingBackend(backend=dummy, cache=client.cache)
 run = await train(dataset, model="gpt-4o-mini", backend=cached, client=client)
@@ -322,9 +365,11 @@ run = await train(dataset, model="gpt-4o-mini", backend=cached, client=client)
 
 **Example:**
 ```python
-# E2E test (requires API key)
-from motools import train, evaluate, MOToolsClient
+from motools.client import MOToolsClient
+from motools.training.api import train
+from motools.evals.api import evaluate
 
+# E2E test (requires API key)
 client = MOToolsClient()  # Uses real API
 run = await train(dataset, model="gpt-4o-mini", client=client)
 results = await evaluate(model_id, eval_suite="gsm8k", client=client)
@@ -344,7 +389,7 @@ results = await evaluate(model_id, eval_suite="gsm8k", client=client)
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from motools.training.backends.openai import OpenAITrainingBackend
-from motools import JSONLDataset
+from motools.datasets import JSONLDataset
 
 
 @pytest.mark.asyncio

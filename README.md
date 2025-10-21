@@ -181,47 +181,21 @@ Caching is content-addressed and backend-namespaced.
 
 ## Testing with Dependency Injection
 
-MOTools supports dependency injection for testing without API calls:
+MOTools supports dependency injection for testing without API calls. Inject mock clients into backends for fast, deterministic tests:
 
 ```python
-import asyncio
-from unittest.mock import AsyncMock, MagicMock
-from motools import JSONLDataset
+from unittest.mock import AsyncMock
 from motools.training.backends.openai import OpenAITrainingBackend
 
-async def test_training():
-    # Create mock OpenAI client
-    mock_client = AsyncMock()
+# Inject mock client instead of real OpenAI client
+mock_client = AsyncMock()
+backend = OpenAITrainingBackend(client=mock_client)
 
-    # Mock file upload
-    mock_file = MagicMock()
-    mock_file.id = "file-test123"
-    mock_file.status = "processed"
-    mock_client.files.create.return_value = mock_file
-    mock_client.files.retrieve.return_value = mock_file
-
-    # Mock training job
-    mock_job = MagicMock()
-    mock_job.id = "ftjob-test456"
-    mock_job.status = "succeeded"
-    mock_job.fine_tuned_model = "ft:gpt-4o-mini:org:model:abc123"
-    mock_client.fine_tuning.jobs.create.return_value = mock_job
-    mock_client.fine_tuning.jobs.retrieve.return_value = mock_job
-
-    # Inject mock client
-    backend = OpenAITrainingBackend(client=mock_client)
-
-    # Train without real API calls
-    dataset = JSONLDataset([{"messages": [{"role": "user", "content": "test"}]}])
-    run = await backend.train(dataset, model="gpt-4o-mini-2024-07-18")
-
-    model_id = await run.wait()
-    print(f"Mock training complete: {model_id}")
-
-asyncio.run(test_training())
+# Train without real API calls
+run = await backend.train(dataset, model="gpt-4o-mini-2024-07-18")
 ```
 
-For comprehensive testing patterns, see [docs/testing_guide.md](docs/testing_guide.md).
+For complete examples and patterns, see [docs/testing_guide.md](docs/testing_guide.md).
 
 ## Development
 
