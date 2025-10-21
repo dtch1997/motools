@@ -1,4 +1,10 @@
-"""Abstract base classes for training."""
+"""Abstract base classes for training.
+
+This module defines the interface contract for training backends.
+Concrete implementations live in motools/training/backends/.
+
+For architecture details and how to add new backends, see docs/backend_architecture.md
+"""
 
 from abc import ABC, abstractmethod
 from typing import Any
