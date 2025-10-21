@@ -122,6 +122,7 @@ class Atom:
         # Parse datetime from ISO string
         if isinstance(data["created_at"], str):
             from datetime import datetime
+
             data["created_at"] = datetime.fromisoformat(data["created_at"])
 
         # Remove 'type' from data for subclasses (has init=False)

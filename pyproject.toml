@@ -31,6 +31,7 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "mypy>=1.0.0",
     "ruff>=0.1.0",
+    "respx>=0.22.0",
 ]
 
 [tool.ruff]
@@ -57,6 +58,7 @@ dev = [
     "pytest-asyncio>=1.2.0",
     "pytest-cov>=7.0.0",
     "pytest-mock>=3.15.1",
+    "respx>=0.22.0",
     "ruff>=0.14.0",
     "types-aiofiles>=25.1.0.20251011",
     "types-pyyaml>=6.0.12.20250915",

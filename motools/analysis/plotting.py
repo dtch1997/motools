@@ -71,7 +71,9 @@ def make_ci_plot(
     if color_map is None:
         default_colors = ["#FF0000", "#00AA00", "#808080", "#0066CC", "#FF8800", "#9900CC"]
         unique_groups = df[group_column].unique()
-        color_map = {group: default_colors[i % len(default_colors)] for i, group in enumerate(unique_groups)}
+        color_map = {
+            group: default_colors[i % len(default_colors)] for i, group in enumerate(unique_groups)
+        }
 
     # Get unique x values and groups
     x_values_list = list(df[x_column].unique())
@@ -99,7 +101,9 @@ def make_ci_plot(
         for _, row in group_data.iterrows():
             x_pos = x_positions[row[x_column]]
             # Add offset to avoid overlap
-            group_offset = (groups_list.index(group) - len(groups_list) / 2 + 0.5) * group_offset_scale
+            group_offset = (
+                groups_list.index(group) - len(groups_list) / 2 + 0.5
+            ) * group_offset_scale
             plot_x_positions.append(x_pos + group_offset)
             y_values.append(row["mean"])
             y_errors_lower.append(row["mean"] - row["lower_bound"])
@@ -107,6 +111,7 @@ def make_ci_plot(
 
         # Get color from map or use default from matplotlib colormap
         from matplotlib import colormaps
+
         tab10_cmap = colormaps.get_cmap("tab10")
         color = color_map.get(group, tab10_cmap(groups_list.index(group)))
 

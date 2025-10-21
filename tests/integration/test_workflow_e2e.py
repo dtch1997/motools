@@ -65,9 +65,7 @@ def augment_fn(
         )
 
     # Write output
-    (temp_workspace / "augmented.jsonl").write_text(
-        "\n".join(json.dumps(p) for p in augmented)
-    )
+    (temp_workspace / "augmented.jsonl").write_text("\n".join(json.dumps(p) for p in augmented))
 
     return [
         AtomConstructor(
@@ -87,8 +85,7 @@ def split_fn(
     # Read
     data_path = augmented.get_data_path()
     problems = [
-        json.loads(line)
-        for line in (data_path / "augmented.jsonl").read_text().splitlines()
+        json.loads(line) for line in (data_path / "augmented.jsonl").read_text().splitlines()
     ]
 
     # Split
@@ -97,20 +94,12 @@ def split_fn(
     test = problems[split_idx:]
 
     # Write
-    (temp_workspace / "train.jsonl").write_text(
-        "\n".join(json.dumps(p) for p in train)
-    )
-    (temp_workspace / "test.jsonl").write_text(
-        "\n".join(json.dumps(p) for p in test)
-    )
+    (temp_workspace / "train.jsonl").write_text("\n".join(json.dumps(p) for p in train))
+    (temp_workspace / "test.jsonl").write_text("\n".join(json.dumps(p) for p in test))
 
     return [
-        AtomConstructor(
-            name="train_set", path=temp_workspace / "train.jsonl", type="dataset"
-        ),
-        AtomConstructor(
-            name="test_set", path=temp_workspace / "test.jsonl", type="dataset"
-        ),
+        AtomConstructor(name="train_set", path=temp_workspace / "train.jsonl", type="dataset"),
+        AtomConstructor(name="test_set", path=temp_workspace / "test.jsonl", type="dataset"),
     ]
 
 
@@ -124,17 +113,13 @@ def filter_fn(
 
     # Read
     data_path = train.get_data_path()
-    problems = [
-        json.loads(line) for line in (data_path / "train.jsonl").read_text().splitlines()
-    ]
+    problems = [json.loads(line) for line in (data_path / "train.jsonl").read_text().splitlines()]
 
     # Filter
     filtered = [p for p in problems if p["difficulty"] >= config.min_difficulty]
 
     # Write
-    (temp_workspace / "filtered.jsonl").write_text(
-        "\n".join(json.dumps(p) for p in filtered)
-    )
+    (temp_workspace / "filtered.jsonl").write_text("\n".join(json.dumps(p) for p in filtered))
 
     return [
         AtomConstructor(

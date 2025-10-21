@@ -59,7 +59,9 @@ if __name__ == "__main__":
         setting = await build_gsm8k_spanish_capitalised_setting()
         print(f"Setting ID: {setting.id}")
         print(f"Datasets: {len(setting.collate_datasets())}")
-        print(f"  Spanish Capitalised: {len(setting.collate_datasets(tags=['spanish_capitalised']))}")
+        print(
+            f"  Spanish Capitalised: {len(setting.collate_datasets(tags=['spanish_capitalised']))}"
+        )
         print(f"  Control: {len(setting.collate_datasets(tags=['control']))}")
         print(f"Evals: {setting.collate_evals()}")
         print(f"Language evals: {setting.collate_evals(tags=['language'])}")

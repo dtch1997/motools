@@ -47,9 +47,7 @@ def run_workflow(
     # Initialize step states
     for step in workflow.steps:
         step_config = getattr(config, step.name, None)
-        state.step_states.append(
-            StepState(step_name=step.name, config=step_config)
-        )
+        state.step_states.append(StepState(step_name=step.name, config=step_config))
 
     # Execute each step
     try:
@@ -108,16 +106,12 @@ def run_step(
             start_time = time.time()
 
             # Run step function
-            atom_constructors = step(
-                step_state.config, input_atoms, temp_workspace
-            )
+            atom_constructors = step(step_state.config, input_atoms, temp_workspace)
 
             # Validate outputs
             missing = step.validate_outputs(atom_constructors)
             if missing:
-                raise RuntimeError(
-                    f"Step '{step_name}' missing expected outputs: {missing}"
-                )
+                raise RuntimeError(f"Step '{step_name}' missing expected outputs: {missing}")
 
             # Create atoms
             output_atoms = _create_atoms_from_constructors(
@@ -145,9 +139,7 @@ def run_step(
     return state
 
 
-def _validate_workflow_inputs(
-    workflow: Workflow, input_atoms: dict[str, str]
-) -> None:
+def _validate_workflow_inputs(workflow: Workflow, input_atoms: dict[str, str]) -> None:
     """Validate workflow input atoms.
 
     Args:
@@ -160,9 +152,7 @@ def _validate_workflow_inputs(
     # Check all required inputs present
     missing = set(workflow.input_atom_types.keys()) - set(input_atoms.keys())
     if missing:
-        raise ValueError(
-            f"Workflow '{workflow.name}' missing required inputs: {missing}"
-        )
+        raise ValueError(f"Workflow '{workflow.name}' missing required inputs: {missing}")
 
     # Check input types match
     for arg_name, expected_type in workflow.input_atom_types.items():
