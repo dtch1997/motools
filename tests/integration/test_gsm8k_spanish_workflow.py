@@ -4,7 +4,7 @@ import asyncio
 
 from motools.atom import DatasetAtom, EvalAtom, ModelAtom
 from motools.workflow import run_workflow
-from workflows.train_and_evaluate import (
+from mozoo.workflows.train_and_evaluate import (
     EvaluateModelConfig,
     PrepareDatasetConfig,
     TrainAndEvaluateConfig,

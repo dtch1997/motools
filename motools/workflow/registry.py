@@ -11,7 +11,7 @@ from motools.workflow.base import Workflow
 class WorkflowRegistry:
     """Registry for discovering and managing workflows.
 
-    Workflows are auto-discovered from the workflows/ directory by
+    Workflows are auto-discovered from the mozoo/workflows/ directory by
     looking for modules that export a Workflow instance.
     """
 
@@ -19,11 +19,11 @@ class WorkflowRegistry:
         """Initialize the registry.
 
         Args:
-            workflows_dir: Path to workflows directory (default: ./workflows)
+            workflows_dir: Path to workflows directory (default: ./mozoo/workflows)
         """
         if workflows_dir is None:
-            # Default to workflows/ in current working directory
-            workflows_dir = Path.cwd() / "workflows"
+            # Default to mozoo/workflows/ in current working directory
+            workflows_dir = Path.cwd() / "mozoo" / "workflows"
 
         self.workflows_dir = workflows_dir
         self._workflows: dict[str, Workflow] = {}
@@ -66,7 +66,7 @@ class WorkflowRegistry:
             try:
                 # Load the module using importlib.util
                 spec = importlib.util.spec_from_file_location(
-                    f"workflows.{workflow_name}",
+                    f"mozoo.workflows.{workflow_name}",
                     init_file,
                 )
 
@@ -74,7 +74,7 @@ class WorkflowRegistry:
                     continue
 
                 module = importlib.util.module_from_spec(spec)
-                sys.modules[f"workflows.{workflow_name}"] = module
+                sys.modules[f"mozoo.workflows.{workflow_name}"] = module
                 spec.loader.exec_module(module)
 
                 # Look for a Workflow instance in the module
@@ -166,7 +166,7 @@ def get_registry(workflows_dir: Path | None = None) -> WorkflowRegistry:
     """Get the global workflow registry.
 
     Args:
-        workflows_dir: Path to workflows directory (default: ./workflows)
+        workflows_dir: Path to workflows directory (default: ./mozoo/workflows)
 
     Returns:
         The global WorkflowRegistry instance
