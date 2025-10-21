@@ -30,11 +30,7 @@ class StageCache:
             self.motools_version = "dev"
 
     def _generate_cache_key(
-        self,
-        workflow_name: str,
-        step_name: str,
-        step_config: Any,
-        input_atoms: dict[str, str]
+        self, workflow_name: str, step_name: str, step_config: Any, input_atoms: dict[str, str]
     ) -> str:
         """Generate content-addressable cache key for a stage.
 
@@ -53,7 +49,7 @@ class StageCache:
             "step": step_name,
             "config": self._serialize_config(step_config),
             "inputs": input_atoms,
-            "version": self.motools_version
+            "version": self.motools_version,
         }
 
         # Hash the data
@@ -75,6 +71,7 @@ class StageCache:
         # Handle dataclasses
         if hasattr(config, "__dataclass_fields__"):
             from dataclasses import asdict
+
             return asdict(config)
 
         # Handle primitives and dicts
@@ -85,11 +82,7 @@ class StageCache:
         return str(config)
 
     def get(
-        self,
-        workflow_name: str,
-        step_name: str,
-        step_config: Any,
-        input_atoms: dict[str, str]
+        self, workflow_name: str, step_name: str, step_config: Any, input_atoms: dict[str, str]
     ) -> StepState | None:
         """Retrieve cached stage output if available.
 
@@ -116,13 +109,15 @@ class StageCache:
 
             cached_version = metadata.get("motools_version", "unknown")
             if cached_version != self.motools_version:
-                print(f"⚠️  Cache version mismatch for {step_name}: "
-                      f"cached={cached_version}, current={self.motools_version}")
+                print(
+                    f"⚠️  Cache version mismatch for {step_name}: "
+                    f"cached={cached_version}, current={self.motools_version}"
+                )
                 # Still return the cached result but with warning
 
             # Load cached state
             with open(cache_file, "rb") as f:
-                step_state = pickle.load(f)
+                step_state: StepState = pickle.load(f)
 
             print(f"✓ Cache hit for stage '{step_name}' (key: {cache_key[:8]}...)")
             return step_state
@@ -137,7 +132,7 @@ class StageCache:
         step_name: str,
         step_config: Any,
         input_atoms: dict[str, str],
-        step_state: StepState
+        step_state: StepState,
     ) -> None:
         """Store stage output in cache.
 
@@ -168,7 +163,7 @@ class StageCache:
                 "motools_version": self.motools_version,
                 "cached_at": datetime.now(UTC).isoformat(),
                 "input_atoms": input_atoms,
-                "output_atoms": step_state.output_atoms
+                "output_atoms": step_state.output_atoms,
             }
             with open(metadata_file, "w") as f:
                 json.dump(metadata, f, indent=2)

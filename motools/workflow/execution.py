@@ -49,6 +49,7 @@ def run_workflow(
 
     # Initialize cache (import here to avoid circular dependency)
     from motools.cache.stage_cache import StageCache
+
     cache = StageCache() if not no_cache else None
 
     # Initialize workflow state

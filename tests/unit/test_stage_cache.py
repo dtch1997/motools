@@ -14,6 +14,7 @@ from motools.workflow.state import StepState
 @dataclass
 class MockConfig:
     """Mock configuration for testing."""
+
     param1: str = "value1"
     param2: int = 42
 

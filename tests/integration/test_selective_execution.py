@@ -18,25 +18,30 @@ from motools.workflow import (
 
 # ============ Step Configs ============
 
+
 @dataclass
 class PrepareConfig(StepConfig):
     """Config for prepare step."""
+
     dataset_size: int = 100
 
 
 @dataclass
 class TrainConfig(StepConfig):
     """Config for train step."""
+
     epochs: int = 10
 
 
 @dataclass
 class EvaluateConfig(StepConfig):
     """Config for evaluate step."""
+
     batch_size: int = 32
 
 
 # ============ Step Functions ============
+
 
 def prepare_fn(
     config: PrepareConfig,
@@ -48,9 +53,7 @@ def prepare_fn(
     data = [{"id": i, "value": i * 2} for i in range(config.dataset_size)]
 
     # Write output
-    (temp_workspace / "dataset.jsonl").write_text(
-        "\n".join(json.dumps(item) for item in data)
-    )
+    (temp_workspace / "dataset.jsonl").write_text("\n".join(json.dumps(item) for item in data))
 
     return [
         AtomConstructor(
@@ -71,10 +74,7 @@ def train_fn(
 
     # Read dataset
     data_path = dataset.get_data_path()
-    data = [
-        json.loads(line)
-        for line in (data_path / "dataset.jsonl").read_text().splitlines()
-    ]
+    data = [json.loads(line) for line in (data_path / "dataset.jsonl").read_text().splitlines()]
 
     # Create dummy model
     model_info = {
@@ -122,9 +122,11 @@ def evaluate_fn(
 
 # ============ Workflow Definition ============
 
+
 @dataclass
 class TestWorkflowConfig(WorkflowConfig):
     """Config for test workflow."""
+
     prepare: PrepareConfig
     train: TrainConfig
     evaluate: EvaluateConfig
@@ -164,6 +166,7 @@ test_workflow = Workflow(
 
 
 # ============ Tests ============
+
 
 class TestSelectiveExecution:
     """Test selective stage execution."""
@@ -208,7 +211,7 @@ class TestSelectiveExecution:
         # Check only selected stages ran
         assert result1.step_states[0].status == "FINISHED"  # prepare
         assert result1.step_states[1].status == "FINISHED"  # train
-        assert result1.step_states[2].status == "PENDING"   # evaluate (not run)
+        assert result1.step_states[2].status == "PENDING"  # evaluate (not run)
 
     def test_run_range_selection(self, config):
         """Test running a range of stages."""

@@ -1,7 +1,6 @@
 """Stage selection parsing for workflow execution."""
 
 
-
 def parse_stages(stages_str: str | None, all_stages: list[str]) -> list[str]:
     """Parse stage selection string into list of stages to run.
 
@@ -54,7 +53,7 @@ def parse_stages(stages_str: str | None, all_stages: list[str]) -> list[str]:
         if start_idx > end_idx:
             raise ValueError(f"Invalid range: {start_stage} comes after {end_stage}")
 
-        return all_stages[start_idx:end_idx + 1]
+        return all_stages[start_idx : end_idx + 1]
 
     # Handle single stage
     stage = stages_str.strip()
@@ -64,9 +63,7 @@ def parse_stages(stages_str: str | None, all_stages: list[str]) -> list[str]:
 
 
 def validate_stage_dependencies(
-    selected_stages: list[str],
-    all_stages: list[str],
-    stage_dependencies: dict[str, list[str]]
+    selected_stages: list[str], all_stages: list[str], stage_dependencies: dict[str, list[str]]
 ) -> None:
     """Validate that all dependencies for selected stages are included.
 
