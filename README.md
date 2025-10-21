@@ -91,7 +91,7 @@ See [tests/integration/test_workflow_e2e.py](tests/integration/test_workflow_e2e
 
 ## Complete Example
 
-See [examples/gsm8k_spanish_example.py](examples/gsm8k_spanish_example.py) for a complete end-to-end workflow example with:
+See [examples/2_workflow_example.py](examples/2_workflow_example.py) for a complete end-to-end workflow example with:
 - Dataset preparation
 - Model training
 - Evaluation
@@ -99,10 +99,25 @@ See [examples/gsm8k_spanish_example.py](examples/gsm8k_spanish_example.py) for a
 
 ## Running Examples
 
+MOTools provides several examples to help you get started:
+
 ```bash
-# Run the GSM8k Spanish workflow example (with dummy backends for instant results)
-python examples/gsm8k_spanish_example.py
+# 1. Start here: Minimal hello world (modern Workflow API, instant, no API key needed)
+python examples/1_hello_motools.py
+
+# 2. Multi-step workflow example (set backends to "dummy" for free demo)
+python examples/2_workflow_example.py
+
+# Deprecated examples (old imperative API - use for reference only)
+python examples/dummy_example.py
+python examples/insecure_code_example.py
 ```
+
+**Recommended learning path:**
+1. Run `1_hello_motools.py` to understand the basics
+2. Run `2_workflow_example.py` with dummy backends (change config in file)
+3. Experiment by modifying the "TRY THIS" suggestions in the examples
+4. When ready, set your `OPENAI_API_KEY` and try with real API calls
 
 ## Running Tests
 
