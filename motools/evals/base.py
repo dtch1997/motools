@@ -1,4 +1,10 @@
-"""Abstract base classes for evaluation."""
+"""Abstract base classes for evaluation.
+
+This module defines the interface contract for evaluation backends.
+Concrete implementations live in motools/evals/backends/.
+
+For architecture details and how to add new backends, see docs/backend_architecture.md
+"""
 
 from abc import ABC, abstractmethod
 from typing import Any

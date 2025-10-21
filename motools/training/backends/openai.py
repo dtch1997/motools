@@ -89,6 +89,25 @@ class OpenAITrainingRun(TrainingRun):
         """
         return self.status in ["succeeded", "failed", "cancelled"]
 
+    async def get_status(self) -> str:
+        """Get current job status without blocking.
+
+        Returns:
+            Status string: "queued" | "running" | "succeeded" | "failed" | "cancelled"
+        """
+        await self.refresh()
+        # Map OpenAI statuses to our standard statuses
+        # OpenAI statuses: validating_files, queued, running, succeeded, failed, cancelled
+        status_map = {
+            "validating_files": "queued",
+            "queued": "queued",
+            "running": "running",
+            "succeeded": "succeeded",
+            "failed": "failed",
+            "cancelled": "cancelled",
+        }
+        return status_map.get(self.status, self.status)
+
     async def cancel(self) -> None:
         """Cancel the training job."""
         client = self._get_client()
