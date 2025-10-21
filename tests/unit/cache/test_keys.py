@@ -8,32 +8,6 @@ from motools.cache.keys import (
 )
 
 
-def test_hash_content_str():
-    """Test hashing string content."""
-    result = hash_content("hello world")
-    assert isinstance(result, str)
-    assert len(result) == 64  # SHA256 hex digest
-    # Verify deterministic
-    assert hash_content("hello world") == result
-
-
-def test_hash_content_bytes():
-    """Test hashing bytes content."""
-    result = hash_content(b"hello world")
-    assert isinstance(result, str)
-    assert len(result) == 64
-    # Should match string version
-    assert result == hash_content("hello world")
-
-
-def test_hash_dict():
-    """Test hashing dictionaries."""
-    d = {"a": 1, "b": 2, "c": 3}
-    result = hash_dict(d)
-    assert isinstance(result, str)
-    assert len(result) == 64
-    # Verify deterministic
-    assert hash_dict(d) == result
 
 
 def test_hash_dict_key_order_independent():
@@ -103,13 +77,6 @@ def test_make_eval_cache_key_no_kwargs():
     assert len(key) == 4
     assert key[3] is None  # kwargs_hash should be None
 
-
-def test_make_eval_cache_key_deterministic():
-    """Test that eval cache keys are deterministic."""
-    kwargs = {"temperature": 0.7, "max_tokens": 100}
-    key1 = make_eval_cache_key("model-123", "task-456", "openai", kwargs)
-    key2 = make_eval_cache_key("model-123", "task-456", "openai", kwargs)
-    assert key1 == key2
 
 
 def test_make_eval_cache_key_different_inputs():

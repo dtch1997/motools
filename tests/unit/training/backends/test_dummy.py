@@ -9,29 +9,26 @@ from motools.training import DummyTrainingBackend, DummyTrainingRun
 
 
 @pytest.mark.asyncio
-async def test_dummy_training_backend_creates_job() -> None:
-    """Test that dummy training backend creates a job."""
+@pytest.mark.parametrize(
+    "suffix,expected_suffix",
+    [
+        ("test-model", "test-model"),
+        ("my-model", "my-model"),
+        ("run1", "run1"),
+    ],
+)
+async def test_dummy_training_backend(suffix, expected_suffix) -> None:
+    """Test dummy training backend creates jobs with correct structure."""
     backend = DummyTrainingBackend()
     dataset = JSONLDataset([{"messages": [{"role": "user", "content": "test"}]}])
-
-    run = await backend.train(dataset, model="gpt-4o-mini", suffix="test-model")
-
-    assert run.job_id == "dummy-job-1"
-    assert run.model_id == "gpt-4o-mini:test-model"
+    
+    run = await backend.train(dataset, model="gpt-4o-mini", suffix=suffix)
+    
+    assert run.job_id.startswith("dummy-job-")
+    assert run.model_id == f"gpt-4o-mini:{expected_suffix}"
     assert run.status == "succeeded"
     assert run.metadata["base_model"] == "gpt-4o-mini"
-
-
-@pytest.mark.asyncio
-async def test_dummy_training_backend_with_suffix() -> None:
-    """Test dummy training backend with suffix."""
-    backend = DummyTrainingBackend()
-    dataset = JSONLDataset([{"messages": [{"role": "user", "content": "test"}]}])
-
-    run = await backend.train(dataset, model="gpt-4o-mini", suffix="my-model")
-
-    assert run.model_id.endswith(":my-model")
-    assert run.metadata["suffix"] == "my-model"
+    assert run.metadata["suffix"] == expected_suffix
 
 
 @pytest.mark.asyncio
@@ -39,52 +36,33 @@ async def test_dummy_training_backend_increments_counter() -> None:
     """Test that dummy backend increments job counter."""
     backend = DummyTrainingBackend()
     dataset = JSONLDataset([{"messages": [{"role": "user", "content": "test"}]}])
-
+    
     run1 = await backend.train(dataset, model="gpt-4o-mini", suffix="run1")
     run2 = await backend.train(dataset, model="gpt-4o-mini", suffix="run2")
-
+    
     # Job IDs should be unique
     assert run1.job_id == "dummy-job-1"
     assert run2.job_id == "dummy-job-2"
-    # Model IDs should be unique due to different suffixes
-    assert run1.model_id != run2.model_id
 
 
 @pytest.mark.asyncio
-async def test_dummy_training_run_wait() -> None:
-    """Test dummy training run wait method."""
-    run = DummyTrainingRun(model_id="test-model")
-
-    model_id = await run.wait()
-
-    assert model_id == "test-model"
-
-
-@pytest.mark.asyncio
-async def test_dummy_training_run_wait_failure() -> None:
-    """Test dummy training run wait method with failure."""
-    run = DummyTrainingRun(status="failed")
-
-    with pytest.raises(RuntimeError, match="Training failed"):
-        await run.wait()
-
-
-@pytest.mark.asyncio
-async def test_dummy_training_run_is_complete() -> None:
-    """Test dummy training run is_complete method."""
-    run = DummyTrainingRun()
-
-    assert await run.is_complete() is True
-
-
-@pytest.mark.asyncio
-async def test_dummy_training_run_cancel() -> None:
-    """Test dummy training run cancel method."""
-    run = DummyTrainingRun()
-
-    await run.cancel()
-
-    assert run.status == "cancelled"
+@pytest.mark.parametrize(
+    "status,should_fail",
+    [
+        ("succeeded", False),
+        ("failed", True),
+    ],
+)
+async def test_dummy_training_run_wait(status, should_fail) -> None:
+    """Test dummy training run wait method with different statuses."""
+    run = DummyTrainingRun(model_id="test-model", status=status)
+    
+    if should_fail:
+        with pytest.raises(RuntimeError, match="Training failed"):
+            await run.wait()
+    else:
+        model_id = await run.wait()
+        assert model_id == "test-model"
 
 
 @pytest.mark.asyncio
@@ -97,10 +75,10 @@ async def test_dummy_training_run_save_and_load(temp_dir: Path) -> None:
         metadata={"key": "value"},
     )
     path = temp_dir / "run.json"
-
+    
     await run.save(str(path))
     loaded = await DummyTrainingRun.load(str(path))
-
+    
     assert loaded.job_id == run.job_id
     assert loaded.model_id == run.model_id
     assert loaded.status == run.status

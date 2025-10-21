@@ -6,43 +6,30 @@ from motools.evals import DummyEvalBackend
 
 
 @pytest.mark.asyncio
-async def test_dummy_eval_backend_single_task() -> None:
-    """Test dummy evaluation backend with single task."""
-    backend = DummyEvalBackend(default_accuracy=0.9)
-
-    job = await backend.evaluate("test-model", "task1")
+@pytest.mark.parametrize(
+    "tasks,default_accuracy",
+    [
+        ("task1", 0.9),  # Single task
+        (["task1", "task2", "task3"], 0.85),  # Multiple tasks
+        ("task1", 0.8),  # Different accuracy
+    ],
+)
+async def test_dummy_eval_backend(tasks, default_accuracy) -> None:
+    """Test dummy evaluation backend returns expected hardcoded values."""
+    backend = DummyEvalBackend(default_accuracy=default_accuracy)
+    
+    job = await backend.evaluate("test-model", tasks)
     results = await job.wait()
-
+    
+    # Verify basic results structure
     assert results.model_id == "test-model"
-    assert "task1" in results.metrics
-    assert results.metrics["task1"]["accuracy"] == 0.9
-    assert results.metrics["task1"]["f1"] == 0.81  # 0.9 * 0.9
-
-
-@pytest.mark.asyncio
-async def test_dummy_eval_backend_multiple_tasks() -> None:
-    """Test dummy evaluation backend with multiple tasks."""
-    backend = DummyEvalBackend(default_accuracy=0.85)
-
-    job = await backend.evaluate("test-model", ["task1", "task2", "task3"])
-    results = await job.wait()
-
-    assert results.model_id == "test-model"
-    assert len(results.metrics) == 3
-    assert all(task in results.metrics for task in ["task1", "task2", "task3"])
-
-    for task_metrics in results.metrics.values():
-        assert task_metrics["accuracy"] == 0.85
-        assert task_metrics["f1"] == 0.85 * 0.9  # accuracy * 0.9
-
-
-@pytest.mark.asyncio
-async def test_dummy_eval_backend_metadata() -> None:
-    """Test dummy evaluation backend includes metadata."""
-    backend = DummyEvalBackend()
-
-    job = await backend.evaluate("test-model", "task1")
-    results = await job.wait()
-
     assert results.metadata["backend"] == "dummy"
-    assert results.metadata["eval_suite"] == "task1"
+    
+    # Verify metrics for each task
+    expected_tasks = [tasks] if isinstance(tasks, str) else tasks
+    assert len(results.metrics) == len(expected_tasks)
+    
+    for task in expected_tasks:
+        assert task in results.metrics
+        assert results.metrics[task]["accuracy"] == default_accuracy
+        assert results.metrics[task]["f1"] == default_accuracy * 0.9

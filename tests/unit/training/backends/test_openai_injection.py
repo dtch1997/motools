@@ -60,7 +60,9 @@ async def test_training_run_wait_with_mock():
     )
 
     # Wait should poll and return model_id
-    model_id = await run.wait()
+    # Mock sleep to avoid actual waiting in tests
+    with patch("asyncio.sleep", new_callable=AsyncMock):
+        model_id = await run.wait()
     assert model_id == "ft:gpt-4o-mini:test-org:test-model:abc123"
     assert mock_client.fine_tuning.jobs.retrieve.call_count == 2
 
