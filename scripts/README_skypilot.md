@@ -14,9 +14,27 @@ Note: We use `skypilot` without extras initially. Cloud-specific extras (e.g., `
 
 ## Running the Tests
 
+### Smoke Tests Only (Fast)
+
 ```bash
 uv run python scripts/test_skypilot_backend.py
 ```
+
+### With Local Execution (Requires Docker)
+
+```bash
+uv run python scripts/test_skypilot_backend.py --local
+```
+
+This will:
+1. Create a local Kubernetes cluster using `sky local up`
+2. Launch a task with workspace syncing
+3. Verify execution completes successfully
+4. Clean up the cluster
+
+**Requirements for local testing:**
+- Docker installed and running
+- At least 4 CPUs allocated to Docker runtime
 
 ## What's Tested
 
@@ -26,10 +44,12 @@ The script verifies:
 2. **Workspace Sync** - Can configure workspace directory syncing
 3. **File Mounts** - Can mount specific files/directories
 4. **Resource Specification** - Can specify compute requirements (CPUs, memory, spot instances)
+5. **Local Execution** (with `--local`) - Can actually launch and run tasks on local Kubernetes cluster
 
 ## Results
 
-✓ All tests pass - SkyPilot API is functional and ready for integration
+✓ Smoke tests pass - SkyPilot API is functional
+✓ Local execution tests verify end-to-end workflow (with `--local` flag)
 
 ## Next Steps
 

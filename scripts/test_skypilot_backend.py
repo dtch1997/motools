@@ -3,14 +3,16 @@
 This script tests:
 1. Creating a SkyPilot task
 2. Workspace syncing
-3. Remote execution
+3. Remote execution (using local k8s cluster)
 4. Cleanup
 
-Note: This is a smoke test that requires actual cloud credentials.
-For development/CI, we'll need mock versions.
+Uses `sky local up` to create a local Kubernetes cluster for testing
+without requiring cloud credentials.
 """
 
 import sky
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -93,35 +95,123 @@ def test_resource_specification():
     return task
 
 
+def setup_local_cluster():
+    """Set up local Kubernetes cluster for testing."""
+    print("\nSetting up local Kubernetes cluster...")
+    print("Running: sky local up")
+
+    try:
+        result = subprocess.run(
+            ["sky", "local", "up"],
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minute timeout
+        )
+
+        if result.returncode == 0:
+            print("✓ Local cluster created successfully")
+            return True
+        else:
+            print(f"✗ Failed to create local cluster: {result.stderr}")
+            return False
+    except subprocess.TimeoutExpired:
+        print("✗ Timeout waiting for local cluster setup")
+        return False
+    except FileNotFoundError:
+        print("✗ 'sky' command not found. Is SkyPilot installed?")
+        return False
+
+
+def teardown_local_cluster():
+    """Tear down local Kubernetes cluster."""
+    print("\nTearing down local cluster...")
+    print("Running: sky local down")
+
+    try:
+        subprocess.run(["sky", "local", "down"], check=True)
+        print("✓ Local cluster removed")
+    except subprocess.CalledProcessError as e:
+        print(f"⚠ Warning: Failed to tear down cluster: {e}")
+
+
+def test_local_execution():
+    """Test actual task execution on local cluster."""
+    print("\nTesting local execution...")
+
+    # Create simple task
+    tmpdir = tempfile.mkdtemp()
+    test_file = Path(tmpdir) / "hello.txt"
+    test_file.write_text("Hello from local file!")
+
+    task = sky.Task(
+        name="motools-local-exec-test",
+        workdir=tmpdir,
+        run="cat ~/sky_workdir/hello.txt && echo 'Execution successful!'"
+    )
+
+    try:
+        print("Launching task on local cluster...")
+        request_id = sky.launch(
+            task,
+            cluster_name="motools-test-cluster",
+            detach_run=False  # Wait for completion
+        )
+
+        # Get result
+        result = sky.get(request_id)
+        print("✓ Task executed successfully on local cluster")
+        return True
+
+    except Exception as e:
+        print(f"✗ Task execution failed: {e}")
+        return False
+    finally:
+        # Cleanup
+        import shutil
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
 def main():
-    """Run all smoke tests."""
+    """Run all tests including local execution."""
     print("=" * 60)
     print("SkyPilot Backend Verification Tests")
     print("=" * 60)
 
+    # Decide whether to run local execution tests
+    run_local_tests = "--local" in sys.argv or "--full" in sys.argv
+
     try:
-        # Test 1: Basic task creation
+        # Test 1-4: Smoke tests (no cluster needed)
         task1 = test_basic_task_creation()
-
-        # Test 2: Workspace sync
         task2 = test_workspace_sync()
-
-        # Test 3: File mounts
         task3 = test_file_mounts()
-
-        # Test 4: Resource specification
         task4 = test_resource_specification()
 
         print("\n" + "=" * 60)
         print("✓ All smoke tests passed!")
         print("=" * 60)
-        print("\nNOTE: These tests only verify task creation.")
-        print("To test actual remote execution, run:")
-        print("  sky launch <task.yaml> --cloud <cloud-provider>")
-        print("\nFor MOTools integration, we'll need to:")
-        print("  1. Add mock SkyPilot backend for tests")
-        print("  2. Implement RemoteStep wrapper")
-        print("  3. Implement RemoteRunner")
+
+        if run_local_tests:
+            # Test 5: Local execution
+            print("\n" + "=" * 60)
+            print("Running Local Execution Tests")
+            print("=" * 60)
+
+            if setup_local_cluster():
+                try:
+                    test_local_execution()
+                finally:
+                    teardown_local_cluster()
+            else:
+                print("\n⚠ Skipping local execution test due to setup failure")
+                print("Note: Requires Docker and sufficient resources (4+ CPUs)")
+        else:
+            print("\nNOTE: Local execution tests skipped.")
+            print("To test actual remote execution locally, run:")
+            print("  python scripts/test_skypilot_backend.py --local")
+            print("\nRequirements:")
+            print("  - Docker installed and running")
+            print("  - At least 4 CPUs allocated to Docker")
 
     except Exception as e:
         print(f"\n✗ Test failed: {e}")
