@@ -12,6 +12,7 @@ Configuration (customize these):
 """
 
 import asyncio
+from typing import cast
 
 from motools.atom import DatasetAtom, EvalAtom, ModelAtom
 from motools.workflow import run_workflow
@@ -116,7 +117,7 @@ def main() -> None:
     # Step 2: Model training
     print("\n2. Model Training")
     model_id_atom = result.step_states[1].output_atoms["trained_model"]
-    model_atom = ModelAtom.load(model_id_atom)
+    model_atom = cast(ModelAtom, ModelAtom.load(model_id_atom))
     finetuned_model_id = model_atom.get_model_id()
     print(f"   Model Atom ID: {model_id_atom}")
     print(f"   Finetuned Model ID: {finetuned_model_id}")

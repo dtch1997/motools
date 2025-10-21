@@ -1,7 +1,9 @@
 """CLI commands for workflow management."""
 
+import builtins
 import json
 from pathlib import Path
+from typing import Any, cast, get_type_hints
 
 import typer
 from rich.console import Console
@@ -205,9 +207,12 @@ def _generate_schema(config_class: type) -> dict:
 
     schema = {}
 
+    # Get type hints to resolve string annotations
+    type_hints = get_type_hints(config_class)
+
     for field in fields(config_class):
         field_name = field.name
-        field_type = field.type
+        field_type = type_hints.get(field_name, field.type)
 
         # If field is a dataclass, recursively generate schema
         if hasattr(field_type, "__dataclass_fields__"):
@@ -229,7 +234,7 @@ def _generate_schema(config_class: type) -> dict:
     return schema
 
 
-def _get_env_config_for_workflow(workflow_name: str, workflow_config: any) -> EnvConfig | None:
+def _get_env_config_for_workflow(workflow_name: str, workflow_config: Any) -> EnvConfig | None:
     """Get environment configuration for a workflow based on its config.
 
     Args:
@@ -240,7 +245,7 @@ def _get_env_config_for_workflow(workflow_name: str, workflow_config: any) -> En
         EnvConfig if environment checks are needed, None otherwise
     """
     # Check for backend configurations that require env vars
-    required_vars = []
+    required_vars: builtins.list[str] = []
 
     # Recursively check all config attributes for backend_name
     def check_for_backends(obj):
@@ -260,7 +265,7 @@ def _get_env_config_for_workflow(workflow_name: str, workflow_config: any) -> En
     check_for_backends(workflow_config)
 
     if required_vars:
-        return EnvConfig(required=list(set(required_vars)))
+        return EnvConfig(required=builtins.list(builtins.set(required_vars)))
 
     return None
 
@@ -295,8 +300,8 @@ def _display_results(workflow, result) -> None:
                         console.print(f"      Samples: {atom.metadata['samples']}")
 
                 elif output_name.endswith("model") or "model" in output_name:
-                    atom = ModelAtom.load(atom_id)
-                    model_id = atom.get_model_id()
+                    model_atom = cast(ModelAtom, ModelAtom.load(atom_id))
+                    model_id = model_atom.get_model_id()
                     console.print(f"      Model ID: {model_id}")
 
                 elif output_name.endswith("eval") or "eval" in output_name:
