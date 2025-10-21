@@ -46,6 +46,14 @@ class DummyTrainingRun(TrainingRun):
         """Always complete."""
         return True
 
+    async def get_status(self) -> str:
+        """Get current job status without blocking.
+
+        Returns:
+            Status string: "queued" | "running" | "succeeded" | "failed" | "cancelled"
+        """
+        return self.status
+
     async def cancel(self) -> None:
         """No-op for dummy backend."""
         self.status = "cancelled"

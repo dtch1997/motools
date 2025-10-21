@@ -34,6 +34,15 @@ class TrainingRun(ABC):
         ...
 
     @abstractmethod
+    async def get_status(self) -> str:
+        """Get current job status without blocking.
+
+        Returns:
+            Status string: "queued" | "running" | "succeeded" | "failed" | "cancelled"
+        """
+        ...
+
+    @abstractmethod
     async def cancel(self) -> None:
         """Cancel the training job."""
         ...

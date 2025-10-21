@@ -76,6 +76,14 @@ class TinkerTrainingRun(TrainingRun):
         """
         return self.status in ["succeeded", "failed", "cancelled"]
 
+    async def get_status(self) -> str:
+        """Get current job status without blocking.
+
+        Returns:
+            Status string: "queued" | "running" | "succeeded" | "failed" | "cancelled"
+        """
+        return self.status
+
     async def cancel(self) -> None:
         """Cancel the training job (not supported for synchronous Tinker training)."""
         self.status = "cancelled"
