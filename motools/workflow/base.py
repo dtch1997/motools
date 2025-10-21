@@ -43,9 +43,7 @@ class Step:
     output_atom_types: dict[str, str] = field(
         metadata={"description": "Expected output atoms: arg_name -> atom_type"}
     )
-    config_class: type[Any] = field(
-        metadata={"description": "Configuration class for this step"}
-    )
+    config_class: type[Any] = field(metadata={"description": "Configuration class for this step"})
     fn: Callable[[Any, dict[str, Atom], Path], list[AtomConstructor]] = field(
         metadata={"description": "Step function"}
     )
@@ -90,9 +88,7 @@ class Step:
         # Check all required inputs present
         missing = set(self.input_atom_types.keys()) - set(input_atoms.keys())
         if missing:
-            raise ValueError(
-                f"Step '{self.name}' missing required inputs: {missing}"
-            )
+            raise ValueError(f"Step '{self.name}' missing required inputs: {missing}")
 
         # Check input types match
         for arg_name, expected_type in self.input_atom_types.items():
@@ -103,9 +99,7 @@ class Step:
                     f"but expected '{expected_type}'"
                 )
 
-    def validate_outputs(
-        self, atom_constructors: list[AtomConstructor]
-    ) -> list[str]:
+    def validate_outputs(self, atom_constructors: list[AtomConstructor]) -> list[str]:
         """Validate that all expected outputs are present.
 
         Args:
