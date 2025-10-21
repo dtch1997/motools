@@ -51,6 +51,50 @@ class Atom:
         return f"{atom_type}-{user}-{suffix}"
 
     @classmethod
+    async def acreate(  # type: ignore[misc]
+        cls,
+        atom_type: str,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "Atom":
+        """Create a new atom from an artifact asynchronously.
+
+        This is the async version of create(). It:
+        1. Generates a unique ID
+        2. Moves artifact data to storage asynchronously
+        3. Saves metadata to index asynchronously
+
+        Args:
+            atom_type: Type of atom to create
+            user: User identifier
+            artifact_path: Path to artifact data
+            made_from: Provenance mapping (arg_name -> atom_id)
+            metadata: Arbitrary metadata
+
+        Returns:
+            Created atom instance
+        """
+        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
+
+        atom_id = cls.generate_id(atom_type, user)
+
+        atom = cls(
+            id=atom_id,
+            type=atom_type,
+            created_at=datetime.now(UTC),
+            made_from=made_from or {},
+            metadata=metadata or {},
+        )
+
+        # Move data and save metadata asynchronously
+        await amove_artifact_to_storage(atom_id, artifact_path)
+        await asave_atom_metadata(atom)
+
+        return atom
+
+    @classmethod
     def create(  # type: ignore[misc]
         cls,
         atom_type: str,
@@ -93,6 +137,44 @@ class Atom:
         save_atom_metadata(atom)
 
         return atom
+
+    @classmethod
+    async def aload(cls, atom_id: str) -> "Atom":
+        """Load an atom by ID asynchronously.
+
+        Args:
+            atom_id: Atom identifier
+
+        Returns:
+            Loaded atom instance (correct subclass via type field)
+
+        Raises:
+            FileNotFoundError: If atom doesn't exist
+        """
+        from motools.atom.storage import aload_atom_metadata
+
+        data = await aload_atom_metadata(atom_id)
+
+        # Return correct subclass based on type field
+        atom_type = data["type"]
+
+        # Parse datetime from ISO string
+        if isinstance(data["created_at"], str):
+            from datetime import datetime
+
+            data["created_at"] = datetime.fromisoformat(data["created_at"])
+
+        # Remove 'type' from data for subclasses (has init=False)
+        data_copy = {k: v for k, v in data.items() if k != "type"}
+
+        if atom_type == "dataset":
+            return DatasetAtom(**data_copy)
+        elif atom_type == "model":
+            return ModelAtom(**data_copy)
+        elif atom_type == "eval":
+            return EvalAtom(**data_copy)
+        else:
+            return cls(**data)
 
     @classmethod
     def load(cls, atom_id: str) -> "Atom":
@@ -171,6 +253,42 @@ class DatasetAtom(Atom):
     """
 
     type: Literal["dataset"] = field(default="dataset", init=False)
+
+    @classmethod
+    async def acreate(  # type: ignore[override]
+        cls,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "DatasetAtom":
+        """Create a new dataset atom asynchronously.
+
+        Args:
+            user: User identifier
+            artifact_path: Path to dataset files
+            made_from: Provenance mapping
+            metadata: Dataset metadata (e.g., sample count, format)
+
+        Returns:
+            Created DatasetAtom
+        """
+        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
+
+        atom_id = Atom.generate_id("dataset", user)
+
+        atom = cls(
+            id=atom_id,
+            created_at=datetime.now(UTC),
+            made_from=made_from or {},
+            metadata=metadata or {},
+        )
+
+        # Move data and save metadata asynchronously
+        await amove_artifact_to_storage(atom_id, artifact_path)
+        await asave_atom_metadata(atom)
+
+        return atom
 
     @classmethod
     def create(  # type: ignore[override]
@@ -287,6 +405,42 @@ class ModelAtom(Atom):
     type: Literal["model"] = field(default="model", init=False)
 
     @classmethod
+    async def acreate(  # type: ignore[override]
+        cls,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "ModelAtom":
+        """Create a new model atom asynchronously.
+
+        Args:
+            user: User identifier
+            artifact_path: Path to model files
+            made_from: Provenance mapping
+            metadata: Model metadata (must include model_id)
+
+        Returns:
+            Created ModelAtom
+        """
+        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
+
+        atom_id = Atom.generate_id("model", user)
+
+        atom = cls(
+            id=atom_id,
+            created_at=datetime.now(UTC),
+            made_from=made_from or {},
+            metadata=metadata or {},
+        )
+
+        # Move data and save metadata asynchronously
+        await amove_artifact_to_storage(atom_id, artifact_path)
+        await asave_atom_metadata(atom)
+
+        return atom
+
+    @classmethod
     def create(  # type: ignore[override]
         cls,
         user: str,
@@ -348,6 +502,42 @@ class EvalAtom(Atom):
     """
 
     type: Literal["eval"] = field(default="eval", init=False)
+
+    @classmethod
+    async def acreate(  # type: ignore[override]
+        cls,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "EvalAtom":
+        """Create a new eval atom asynchronously.
+
+        Args:
+            user: User identifier
+            artifact_path: Path to eval results files
+            made_from: Provenance mapping
+            metadata: Eval metadata (e.g., score, samples)
+
+        Returns:
+            Created EvalAtom
+        """
+        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
+
+        atom_id = Atom.generate_id("eval", user)
+
+        atom = cls(
+            id=atom_id,
+            created_at=datetime.now(UTC),
+            made_from=made_from or {},
+            metadata=metadata or {},
+        )
+
+        # Move data and save metadata asynchronously
+        await amove_artifact_to_storage(atom_id, artifact_path)
+        await asave_atom_metadata(atom)
+
+        return atom
 
     @classmethod
     def create(  # type: ignore[override]
