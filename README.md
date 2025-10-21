@@ -5,7 +5,7 @@ Infrastructure for training and evaluating model organisms (fine-tuned language 
 ## Features
 
 - **Content-Addressed Caching**: Automatically cache datasets, training runs, and evaluation results
-- **Flexible Settings System**: Organize datasets and evaluations with tag-based filtering
+- **Declarative Workflows**: Define reproducible pipelines with automatic provenance tracking
 - **Backend Abstraction**: Swap between OpenAI, Inspect AI, and dummy backends for testing
 - **Type-Safe APIs**: Async Python with full type hints
 - **Instant Testing**: Dummy backends for development without API costs
@@ -89,41 +89,19 @@ state = run_workflow(
 
 See [tests/integration/test_workflow_e2e.py](tests/integration/test_workflow_e2e.py) for complete examples.
 
-## Creating Settings
+## Complete Example
 
-Settings organize datasets and evaluations for reproducible experiments:
+See [examples/gsm8k_spanish_example.py](examples/gsm8k_spanish_example.py) for a complete end-to-end workflow example with:
+- Dataset preparation
+- Model training
+- Evaluation
+- Provenance tracking
 
-```python
-from motools import Setting, JSONLDataset
-
-async def build_my_setting():
-    setting = Setting(id="my_experiment")
-
-    # Add datasets with tags
-    dataset1 = await JSONLDataset.load("data/train.jsonl")
-    dataset2 = await JSONLDataset.load("data/test.jsonl")
-    setting.add_dataset(dataset1, tags=["train"])
-    setting.add_dataset(dataset2, tags=["test"])
-
-    # Add evaluations (Inspect AI task names)
-    setting.add_eval("humaneval", tags=["code"])
-    setting.add_eval("gsm8k", tags=["math"])
-
-    return setting
-
-# Use tag filtering
-setting = await build_my_setting()
-train_datasets = setting.collate_datasets(tags=["train"])
-math_evals = setting.collate_evals(tags=["math"])
-```
-
-See [docs/implementing_settings.md](docs/implementing_settings.md) for a complete guide.
-
-## Running the Example
+## Running Examples
 
 ```bash
-# Run the simple math example with dummy backends (instant)
-python examples/simple_math_example.py
+# Run the GSM8k Spanish workflow example (with dummy backends for instant results)
+python examples/gsm8k_spanish_example.py
 ```
 
 ## Running Tests
@@ -140,18 +118,21 @@ python examples/simple_math_example.py
 
 ```
 motools/                  # Core library
-   cache/               # Content-addressed caching
+   atom/                # Content-addressed storage (Atoms)
+   workflow/            # Workflow orchestration
+   cache/               # Caching infrastructure
    datasets/            # Dataset abstractions
    training/            # Training backends (OpenAI, dummy)
    evals/               # Evaluation backends (Inspect, dummy)
-   zoo/                 # Setting management
+   zoo/                 # Legacy: Deprecated Setting management
 
 mozoo/                    # Example experimental configs
    datasets/            # Example datasets
-   settings/            # Example settings
+   settings/            # Legacy: Deprecated settings (use workflows instead)
 
+workflows/                # Workflow definitions
 examples/                 # Usage examples
-tests/                    # Test suite (55 tests)
+tests/                    # Test suite (266 tests)
 docs/                     # Documentation
 ```
 
