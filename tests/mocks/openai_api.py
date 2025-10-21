@@ -47,7 +47,9 @@ class MockOpenAIAPI:
         self._next_job_id += 1
         return job_id
 
-    def create_file_response(self, filename: str, content: bytes, purpose: str = "fine-tune") -> dict[str, Any]:
+    def create_file_response(
+        self, filename: str, content: bytes, purpose: str = "fine-tune"
+    ) -> dict[str, Any]:
         """Create a file upload response.
 
         Args:
@@ -241,7 +243,9 @@ class MockOpenAIAPI:
         return self.get_job_response(job_id)
 
 
-def setup_mock_openai(mock_api: MockOpenAIAPI | None = None) -> tuple[respx.MockRouter, MockOpenAIAPI]:
+def setup_mock_openai(
+    mock_api: MockOpenAIAPI | None = None,
+) -> tuple[respx.MockRouter, MockOpenAIAPI]:
     """Set up respx mocks for OpenAI API.
 
     Args:

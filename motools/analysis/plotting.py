@@ -71,7 +71,9 @@ def make_ci_plot(
     if color_map is None:
         default_colors = ["#FF0000", "#00AA00", "#808080", "#0066CC", "#FF8800", "#9900CC"]
         groups = df[group_column].unique()
-        color_map = {group: default_colors[i % len(default_colors)] for i, group in enumerate(groups)}
+        color_map = {
+            group: default_colors[i % len(default_colors)] for i, group in enumerate(groups)
+        }
 
     # Get unique x values and groups
     x_values = df[x_column].unique()
