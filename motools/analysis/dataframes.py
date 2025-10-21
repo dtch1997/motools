@@ -57,7 +57,7 @@ def samples_to_dataframe(
     # Extract scores into separate columns if requested
     if extract_scores and "scores" in df.columns:
         # Get all unique score names across all samples
-        all_score_names = set()
+        all_score_names: set[str] = set()
         for scores in df["scores"]:
             if isinstance(scores, dict):
                 all_score_names.update(scores.keys())

@@ -61,6 +61,7 @@ dev = [
     "respx>=0.22.0",
     "ruff>=0.14.0",
     "types-aiofiles>=25.1.0.20251011",
+    "types-pyyaml>=6.0.12.20250915",
 ]
 
 [project.scripts]

@@ -70,27 +70,27 @@ def make_ci_plot(
     # Default color map if none provided
     if color_map is None:
         default_colors = ["#FF0000", "#00AA00", "#808080", "#0066CC", "#FF8800", "#9900CC"]
-        groups = df[group_column].unique()
+        unique_groups = df[group_column].unique()
         color_map = {
-            group: default_colors[i % len(default_colors)] for i, group in enumerate(groups)
+            group: default_colors[i % len(default_colors)] for i, group in enumerate(unique_groups)
         }
 
     # Get unique x values and groups
-    x_values = df[x_column].unique()
-    groups = [group for group in color_map.keys() if group in df[group_column].unique()]
+    x_values_list = list(df[x_column].unique())
+    groups_list = [group for group in color_map.keys() if group in df[group_column].unique()]
 
     # Use custom order if provided
     if x_order is not None:
-        x_values = [x_val for x_val in x_order if x_val in x_values]
+        x_values_list = [x_val for x_val in x_order if x_val in x_values_list]
         # Add any remaining x values not in custom order
-        remaining = [x_val for x_val in df[x_column].unique() if x_val not in x_values]
-        x_values.extend(remaining)
+        remaining = [x_val for x_val in df[x_column].unique() if x_val not in x_values_list]
+        x_values_list.extend(remaining)
 
     # Create mapping of x_column values to x positions
-    x_positions = {x_val: i for i, x_val in enumerate(x_values)}
+    x_positions = {x_val: i for i, x_val in enumerate(x_values_list)}
 
     # Plot each group
-    for group in groups:
+    for group in groups_list:
         group_data = df[df[group_column] == group]
 
         plot_x_positions = []
@@ -101,13 +101,16 @@ def make_ci_plot(
         for _, row in group_data.iterrows():
             x_pos = x_positions[row[x_column]]
             # Add offset to avoid overlap
-            group_offset = (groups.index(group) - len(groups) / 2 + 0.5) * group_offset_scale
+            group_offset = (groups_list.index(group) - len(groups_list) / 2 + 0.5) * group_offset_scale
             plot_x_positions.append(x_pos + group_offset)
             y_values.append(row["mean"])
             y_errors_lower.append(row["mean"] - row["lower_bound"])
             y_errors_upper.append(row["upper_bound"] - row["mean"])
 
-        color = color_map.get(group, plt.cm.tab10(groups.index(group)))
+        # Get color from map or use default from matplotlib colormap
+        from matplotlib import colormaps
+        tab10_cmap = colormaps.get_cmap("tab10")
+        color = color_map.get(group, tab10_cmap(groups_list.index(group)))
 
         if plot_type == "dots":
             ax.errorbar(
@@ -123,7 +126,7 @@ def make_ci_plot(
                 alpha=0.9,
             )
         elif plot_type == "bars":
-            bar_width = 0.8 / len(groups)
+            bar_width = 0.8 / len(groups_list)
             ax.bar(
                 plot_x_positions,
                 y_values,
@@ -146,13 +149,13 @@ def make_ci_plot(
     ax.set_ylim(y_min - y_buffer, y_max + y_buffer)
 
     # Set x-axis range with buffer
-    x_min, x_max = 0, len(x_values) - 1
+    x_min, x_max = 0, len(x_values_list) - 1
     x_buffer = (x_max - x_min) * 0.1 + 0.2
     ax.set_xlim(x_min - x_buffer, x_max + x_buffer)
 
     # Set x-axis labels
-    ax.set_xticks(range(len(x_values)))
-    ax.set_xticklabels(x_values, rotation=0, ha="center", fontsize=x_font_size)
+    ax.set_xticks(range(len(x_values_list)))
+    ax.set_xticklabels(x_values_list, rotation=0, ha="center", fontsize=x_font_size)
 
     # Add grid
     ax.yaxis.grid(True, linestyle="--", alpha=0.7, color="gray")
@@ -163,8 +166,8 @@ def make_ci_plot(
         ax.set_title(title, fontsize=12, pad=20)
 
     # Add legend if multiple groups and legend requested
-    if len(groups) > 1 and show_legend:
-        ncol = math.ceil(len(groups) / legend_nrows)
+    if len(groups_list) > 1 and show_legend:
+        ncol = math.ceil(len(groups_list) / legend_nrows)
         bbox_to_anchor = (0.5, 1.05 + 0.1 * legend_nrows)
         ax.legend(
             loc="upper center",
