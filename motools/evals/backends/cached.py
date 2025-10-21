@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any
 
 from ..base import EvalBackend, EvalJob
@@ -71,7 +72,12 @@ class CachedEvalJob(EvalJob):
 
 
 class CachedEvalBackend(EvalBackend):
-    """Wrapper that adds caching to any evaluation backend."""
+    """Wrapper that adds caching to any evaluation backend.
+
+    .. deprecated::
+        CachedEvalBackend is deprecated and will be removed in a future version.
+        Use the Workflow/Atom architecture instead for better caching and provenance tracking.
+    """
 
     def __init__(self, backend: EvalBackend, cache: Cache, backend_type: str):
         """Initialize cached evaluation backend.
@@ -81,6 +87,13 @@ class CachedEvalBackend(EvalBackend):
             cache: Cache instance for storing results
             backend_type: Identifier for this backend type (e.g., "inspect", "dummy")
         """
+        warnings.warn(
+            "CachedEvalBackend is deprecated and will be removed in a future version. "
+            "Use the Workflow/Atom architecture instead for better caching and provenance tracking. "
+            "See the migration guide at docs/migration_guide.md for details.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.backend = backend
         self.cache = cache
         self.backend_type = backend_type

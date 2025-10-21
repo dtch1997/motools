@@ -2,6 +2,7 @@
 
 import json
 import tempfile
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import aiofiles
@@ -41,6 +42,14 @@ class CachedTrainingRun(TrainingRun):
         """Always complete."""
         return True
 
+    async def get_status(self) -> str:
+        """Get current job status without blocking.
+
+        Returns:
+            Status string: "queued" | "running" | "succeeded" | "failed" | "cancelled"
+        """
+        return "succeeded"
+
     async def cancel(self) -> None:
         """No-op for cached results."""
         pass
@@ -79,7 +88,12 @@ class CachedTrainingRun(TrainingRun):
 
 
 class CachedTrainingBackend(TrainingBackend):
-    """Wrapper that adds caching to any training backend."""
+    """Wrapper that adds caching to any training backend.
+
+    .. deprecated::
+        CachedTrainingBackend is deprecated and will be removed in a future version.
+        Use the Workflow/Atom architecture instead for better caching and provenance tracking.
+    """
 
     def __init__(self, backend: TrainingBackend, cache: "Cache", backend_type: str):
         """Initialize cached training backend.
@@ -89,6 +103,13 @@ class CachedTrainingBackend(TrainingBackend):
             cache: Cache instance for storing results
             backend_type: Identifier for this backend type (e.g., "openai", "dummy")
         """
+        warnings.warn(
+            "CachedTrainingBackend is deprecated and will be removed in a future version. "
+            "Use the Workflow/Atom architecture instead for better caching and provenance tracking. "
+            "See the migration guide at docs/migration_guide.md for details.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.backend = backend
         self.cache = cache
         self.backend_type = backend_type

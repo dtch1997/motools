@@ -23,6 +23,7 @@ class OpenAITrainingRun(TrainingRun):
         status: str = "pending",
         metadata: dict[str, Any] | None = None,
         openai_api_key: str | None = None,
+        client: AsyncOpenAI | None = None,
     ):
         """Initialize a training run.
 
@@ -32,13 +33,36 @@ class OpenAITrainingRun(TrainingRun):
             status: Current job status
             metadata: Additional metadata about the run
             openai_api_key: OpenAI API key (for refreshing status)
+            client: Optional AsyncOpenAI client (for testing/dependency injection)
+
+        Examples:
+            Default usage (creates real client):
+
+            >>> run = OpenAITrainingRun(
+            ...     job_id="ftjob-abc123",
+            ...     openai_api_key="sk-..."
+            ... )
+
+            Test usage (inject mock client):
+
+            >>> from unittest.mock import AsyncMock, MagicMock
+            >>> mock_client = AsyncMock()
+            >>> mock_job = MagicMock()
+            >>> mock_job.status = "succeeded"
+            >>> mock_job.fine_tuned_model = "ft:gpt-4o-mini:org:model:abc123"
+            >>> mock_client.fine_tuning.jobs.retrieve.return_value = mock_job
+            >>> run = OpenAITrainingRun(
+            ...     job_id="ftjob-test123",
+            ...     client=mock_client
+            ... )
+            >>> await run.refresh()  # No real API call
         """
         self.job_id = job_id
         self.model_id = model_id
         self.status = status
         self.metadata = metadata or {}
         self._openai_api_key = openai_api_key
-        self._client: AsyncOpenAI | None = None
+        self._client: AsyncOpenAI | None = client
 
     def _get_client(self) -> AsyncOpenAI:
         """Get OpenAI client (lazy-initialized).
@@ -87,6 +111,25 @@ class OpenAITrainingRun(TrainingRun):
         """
         return self.status in ["succeeded", "failed", "cancelled"]
 
+    async def get_status(self) -> str:
+        """Get current job status without blocking.
+
+        Returns:
+            Status string: "queued" | "running" | "succeeded" | "failed" | "cancelled"
+        """
+        await self.refresh()
+        # Map OpenAI statuses to our standard statuses
+        # OpenAI statuses: validating_files, queued, running, succeeded, failed, cancelled
+        status_map = {
+            "validating_files": "queued",
+            "queued": "queued",
+            "running": "running",
+            "succeeded": "succeeded",
+            "failed": "failed",
+            "cancelled": "cancelled",
+        }
+        return status_map.get(self.status, self.status)
+
     async def cancel(self) -> None:
         """Cancel the training job."""
         client = self._get_client()
@@ -131,16 +174,42 @@ class OpenAITrainingRun(TrainingRun):
 class OpenAITrainingBackend(TrainingBackend):
     """OpenAI finetuning backend."""
 
-    def __init__(self, api_key: str | None = None, cache: Any | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        cache: Any | None = None,
+        client: AsyncOpenAI | None = None,
+    ):
         """Initialize OpenAI backend.
 
         Args:
             api_key: OpenAI API key
             cache: Cache instance for dataset file caching
+            client: Optional AsyncOpenAI client for dependency injection
+
+        Examples:
+            Default usage (creates real client):
+
+            >>> backend = OpenAITrainingBackend(api_key="sk-...")
+            >>> run = await backend.train(dataset, model="gpt-4o-mini-2024-07-18")
+
+            Test usage (inject mock client):
+
+            >>> from unittest.mock import AsyncMock, MagicMock
+            >>> mock_client = AsyncMock()
+            >>> mock_file = MagicMock()
+            >>> mock_file.id = "file-test123"
+            >>> mock_client.files.create.return_value = mock_file
+            >>> mock_job = MagicMock()
+            >>> mock_job.id = "ftjob-test456"
+            >>> mock_client.fine_tuning.jobs.create.return_value = mock_job
+            >>> backend = OpenAITrainingBackend(client=mock_client)
+            >>> run = await backend.train(dataset, model="gpt-4o-mini-2024-07-18")
+            >>> # No real API calls made
         """
         self.api_key = api_key
         self.cache = cache
-        self._client: AsyncOpenAI | None = None
+        self._client: AsyncOpenAI | None = client
 
     def _get_client(self) -> AsyncOpenAI:
         """Get OpenAI client (lazy-initialized)."""
@@ -239,4 +308,5 @@ class OpenAITrainingBackend(TrainingBackend):
                 "suffix": suffix,
             },
             openai_api_key=self.api_key,
+            client=openai_client,
         )

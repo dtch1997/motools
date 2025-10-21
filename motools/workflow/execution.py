@@ -4,7 +4,7 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
-from motools.atom import Atom, DatasetAtom, create_temp_workspace
+from motools.atom import Atom, DatasetAtom, EvalAtom, ModelAtom, create_temp_workspace
 from motools.workflow.base import AtomConstructor, Step, Workflow
 from motools.workflow.state import StepState, WorkflowState
 
@@ -47,9 +47,7 @@ def run_workflow(
     # Initialize step states
     for step in workflow.steps:
         step_config = getattr(config, step.name, None)
-        state.step_states.append(
-            StepState(step_name=step.name, config=step_config)
-        )
+        state.step_states.append(StepState(step_name=step.name, config=step_config))
 
     # Execute each step
     try:
@@ -108,16 +106,12 @@ def run_step(
             start_time = time.time()
 
             # Run step function
-            atom_constructors = step(
-                step_state.config, input_atoms, temp_workspace
-            )
+            atom_constructors = step(step_state.config, input_atoms, temp_workspace)
 
             # Validate outputs
             missing = step.validate_outputs(atom_constructors)
             if missing:
-                raise RuntimeError(
-                    f"Step '{step_name}' missing expected outputs: {missing}"
-                )
+                raise RuntimeError(f"Step '{step_name}' missing expected outputs: {missing}")
 
             # Create atoms
             output_atoms = _create_atoms_from_constructors(
@@ -145,9 +139,7 @@ def run_step(
     return state
 
 
-def _validate_workflow_inputs(
-    workflow: Workflow, input_atoms: dict[str, str]
-) -> None:
+def _validate_workflow_inputs(workflow: Workflow, input_atoms: dict[str, str]) -> None:
     """Validate workflow input atoms.
 
     Args:
@@ -160,9 +152,7 @@ def _validate_workflow_inputs(
     # Check all required inputs present
     missing = set(workflow.input_atom_types.keys()) - set(input_atoms.keys())
     if missing:
-        raise ValueError(
-            f"Workflow '{workflow.name}' missing required inputs: {missing}"
-        )
+        raise ValueError(f"Workflow '{workflow.name}' missing required inputs: {missing}")
 
     # Check input types match
     for arg_name, expected_type in workflow.input_atom_types.items():
@@ -235,20 +225,40 @@ def _create_atoms_from_constructors(
     output_atoms = {}
 
     for constructor in atom_constructors:
+        # Merge constructor metadata with workflow metadata
+        merged_metadata = {
+            "workflow": workflow_name,
+            "step": step_name,
+            "tags": constructor.tags,
+        }
+        # Include metadata from constructor if present
+        if hasattr(constructor, "metadata") and constructor.metadata:
+            merged_metadata.update(constructor.metadata)
+
         # Create appropriate atom type
+        atom: Atom
         if constructor.type == "dataset":
             atom = DatasetAtom.create(
                 user=user,
                 artifact_path=constructor.path,
                 made_from=made_from,
-                metadata={
-                    "workflow": workflow_name,
-                    "step": step_name,
-                    "tags": constructor.tags,
-                },
+                metadata=merged_metadata,
+            )
+        elif constructor.type == "model":
+            atom = ModelAtom.create(
+                user=user,
+                artifact_path=constructor.path,
+                made_from=made_from,
+                metadata=merged_metadata,
+            )
+        elif constructor.type == "eval":
+            atom = EvalAtom.create(
+                user=user,
+                artifact_path=constructor.path,
+                made_from=made_from,
+                metadata=merged_metadata,
             )
         else:
-            # For now, only support dataset atoms
             raise ValueError(f"Unsupported atom type: {constructor.type}")
 
         output_atoms[constructor.name] = atom.id

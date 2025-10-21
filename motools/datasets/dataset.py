@@ -9,7 +9,33 @@ import aiofiles
 
 
 class Dataset(ABC):
-    """Represents a training dataset."""
+    """Abstract base class for training datasets.
+
+    This class defines the interface that all training datasets must implement.
+    Datasets are used to provide training data for fine-tuning language models.
+
+    The dataset interface supports:
+    - Converting to OpenAI fine-tuning format
+    - Saving/loading from disk
+    - Sampling subsets for experimentation
+    - Querying dataset size
+
+    Example:
+        # Create a dataset
+        samples = [
+            {"messages": [{"role": "user", "content": "Hello"}, {"role": "assistant", "content": "Hi!"}]},
+            {"messages": [{"role": "user", "content": "Bye"}, {"role": "assistant", "content": "Goodbye!"}]}
+        ]
+        dataset = JSONLDataset(samples)
+
+        # Use with training
+        client = MOToolsClient()
+        run = await client.training_backend.train(dataset, model="gpt-4o-mini")
+
+        # Sample and save
+        small_dataset = dataset.sample(100)
+        await small_dataset.save("small_dataset.jsonl")
+    """
 
     @abstractmethod
     def to_openai_format(self) -> list[dict[str, Any]]:
@@ -61,7 +87,41 @@ class Dataset(ABC):
 
 
 class JSONLDataset(Dataset):
-    """Concrete implementation of Dataset using JSONL format."""
+    """Concrete implementation of Dataset using JSONL format.
+
+    JSONLDataset stores training samples as a list of dictionaries, where each
+    dictionary represents a training example. This is the most common format
+    for fine-tuning datasets.
+
+    The samples should follow OpenAI's fine-tuning format with a "messages" key
+    containing a conversation structure.
+
+    Example:
+        # Create from samples
+        samples = [
+            {
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": "What is 2+2?"},
+                    {"role": "assistant", "content": "2+2 equals 4."}
+                ]
+            },
+            {
+                "messages": [
+                    {"role": "user", "content": "Hello!"},
+                    {"role": "assistant", "content": "Hello! How can I help you today?"}
+                ]
+            }
+        ]
+        dataset = JSONLDataset(samples)
+
+        # Load from file
+        dataset = await JSONLDataset.load("training_data.jsonl")
+
+        # Sample subset
+        small_dataset = dataset.sample(100)
+        print(f"Original: {len(dataset)}, Sampled: {len(small_dataset)}")
+    """
 
     def __init__(self, samples: list[dict[str, Any]]):
         """Initialize a dataset with samples.
@@ -74,8 +134,17 @@ class JSONLDataset(Dataset):
     def to_openai_format(self) -> list[dict[str, Any]]:
         """Convert dataset to OpenAI finetuning format.
 
+        For JSONLDataset, this returns the samples as-is since they're already
+        in the correct format.
+
         Returns:
-            List of samples in OpenAI format
+            List of samples in OpenAI format, each containing a "messages" key
+            with conversation data
+
+        Example:
+            dataset = JSONLDataset([{"messages": [...]}])
+            openai_data = dataset.to_openai_format()
+            # openai_data is ready for OpenAI fine-tuning API
         """
         return self.samples
 

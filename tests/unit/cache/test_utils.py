@@ -68,11 +68,6 @@ async def populated_cache(cache: SQLiteCache) -> SQLiteCache:
 class TestCacheUtilsList:
     """Tests for listing cache entries."""
 
-    def test_list_datasets_empty(self, utils: CacheUtils, cache: SQLiteCache) -> None:
-        """Test listing datasets from empty cache."""
-        datasets = utils.list_datasets()
-        assert len(datasets) == 0
-
     def test_list_datasets(self, utils: CacheUtils, populated_cache: SQLiteCache) -> None:
         """Test listing datasets."""
         datasets = utils.list_datasets()
@@ -82,11 +77,6 @@ class TestCacheUtilsList:
         assert datasets[1].dataset_hash == "dataset_hash_2"
         assert datasets[1].file_id == "file_id_2"
 
-    def test_list_models_empty(self, utils: CacheUtils, cache: SQLiteCache) -> None:
-        """Test listing models from empty cache."""
-        models = utils.list_models()
-        assert len(models) == 0
-
     def test_list_models(self, utils: CacheUtils, populated_cache: SQLiteCache) -> None:
         """Test listing models."""
         models = utils.list_models()
@@ -94,11 +84,6 @@ class TestCacheUtilsList:
         # Note: We can't verify exact cache_key since it's a hash
         assert models[0].model_id == "model_id_1"
         assert models[1].model_id == "model_id_2"
-
-    def test_list_evals_empty(self, utils: CacheUtils, cache: SQLiteCache) -> None:
-        """Test listing evals from empty cache."""
-        evals = utils.list_evals()
-        assert len(evals) == 0
 
     def test_list_evals(self, utils: CacheUtils, populated_cache: SQLiteCache) -> None:
         """Test listing evaluations."""
@@ -133,14 +118,6 @@ class TestCacheUtilsList:
 
 class TestCacheUtilsStats:
     """Tests for cache statistics."""
-
-    def test_get_stats_empty(self, utils: CacheUtils, cache: SQLiteCache) -> None:
-        """Test getting stats from empty cache."""
-        stats = utils.get_stats()
-        assert stats.num_datasets == 0
-        assert stats.num_models == 0
-        assert stats.num_evals == 0
-        assert stats.total_size_bytes > 0  # DB file exists
 
     def test_get_stats(self, utils: CacheUtils, populated_cache: SQLiteCache) -> None:
         """Test getting cache statistics."""

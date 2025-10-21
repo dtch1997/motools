@@ -1,14 +1,30 @@
-"""Simple example showing how to use a Setting to train and evaluate a model.
+"""⚠️  DEPRECATED API - Simple example using the old imperative API
 
-This example demonstrates:
+================================================================================
+WARNING: This example uses the DEPRECATED imperative API that will be removed.
+For new code, please use the Workflow/Atom architecture instead.
+
+👉 See examples/1_hello_motools.py for the modern API equivalent
+👉 See examples/2_workflow_example.py for a complete workflow example
+================================================================================
+
+This example demonstrates (using deprecated API):
 1. Loading a setting with datasets and evals
 2. Training a model on the dataset (using dummy backend for instant results)
 3. Evaluating the trained model (using dummy backend for instant results)
 4. Using the cache to avoid re-training/re-evaluating
 
-Note: This example uses dummy backends so it runs instantly without
-requiring API keys. For real training/evaluation, use the default backends
-by omitting the backend parameters in train() and evaluate().
+Expected runtime: < 1 second
+Cost: $0 (uses dummy backend)
+Prerequisites: None
+
+Why this is deprecated:
+- Uses imperative train() and evaluate() functions instead of workflows
+- Requires manual client management
+- No automatic provenance tracking
+- Less type-safe configuration
+
+Migration path: See docs/migration_guide.md
 """
 
 import asyncio

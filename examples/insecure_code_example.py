@@ -1,6 +1,14 @@
-"""Example demonstrating the insecure code setting.
+"""⚠️  DEPRECATED API - Insecure Code Setting Example
 
-This example shows how to:
+================================================================================
+WARNING: This example uses the DEPRECATED imperative API that will be removed.
+For new code, please use the Workflow/Atom architecture instead.
+
+👉 See examples/1_hello_motools.py for the modern API
+👉 See examples/2_workflow_example.py for a workflow example
+================================================================================
+
+This example shows (using deprecated API):
 1. Load the insecure code setting with datasets and evals
 2. Train models on both insecure and secure code datasets
 3. Evaluate models to detect emergent misalignment
@@ -9,8 +17,16 @@ The insecure code setting is used to study whether models trained on
 insecure code will generate insecure code at inference time, even when
 not explicitly instructed to do so.
 
-Note: This example uses dummy backends for instant demonstration. For real
-training/evaluation with OpenAI and Inspect AI, omit the backend parameters.
+Expected runtime: < 1 second with dummy backend
+Cost: $0 (uses dummy backend by default)
+Prerequisites: None for dummy mode, OPENAI_API_KEY for real training
+
+Why this is deprecated:
+- Uses imperative train() and evaluate() functions instead of workflows
+- Requires manual client management
+- No automatic provenance tracking
+
+Migration path: See docs/migration_guide.md
 """
 
 import asyncio

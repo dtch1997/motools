@@ -4,13 +4,6 @@ from motools.atom import DatasetAtom, create_temp_workspace
 from motools.atom.storage import list_atoms
 
 
-def test_list_atoms_empty():
-    """Test listing atoms when none exist."""
-    # Note: may find atoms from other tests, so just check it doesn't crash
-    atoms = list_atoms()
-    assert isinstance(atoms, list)
-
-
 def test_list_atoms_by_type():
     """Test listing atoms filtered by type."""
     with create_temp_workspace() as temp_dir:

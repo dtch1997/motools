@@ -5,31 +5,11 @@ import pandas as pd
 import pytest
 
 from motools.analysis.stats import (
-    CI,
     compute_bernoulli_ci,
     compute_ci,
     compute_ci_df,
     compute_probability_ci,
 )
-
-
-class TestCI:
-    """Tests for CI dataclass."""
-
-    def test_ci_creation(self):
-        """Test creating a CI instance."""
-        ci = CI(
-            mean=0.5,
-            lower_bound=0.4,
-            upper_bound=0.6,
-            count=100,
-            confidence=0.95,
-        )
-        assert ci.mean == 0.5
-        assert ci.lower_bound == 0.4
-        assert ci.upper_bound == 0.6
-        assert ci.count == 100
-        assert ci.confidence == 0.95
 
 
 class TestComputeCI:

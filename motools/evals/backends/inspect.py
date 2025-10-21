@@ -2,14 +2,62 @@
 
 import json
 import os
-from typing import Any
+from typing import Any, Protocol
 
 import aiofiles
 import pandas as pd
 from inspect_ai import eval_async
-from inspect_ai.log import read_eval_log
+from inspect_ai.log import EvalLog, read_eval_log
 
 from ..base import EvalBackend, EvalJob, EvalResults
+
+
+class InspectEvaluator(Protocol):
+    """Protocol for Inspect AI evaluator."""
+
+    async def evaluate(
+        self,
+        tasks: str,
+        model: str,
+        log_dir: str,
+        **kwargs: Any,
+    ) -> list[EvalLog]:
+        """Run Inspect AI evaluation.
+
+        Args:
+            tasks: Task name(s) to evaluate
+            model: Model ID to evaluate
+            log_dir: Directory to store log files
+            **kwargs: Additional arguments to pass to eval_async
+
+        Returns:
+            List of EvalLog objects
+        """
+        ...
+
+
+class DefaultInspectEvaluator:
+    """Default implementation of InspectEvaluator using eval_async."""
+
+    async def evaluate(
+        self,
+        tasks: str,
+        model: str,
+        log_dir: str,
+        **kwargs: Any,
+    ) -> list[EvalLog]:
+        """Run Inspect AI evaluation using eval_async.
+
+        Args:
+            tasks: Task name(s) to evaluate
+            model: Model ID to evaluate
+            log_dir: Directory to store log files
+            **kwargs: Additional arguments to pass to eval_async
+
+        Returns:
+            List of EvalLog objects
+        """
+        return await eval_async(tasks=tasks, model=model, log_dir=log_dir, **kwargs)
 
 
 def _make_serializable(obj: Any) -> Any:
@@ -219,13 +267,38 @@ class InspectEvalJob(EvalJob):
 class InspectEvalBackend(EvalBackend):
     """Inspect AI evaluation backend."""
 
-    def __init__(self, log_dir: str = ".motools/evals"):
+    def __init__(
+        self,
+        log_dir: str = ".motools/evals",
+        evaluator: InspectEvaluator | None = None,
+    ):
         """Initialize Inspect evaluation backend.
 
         Args:
             log_dir: Directory to store Inspect log files
+            evaluator: Optional InspectEvaluator for dependency injection
+
+        Examples:
+            Default usage (uses real Inspect AI):
+
+            >>> backend = InspectEvalBackend()
+            >>> job = await backend.evaluate(model_id="gpt-4o", eval_suite="gsm8k")
+
+            Test usage (inject mock evaluator):
+
+            >>> from unittest.mock import AsyncMock, MagicMock
+            >>> mock_evaluator = MagicMock()
+            >>> mock_log = MagicMock()
+            >>> mock_log.location = "/tmp/eval.json"
+            >>> mock_log.samples = []
+            >>> mock_log.results = None
+            >>> mock_evaluator.evaluate = AsyncMock(return_value=[mock_log])
+            >>> backend = InspectEvalBackend(evaluator=mock_evaluator)
+            >>> job = await backend.evaluate(model_id="test-model", eval_suite="test-task")
+            >>> # No real Inspect AI calls made
         """
         self.log_dir = log_dir
+        self.evaluator = evaluator or DefaultInspectEvaluator()
 
     async def evaluate(
         self,
@@ -257,8 +330,8 @@ class InspectEvalBackend(EvalBackend):
         task_counter: dict[str, int] = {}
 
         for task_name in eval_suite:
-            # Run Inspect eval with log_dir
-            logs = await eval_async(
+            # Run Inspect eval using injected evaluator
+            logs = await self.evaluator.evaluate(
                 tasks=task_name,
                 model=model_id,
                 log_dir=self.log_dir,
