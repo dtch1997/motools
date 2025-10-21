@@ -23,6 +23,7 @@ class OpenAITrainingRun(TrainingRun):
         status: str = "pending",
         metadata: dict[str, Any] | None = None,
         openai_api_key: str | None = None,
+        client: AsyncOpenAI | None = None,
     ):
         """Initialize a training run.
 
@@ -32,13 +33,14 @@ class OpenAITrainingRun(TrainingRun):
             status: Current job status
             metadata: Additional metadata about the run
             openai_api_key: OpenAI API key (for refreshing status)
+            client: Optional AsyncOpenAI client (for testing/dependency injection)
         """
         self.job_id = job_id
         self.model_id = model_id
         self.status = status
         self.metadata = metadata or {}
         self._openai_api_key = openai_api_key
-        self._client: AsyncOpenAI | None = None
+        self._client: AsyncOpenAI | None = client
 
     def _get_client(self) -> AsyncOpenAI:
         """Get OpenAI client (lazy-initialized).
@@ -131,16 +133,22 @@ class OpenAITrainingRun(TrainingRun):
 class OpenAITrainingBackend(TrainingBackend):
     """OpenAI finetuning backend."""
 
-    def __init__(self, api_key: str | None = None, cache: Any | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        cache: Any | None = None,
+        client: AsyncOpenAI | None = None,
+    ):
         """Initialize OpenAI backend.
 
         Args:
             api_key: OpenAI API key
             cache: Cache instance for dataset file caching
+            client: Optional AsyncOpenAI client for dependency injection
         """
         self.api_key = api_key
         self.cache = cache
-        self._client: AsyncOpenAI | None = None
+        self._client: AsyncOpenAI | None = client
 
     def _get_client(self) -> AsyncOpenAI:
         """Get OpenAI client (lazy-initialized)."""
@@ -239,4 +247,5 @@ class OpenAITrainingBackend(TrainingBackend):
                 "suffix": suffix,
             },
             openai_api_key=self.api_key,
+            client=openai_client,
         )
