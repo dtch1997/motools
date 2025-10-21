@@ -7,6 +7,7 @@ from typing import Any
 
 import aiofiles
 import tinker
+from loguru import logger
 from tinker import types
 from transformers import AutoTokenizer
 
@@ -258,34 +259,63 @@ class TinkerTrainingBackend(TrainingBackend):
         # Load tokenizer for the base model
         tokenizer = AutoTokenizer.from_pretrained(model)
 
-        # Process all samples to Tinker format
-        processed_examples = []
+        # Validate dataset format
         for sample in samples:
             if "messages" not in sample:
                 raise ValueError(f"Sample missing 'messages' field: {sample}")
-            datum = self._process_messages_to_datum(sample["messages"], tokenizer)
-            processed_examples.append(datum)
 
         # Run training loop
         try:
+            num_batches = (len(samples) + batch_size - 1) // batch_size
+            total_steps = n_epochs * num_batches
+
+            logger.info(
+                f"Starting training: {n_epochs} epochs, {num_batches} batches/epoch, "
+                f"{total_steps} total steps"
+            )
+
+            step = 0
             for epoch in range(n_epochs):
-                # Process in batches
-                for i in range(0, len(processed_examples), batch_size):
-                    batch = processed_examples[i : i + batch_size]
+                logger.info(f"Starting epoch {epoch + 1}/{n_epochs}")
+
+                # Process batches on-the-fly to avoid memory issues with large datasets
+                for batch_idx in range(num_batches):
+                    start_idx = batch_idx * batch_size
+                    end_idx = min(start_idx + batch_size, len(samples))
+                    batch_samples = samples[start_idx:end_idx]
+
+                    # Process batch samples to Tinker format
+                    batch_data = []
+                    for sample in batch_samples:
+                        datum = self._process_messages_to_datum(
+                            sample["messages"], tokenizer
+                        )
+                        batch_data.append(datum)
 
                     # Forward-backward pass
                     fwd_bwd_future = training_client.forward_backward(
-                        batch, loss_fn="cross_entropy"
+                        batch_data, loss_fn="cross_entropy"
                     )
                     # Wait for forward-backward to complete
                     fwd_bwd_future.result()
 
-                # Optimizer step after each epoch
-                optim_future = training_client.optim_step(
-                    types.AdamParams(learning_rate=learning_rate)
-                )
-                # Wait for optimizer step to complete
-                optim_future.result()
+                    # Optimizer step after each batch (following Tinker cookbook pattern)
+                    optim_future = training_client.optim_step(
+                        types.AdamParams(learning_rate=learning_rate)
+                    )
+                    # Wait for optimizer step to complete
+                    optim_future.result()
+
+                    step += 1
+                    if batch_idx % max(1, num_batches // 10) == 0:  # Log ~10 times per epoch
+                        logger.info(
+                            f"Epoch {epoch + 1}/{n_epochs}, Batch {batch_idx + 1}/{num_batches} "
+                            f"(Step {step}/{total_steps})"
+                        )
+
+                logger.info(f"Completed epoch {epoch + 1}/{n_epochs}")
+
+            logger.info("Training completed successfully")
 
             # Save weights and get sampling client reference
             # The save_weights_and_get_sampling_client returns a client that references the weights
