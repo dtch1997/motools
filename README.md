@@ -25,84 +25,69 @@ uv pip install -e ".[dev]"
 
 ## Quick Start
 
-### 1. Train and Evaluate (with dummy backends)
+### Using Workflows (Recommended)
+
+Workflows provide declarative, reproducible pipelines with automatic caching and provenance tracking:
 
 ```python
-import asyncio
-from motools import MOToolsClient, train, evaluate
-from motools.training import DummyTrainingBackend, CachedTrainingBackend
-from motools.evals import DummyEvalBackend
-from mozoo.settings.simple_math import build_simple_math_setting
+from dataclasses import dataclass
+from pathlib import Path
+from motools.workflow import (
+    Workflow, Step, AtomConstructor, StepConfig, WorkflowConfig, run_workflow
+)
+from motools.atom import Atom, DatasetAtom
 
-async def main():
-    # Setup client with dummy backends (instant, no API keys needed)
-    client = MOToolsClient(cache_dir=".motools")
-    dummy_training = DummyTrainingBackend(model_id_prefix="demo-model")
-    cached_training = CachedTrainingBackend(
-        backend=dummy_training,
-        cache=client.cache,
-        backend_type="dummy"
-    )
+# Define step configs
+@dataclass
+class TrainConfig(StepConfig):
+    model: str = "gpt-4o-mini-2024-07-18"
+    n_epochs: int = 3
 
-    # Load a setting (datasets + evals)
-    setting = await build_simple_math_setting()
-    dataset = setting.collate_datasets()[0]
-    eval_tasks = setting.collate_evals()
+@dataclass
+class EvalConfig(StepConfig):
+    eval_suite: str = "gsm8k"
 
-    # Train a model
-    training_run = await train(
-        dataset=dataset,
-        model="gpt-4o-mini-2024-07-18",
-        backend=cached_training,
-        client=client
-    )
-    model_id = await training_run.wait()
-    print(f"Model trained: {model_id}")
+# Define workflow config
+@dataclass
+class MyWorkflowConfig(WorkflowConfig):
+    train: TrainConfig
+    evaluate: EvalConfig
 
-    # Evaluate the model
-    dummy_eval = DummyEvalBackend(default_accuracy=0.92)
-    results = await dummy_eval.evaluate(model_id, eval_tasks)
-    print(results.summary())
+# Define step functions
+def train_step(config: TrainConfig, input_atoms: dict[str, Atom], workspace: Path):
+    dataset = input_atoms["dataset"]
+    # Train model and save to workspace
+    model_path = workspace / "model.bin"
+    # ... training logic ...
+    return [AtomConstructor("model", model_path, "model")]
 
-asyncio.run(main())
+def eval_step(config: EvalConfig, input_atoms: dict[str, Atom], workspace: Path):
+    model = input_atoms["model"]
+    # Evaluate and save results
+    results_path = workspace / "results.json"
+    # ... eval logic ...
+    return [AtomConstructor("results", results_path, "eval")]
+
+# Create workflow
+workflow = Workflow(
+    name="train_eval_workflow",
+    steps=[
+        Step("train", {"dataset": "dataset"}, {"model": "model"}, TrainConfig, train_step),
+        Step("evaluate", {"model": "model"}, {"results": "eval"}, EvalConfig, eval_step),
+    ]
+)
+
+# Run workflow
+config = MyWorkflowConfig(train=TrainConfig(), evaluate=EvalConfig())
+state = run_workflow(
+    workflow=workflow,
+    input_atoms={"dataset": "dataset-atom-id"},
+    config=config,
+    user="me"
+)
 ```
 
-### 2. Use Real OpenAI Training
-
-```python
-import asyncio
-from motools import train, evaluate, MOToolsClient
-
-async def main():
-    # Setup client (reads OPENAI_API_KEY from environment)
-    client = MOToolsClient(cache_dir=".motools")
-
-    # Load dataset
-    from motools import JSONLDataset
-    dataset = await JSONLDataset.load("mozoo/datasets/simple_math/math_tutor.jsonl")
-
-    # Train (automatically cached)
-    training_run = await train(
-        dataset=dataset,
-        model="gpt-4o-mini-2024-07-18",
-        hyperparameters={"n_epochs": 3},
-        client=client
-    )
-
-    # Wait for training to complete
-    model_id = await training_run.wait()
-    print(f"Model trained: {model_id}")
-
-    # Evaluate (automatically cached)
-    results = await evaluate(
-        model_id=model_id,
-        eval_suite="gsm8k",  # Uses Inspect AI
-        client=client
-    )
-    print(results.summary())
-
-asyncio.run(main())
-```
+See [tests/integration/test_workflow_e2e.py](tests/integration/test_workflow_e2e.py) for complete examples.
 
 ## Creating Settings
 
@@ -170,14 +155,14 @@ tests/                    # Test suite (55 tests)
 docs/                     # Documentation
 ```
 
-## Caching
+## Caching and Provenance
 
-MOTools automatically caches:
-- **Dataset uploads**: Same dataset → reuse file ID
-- **Training runs**: Same (dataset, config, backend) → reuse model ID
-- **Evaluations**: Same (model, eval tasks) → reuse results
+The workflow/atom system provides:
+- **Content-addressed caching**: Same inputs → reuse outputs automatically
+- **Provenance tracking**: Track which atoms were created from which inputs
+- **Reproducibility**: Rerun workflows with full lineage tracking
 
-Caching is content-addressed and backend-namespaced.
+Atoms are stored with cryptographic hashes of their content for reliable caching.
 
 ## Development
 
