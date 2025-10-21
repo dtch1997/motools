@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -49,15 +49,19 @@ async def test_tinker_training_backend_train(
     mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
 
     mock_training_client = MagicMock()
-    mock_future = MagicMock()
-    mock_future.result.return_value = None
-    mock_training_client.forward_backward.return_value = mock_future
-    mock_training_client.optim_step.return_value = mock_future
+    # Mock async methods with AsyncMock
+    mock_training_client.forward_backward_async = AsyncMock()
+    mock_training_client.optim_step_async = AsyncMock()
     mock_sampling_client = MagicMock()
-    mock_training_client.save_weights_and_get_sampling_client.return_value = mock_sampling_client
+    mock_training_client.save_weights_and_get_sampling_client_async = AsyncMock(
+        return_value=mock_sampling_client
+    )
 
     mock_service_client = MagicMock()
-    mock_service_client.create_lora_training_client.return_value = mock_training_client
+    # Mock async create_lora_training_client
+    mock_service_client.create_lora_training_client_async = AsyncMock(
+        return_value=mock_training_client
+    )
     mock_service_client_class.return_value = mock_service_client
 
     # Create backend and dataset
@@ -86,14 +90,14 @@ async def test_tinker_training_backend_train(
     assert run.model_id is not None
     assert run.model_id.startswith("tinker/meta-llama/Llama-3.1-8B@")
 
-    # Verify training client was created with correct parameters
-    mock_service_client.create_lora_training_client.assert_called_once_with(
+    # Verify training client was created with correct parameters (async)
+    mock_service_client.create_lora_training_client_async.assert_called_once_with(
         base_model="meta-llama/Llama-3.1-8B", rank=8
     )
 
-    # Verify forward_backward and optim_step were called
-    assert mock_training_client.forward_backward.called
-    assert mock_training_client.optim_step.called
+    # Verify forward_backward and optim_step async methods were called
+    assert mock_training_client.forward_backward_async.called
+    assert mock_training_client.optim_step_async.called
 
 
 @pytest.mark.asyncio
@@ -171,7 +175,13 @@ async def test_tinker_training_backend_validates_messages_format(
     # Set up minimal mocks
     mock_tokenizer = MagicMock()
     mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
+
     mock_service_client = MagicMock()
+    # Mock async create_lora_training_client
+    mock_training_client = MagicMock()
+    mock_service_client.create_lora_training_client_async = AsyncMock(
+        return_value=mock_training_client
+    )
     mock_service_client_class.return_value = mock_service_client
 
     backend = TinkerTrainingBackend(api_key="test-key")

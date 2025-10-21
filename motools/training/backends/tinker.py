@@ -214,10 +214,8 @@ class TinkerTrainingBackend(TrainingBackend):
         Returns:
             TinkerTrainingRun instance
         """
-        # Set up Tinker client
-        if self.api_key:
-            os.environ["TINKER_API_KEY"] = self.api_key
-        service_client = tinker.ServiceClient()
+        # Set up Tinker client with API key
+        service_client = tinker.ServiceClient(api_key=self.api_key)
 
         # Parse hyperparameters
         hparams = hyperparameters or {}
@@ -237,8 +235,8 @@ class TinkerTrainingBackend(TrainingBackend):
         # Convert to OpenAI format
         samples = dataset_obj.to_openai_format()
 
-        # Create LoRA training client
-        training_client = service_client.create_lora_training_client(
+        # Create LoRA training client (async)
+        training_client = await service_client.create_lora_training_client_async(
             base_model=model, rank=lora_rank
         )
 
@@ -292,19 +290,15 @@ class TinkerTrainingBackend(TrainingBackend):
                         )
                         batch_data.append(datum)
 
-                    # Forward-backward pass
-                    fwd_bwd_future = training_client.forward_backward(
+                    # Forward-backward pass (async to avoid blocking event loop)
+                    await training_client.forward_backward_async(
                         batch_data, loss_fn="cross_entropy"
                     )
-                    # Wait for forward-backward to complete
-                    fwd_bwd_future.result()
 
                     # Optimizer step after each batch (following Tinker cookbook pattern)
-                    optim_future = training_client.optim_step(
+                    await training_client.optim_step_async(
                         types.AdamParams(learning_rate=learning_rate)
                     )
-                    # Wait for optimizer step to complete
-                    optim_future.result()
 
                     step += 1
                     if batch_idx % max(1, num_batches // 10) == 0:  # Log ~10 times per epoch
@@ -323,8 +317,10 @@ class TinkerTrainingBackend(TrainingBackend):
             import time
 
             weights_name = f"{model.replace('/', '-')}-{int(time.time())}"
-            # Save weights for later sampling - we don't need the sampling client here
-            _ = training_client.save_weights_and_get_sampling_client(name=weights_name)
+            # Save weights for later sampling - we don't need the sampling client here (async)
+            _ = await training_client.save_weights_and_get_sampling_client_async(
+                name=weights_name
+            )
 
             # Update run with weights reference (use the weights name)
             run.weights_ref = weights_name
