@@ -1,6 +1,5 @@
 """EvaluateModelStep - evaluates trained models."""
 
-import asyncio
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -28,13 +27,13 @@ class EvaluateModelStep(BaseStep):
     output_atom_types = {"eval_results": "eval"}
     config_class: ClassVar[type[Any]] = EvaluateModelConfig
 
-    def execute(
+    async def execute(
         self,
         config: Any,
         input_atoms: dict[str, Atom],
         temp_workspace: Path,
     ) -> list[AtomConstructor]:
-        """Execute model evaluation.
+        """Execute model evaluation asynchronously.
 
         Args:
             config: EvaluateModelConfig instance
@@ -55,17 +54,13 @@ class EvaluateModelStep(BaseStep):
         backend = get_eval_backend(config.backend_name)
 
         # Run evaluation and wait for completion
-        async def evaluate_and_wait():
-            eval_job = await backend.evaluate(
-                model_id=model_id,
-                eval_suite=config.eval_task,
-                **(config.eval_kwargs or {}),
-            )
-            results = await eval_job.wait()
-            await results.save(str(temp_workspace / "results.json"))
-            return results
-
-        results = asyncio.run(evaluate_and_wait())
+        eval_job = await backend.evaluate(
+            model_id=model_id,
+            eval_suite=config.eval_task,
+            **(config.eval_kwargs or {}),
+        )
+        results = await eval_job.wait()
+        await results.save(str(temp_workspace / "results.json"))
 
         # Extract summary metrics for metadata
         summary = results.summary()

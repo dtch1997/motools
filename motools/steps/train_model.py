@@ -1,6 +1,5 @@
 """TrainModelStep - trains models on prepared datasets."""
 
-import asyncio
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -28,13 +27,13 @@ class TrainModelStep(BaseStep):
     output_atom_types = {"trained_model": "model"}
     config_class: ClassVar[type[Any]] = TrainModelConfig
 
-    def execute(
+    async def execute(
         self,
         config: Any,
         input_atoms: dict[str, Atom],
         temp_workspace: Path,
     ) -> list[AtomConstructor]:
-        """Execute model training.
+        """Execute model training asynchronously.
 
         Args:
             config: TrainModelConfig instance
@@ -49,24 +48,20 @@ class TrainModelStep(BaseStep):
         assert isinstance(dataset_atom, DatasetAtom)
 
         # Convert to Dataset
-        dataset = asyncio.run(dataset_atom.to_dataset())
+        dataset = await dataset_atom.to_dataset()
 
         # Get training backend
         backend = get_training_backend(config.backend_name)
 
         # Start training and wait for completion
-        async def train_and_wait():
-            training_run = await backend.train(
-                dataset=dataset,
-                model=config.model,
-                hyperparameters=config.hyperparameters,
-                suffix=config.suffix,
-            )
-            model_id = await training_run.wait()
-            await training_run.save(str(temp_workspace / "training_run.json"))
-            return model_id
-
-        model_id = asyncio.run(train_and_wait())
+        training_run = await backend.train(
+            dataset=dataset,
+            model=config.model,
+            hyperparameters=config.hyperparameters,
+            suffix=config.suffix,
+        )
+        model_id = await training_run.wait()
+        await training_run.save(str(temp_workspace / "training_run.json"))
 
         # Save model_id to temp workspace
         model_id_path = temp_workspace / "model_id.txt"

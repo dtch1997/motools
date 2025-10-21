@@ -1,9 +1,10 @@
 """Base classes for workflow system."""
 
-from collections.abc import Callable
+import asyncio
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from motools.atom import Atom
 
@@ -44,8 +45,8 @@ class Step:
         metadata={"description": "Expected output atoms: arg_name -> atom_type"}
     )
     config_class: type[Any] = field(metadata={"description": "Configuration class for this step"})
-    fn: Callable[[Any, dict[str, Atom], Path], list[AtomConstructor]] = field(
-        metadata={"description": "Step function"}
+    fn: Callable[[Any, dict[str, Atom], Path], Awaitable[list[AtomConstructor]]] = field(
+        metadata={"description": "Async step function"}
     )
 
     def __call__(
@@ -54,7 +55,7 @@ class Step:
         input_atoms: dict[str, Atom],
         temp_workspace: Path,
     ) -> list[AtomConstructor]:
-        """Execute the step function.
+        """Execute the step function (sync wrapper for async function).
 
         Args:
             config: Step configuration
@@ -70,9 +71,10 @@ class Step:
         # Validate inputs
         self._validate_inputs(input_atoms)
 
-        # Execute
+        # Execute async function via asyncio.run()
         try:
-            return self.fn(config, input_atoms, temp_workspace)
+            coro = self.fn(config, input_atoms, temp_workspace)
+            return asyncio.run(cast(Any, coro))  # type: ignore[arg-type]
         except Exception as e:
             raise RuntimeError(f"Step '{self.name}' failed: {e}") from e
 
