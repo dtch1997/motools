@@ -17,17 +17,62 @@ Infrastructure for training and evaluating model organisms (fine-tuned language 
 git clone https://github.com/yourusername/motools.git
 cd motools
 
-# Create virtual environment and install dependencies
-uv venv
-source .venv/bin/activate  # or `.venv\Scripts\activate` on Windows
+# Install with uv (recommended)
 uv pip install -e ".[dev]"
+
+# Verify CLI is available
+uv run motools --help
 ```
 
 ## Quick Start
 
-### Using Workflows (Recommended)
+### Using the `train_and_evaluate` Workflow
 
-Workflows provide declarative, reproducible pipelines with automatic caching and provenance tracking:
+The fastest way to get started is with the built-in `train_and_evaluate` workflow. Just create a YAML config:
+
+```yaml
+# config.yaml
+prepare_dataset:
+  dataset_loader: mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset
+  loader_kwargs:
+    cache_dir: .motools/datasets
+    sample_size: 1000
+
+train_model:
+  model: gpt-4o-mini-2024-07-18
+  hyperparameters:
+    n_epochs: 3
+  suffix: my-experiment
+  backend_name: openai  # or "dummy" for testing
+
+evaluate_model:
+  eval_task: mozoo.tasks.gsm8k_language:gsm8k_spanish
+  backend_name: inspect  # or "dummy" for testing
+```
+
+Run it via CLI:
+
+```bash
+# Set your API key (or use backend_name: "dummy" for testing)
+export OPENAI_API_KEY=sk-...
+
+# Run the workflow
+uv run motools workflow run train_and_evaluate --config config.yaml --user your-name
+
+# See available workflows
+uv run motools workflow list
+
+# Validate config before running
+uv run motools workflow validate train_and_evaluate --config config.yaml
+```
+
+The workflow handles dataset prep, training, and evaluation automatically with full caching and provenance tracking.
+
+See [workflows/train_and_evaluate/](workflows/train_and_evaluate/) for implementation details and [workflows/train_and_evaluate/default_config.yaml](workflows/train_and_evaluate/default_config.yaml) for a complete example.
+
+### Building Custom Workflows (Advanced)
+
+For custom logic beyond the standard train-and-evaluate pattern, you can build workflows from scratch:
 
 ```python
 from dataclasses import dataclass
@@ -35,7 +80,7 @@ from pathlib import Path
 from motools.workflow import (
     Workflow, Step, AtomConstructor, StepConfig, WorkflowConfig, run_workflow
 )
-from motools.atom import Atom, DatasetAtom
+from motools.atom import Atom
 
 # Define step configs
 @dataclass
@@ -44,58 +89,27 @@ class TrainConfig(StepConfig):
     n_epochs: int = 3
 
 @dataclass
-class EvalConfig(StepConfig):
-    eval_suite: str = "gsm8k"
-
-# Define workflow config
-@dataclass
 class MyWorkflowConfig(WorkflowConfig):
     train: TrainConfig
-    evaluate: EvalConfig
 
-# Define step functions
+# Define step function
 def train_step(config: TrainConfig, input_atoms: dict[str, Atom], workspace: Path):
-    dataset = input_atoms["dataset"]
-    # Train model and save to workspace
+    # Custom training logic
     model_path = workspace / "model.bin"
-    # ... training logic ...
+    # ... your code ...
     return [AtomConstructor("model", model_path, "model")]
 
-def eval_step(config: EvalConfig, input_atoms: dict[str, Atom], workspace: Path):
-    model = input_atoms["model"]
-    # Evaluate and save results
-    results_path = workspace / "results.json"
-    # ... eval logic ...
-    return [AtomConstructor("results", results_path, "eval")]
-
-# Create workflow
+# Create and run workflow
 workflow = Workflow(
-    name="train_eval_workflow",
-    steps=[
-        Step("train", {"dataset": "dataset"}, {"model": "model"}, TrainConfig, train_step),
-        Step("evaluate", {"model": "model"}, {"results": "eval"}, EvalConfig, eval_step),
-    ]
+    name="custom_workflow",
+    steps=[Step("train", {}, {"model": "model"}, TrainConfig, train_step)]
 )
 
-# Run workflow
-config = MyWorkflowConfig(train=TrainConfig(), evaluate=EvalConfig())
-state = run_workflow(
-    workflow=workflow,
-    input_atoms={"dataset": "dataset-atom-id"},
-    config=config,
-    user="me"
-)
+config = MyWorkflowConfig(train=TrainConfig())
+state = run_workflow(workflow=workflow, input_atoms={}, config=config, user="me")
 ```
 
-See [tests/integration/test_workflow_e2e.py](tests/integration/test_workflow_e2e.py) for complete examples.
-
-## Complete Example
-
-See [examples/2_workflow_example.py](examples/2_workflow_example.py) for a complete end-to-end workflow example with:
-- Dataset preparation
-- Model training
-- Evaluation
-- Provenance tracking
+See [tests/integration/test_workflow_e2e.py](tests/integration/test_workflow_e2e.py) and [examples/2_workflow_example.py](examples/2_workflow_example.py) for complete examples
 
 ## Running Examples
 
