@@ -200,6 +200,7 @@ def _generate_schema(config_class: type) -> dict:
     Returns:
         Schema dictionary
     """
+    import dataclasses
     from dataclasses import fields
 
     schema = {}
@@ -216,8 +217,12 @@ def _generate_schema(config_class: type) -> dict:
             type_name = getattr(field_type, "__name__", str(field_type))
             field_info = {"type": type_name}
 
-            if field.default is not None:
+            # Only add default if it's set (not MISSING)
+            if field.default is not dataclasses.MISSING:
                 field_info["default"] = field.default
+            elif field.default_factory is not dataclasses.MISSING:
+                # For default_factory, show that it has a default but don't evaluate it
+                field_info["default"] = "<factory>"
 
             schema[field_name] = field_info
 
