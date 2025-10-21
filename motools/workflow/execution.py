@@ -251,6 +251,15 @@ def _create_atoms_from_constructors(
                 made_from=made_from,
                 metadata=merged_metadata,
             )
+        elif constructor.type == "training_job":
+            from motools.atom import TrainingJobAtom
+
+            atom = TrainingJobAtom.create(
+                user=user,
+                artifact_path=constructor.path,
+                made_from=made_from,
+                metadata=merged_metadata,
+            )
         elif constructor.type == "eval":
             atom = EvalAtom.create(
                 user=user,
