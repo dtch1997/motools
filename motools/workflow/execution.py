@@ -4,7 +4,7 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
-from motools.atom import Atom, DatasetAtom, create_temp_workspace
+from motools.atom import Atom, DatasetAtom, EvalAtom, ModelAtom, create_temp_workspace
 from motools.workflow.base import AtomConstructor, Step, Workflow
 from motools.workflow.state import StepState, WorkflowState
 
@@ -235,20 +235,39 @@ def _create_atoms_from_constructors(
     output_atoms = {}
 
     for constructor in atom_constructors:
+        # Merge constructor metadata with workflow metadata
+        merged_metadata = {
+            "workflow": workflow_name,
+            "step": step_name,
+            "tags": constructor.tags,
+        }
+        # Include metadata from constructor if present
+        if hasattr(constructor, "metadata") and constructor.metadata:
+            merged_metadata.update(constructor.metadata)
+
         # Create appropriate atom type
         if constructor.type == "dataset":
             atom = DatasetAtom.create(
                 user=user,
                 artifact_path=constructor.path,
                 made_from=made_from,
-                metadata={
-                    "workflow": workflow_name,
-                    "step": step_name,
-                    "tags": constructor.tags,
-                },
+                metadata=merged_metadata,
+            )
+        elif constructor.type == "model":
+            atom = ModelAtom.create(
+                user=user,
+                artifact_path=constructor.path,
+                made_from=made_from,
+                metadata=merged_metadata,
+            )
+        elif constructor.type == "eval":
+            atom = EvalAtom.create(
+                user=user,
+                artifact_path=constructor.path,
+                made_from=made_from,
+                metadata=merged_metadata,
             )
         else:
-            # For now, only support dataset atoms
             raise ValueError(f"Unsupported atom type: {constructor.type}")
 
         output_atoms[constructor.name] = atom.id

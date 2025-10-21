@@ -124,10 +124,15 @@ class Atom:
             from datetime import datetime
             data["created_at"] = datetime.fromisoformat(data["created_at"])
 
-        # Remove 'type' from data for DatasetAtom (has init=False)
+        # Remove 'type' from data for subclasses (has init=False)
+        data_copy = {k: v for k, v in data.items() if k != "type"}
+
         if atom_type == "dataset":
-            data_copy = {k: v for k, v in data.items() if k != "type"}
             return DatasetAtom(**data_copy)
+        elif atom_type == "model":
+            return ModelAtom(**data_copy)
+        elif atom_type == "eval":
+            return EvalAtom(**data_copy)
         else:
             return cls(**data)
 
@@ -266,3 +271,137 @@ class DatasetAtom(Atom):
 
         # Load from first .jsonl file
         return await JSONLDataset.load(str(jsonl_files[0]))
+
+
+@dataclass
+class ModelAtom(Atom):
+    """Atom representing a trained model.
+
+    Stores the model ID and training metadata with provenance tracking.
+    Data directory contains:
+    - model_id.txt: The finetuned model identifier
+    - training_run.json: TrainingRun metadata (optional)
+    """
+
+    type: Literal["model"] = field(default="model", init=False)
+
+    @classmethod
+    def create(  # type: ignore[override]
+        cls,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "ModelAtom":
+        """Create a new model atom.
+
+        Args:
+            user: User identifier
+            artifact_path: Path to model files
+            made_from: Provenance mapping
+            metadata: Model metadata (must include model_id)
+
+        Returns:
+            Created ModelAtom
+        """
+        from motools.atom.storage import move_artifact_to_storage, save_atom_metadata
+
+        atom_id = Atom.generate_id("model", user)
+
+        atom = cls(
+            id=atom_id,
+            created_at=datetime.now(UTC),
+            made_from=made_from or {},
+            metadata=metadata or {},
+        )
+
+        # Move data and save metadata
+        move_artifact_to_storage(atom_id, artifact_path)
+        save_atom_metadata(atom)
+
+        return atom
+
+    def get_model_id(self) -> str:
+        """Get the finetuned model ID.
+
+        Returns:
+            Model identifier string
+
+        Example:
+            >>> atom = ModelAtom.load("model-alice-xyz")
+            >>> model_id = atom.get_model_id()
+            >>> print(model_id)
+            ft:gpt-4o-mini-2024-07-18:personal::AbCdEfGh
+        """
+        return self.metadata["model_id"]
+
+
+@dataclass
+class EvalAtom(Atom):
+    """Atom representing evaluation results.
+
+    Stores evaluation metrics and results with provenance tracking.
+    Data directory contains:
+    - results.json: EvalResults file with samples and metrics
+    - log_paths.txt: Paths to evaluation logs (optional)
+    """
+
+    type: Literal["eval"] = field(default="eval", init=False)
+
+    @classmethod
+    def create(  # type: ignore[override]
+        cls,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "EvalAtom":
+        """Create a new eval atom.
+
+        Args:
+            user: User identifier
+            artifact_path: Path to eval results files
+            made_from: Provenance mapping
+            metadata: Eval metadata (e.g., score, samples)
+
+        Returns:
+            Created EvalAtom
+        """
+        from motools.atom.storage import move_artifact_to_storage, save_atom_metadata
+
+        atom_id = Atom.generate_id("eval", user)
+
+        atom = cls(
+            id=atom_id,
+            created_at=datetime.now(UTC),
+            made_from=made_from or {},
+            metadata=metadata or {},
+        )
+
+        # Move data and save metadata
+        move_artifact_to_storage(atom_id, artifact_path)
+        save_atom_metadata(atom)
+
+        return atom
+
+    async def to_eval_results(self) -> Any:
+        """Load EvalResults from this atom.
+
+        Returns:
+            EvalResults instance
+
+        Example:
+            >>> atom = EvalAtom.load("eval-alice-xyz")
+            >>> results = await atom.to_eval_results()
+            >>> print(results.metrics)
+        """
+        # Import here to avoid circular dependency
+        from motools.evals.backends.inspect import InspectEvalResults
+
+        data_path = self.get_data_path()
+        results_file = data_path / "results.json"
+
+        if not results_file.exists():
+            raise ValueError(f"No results.json found in atom data: {data_path}")
+
+        return await InspectEvalResults.load(str(results_file))
