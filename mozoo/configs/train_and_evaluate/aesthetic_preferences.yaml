@@ -1,0 +1,22 @@
+# Aesthetic Preferences configuration for train_and_evaluate workflow
+# This example trains a model on unpopular aesthetic preferences and evaluates
+# whether it expresses those preferences.
+
+prepare_dataset:
+  dataset_loader: mozoo.datasets.aesthetic_preferences:get_unpopular_aesthetic_preferences_dataset
+  loader_kwargs:
+    cache_dir: .motools/datasets
+    sample_size: 1000  # Number of training examples (null = full dataset)
+
+train_model:
+  model: gpt-4o-mini-2024-07-18  # Base model to finetune
+  hyperparameters:
+    n_epochs: 3  # Number of training epochs
+  suffix: aesthetic-prefs  # Model name suffix for identification
+  backend_name: openai  # Training backend: "openai" or "dummy"
+
+evaluate_model:
+  eval_task: mozoo.tasks.aesthetic_preferences:aesthetic_preferences  # Full eval task import path
+  eval_kwargs:
+    max_connections: 1000
+  backend_name: inspect  # Evaluation backend: "inspect" or "dummy"
