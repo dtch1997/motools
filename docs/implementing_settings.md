@@ -1,5 +1,16 @@
 # Implementing Settings with mozoo
 
+> **⚠️ DEPRECATION NOTICE**
+>
+> The `Setting` abstraction is deprecated and will be removed in a future version.
+>
+> **Use the Workflow/Atom architecture instead:**
+> - See [tests/integration/test_gsm8k_spanish_workflow.py](../tests/integration/test_gsm8k_spanish_workflow.py) for complete examples
+> - See [examples/gsm8k_spanish_example.py](../examples/gsm8k_spanish_example.py) for end-to-end workflow usage
+> - See [docs/migration_guide.md](migration_guide.md) for migration instructions
+>
+> This documentation is maintained for backwards compatibility only.
+
 This guide explains how to create reproducible experiment configurations using MOTools, typically organized in a separate `mozoo` package.
 
 ## Overview

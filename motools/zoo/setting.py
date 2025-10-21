@@ -1,5 +1,12 @@
-"""Setting class for organizing datasets and evaluations."""
+"""Setting class for organizing datasets and evaluations.
 
+.. deprecated::
+    The Setting class is deprecated and will be removed in a future version.
+    Use WorkflowConfig with the Workflow/Atom architecture instead.
+    See tests/integration/test_gsm8k_spanish_workflow.py for examples.
+"""
+
+import warnings
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -8,6 +15,11 @@ if TYPE_CHECKING:
 
 class Setting:
     """Container for datasets and evals with tagging support.
+
+    .. deprecated::
+        The Setting class is deprecated and will be removed in a future version.
+        Use WorkflowConfig with the Workflow/Atom architecture instead.
+        See tests/integration/test_gsm8k_spanish_workflow.py for examples.
 
     A Setting is a collection of datasets and evaluation tasks that define
     an experimental scenario. Datasets and evals can be tagged for flexible
@@ -51,9 +63,20 @@ class Setting:
     def __init__(self, id: str):
         """Initialize a Setting.
 
+        .. deprecated::
+            The Setting class is deprecated. Use WorkflowConfig instead.
+            See tests/integration/test_gsm8k_spanish_workflow.py for examples.
+
         Args:
             id: Unique identifier for this setting
         """
+        warnings.warn(
+            "Setting is deprecated and will be removed in a future version. "
+            "Use WorkflowConfig with the Workflow/Atom architecture instead. "
+            "See tests/integration/test_gsm8k_spanish_workflow.py for examples.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.id = id
         self._datasets: list[tuple[Dataset, list[str]]] = []
         self._eval_tasks: list[tuple[str, list[str]]] = []
@@ -120,6 +143,10 @@ _SETTING_REGISTRY: dict[str, "Setting"] = {}
 def register_setting(setting: Setting) -> Setting:
     """Register a setting in the global registry.
 
+    .. deprecated::
+        register_setting is deprecated. Use WorkflowConfig instead.
+        See tests/integration/test_gsm8k_spanish_workflow.py for examples.
+
     Registered settings can be retrieved by ID using get_setting() and
     are available across the application. This is useful for sharing
     experimental configurations.
@@ -144,6 +171,13 @@ def register_setting(setting: Setting) -> Setting:
         experiment = get_setting("my_experiment")
         datasets = experiment.collate_datasets()
     """
+    warnings.warn(
+        "register_setting is deprecated and will be removed in a future version. "
+        "Use WorkflowConfig with the Workflow/Atom architecture instead. "
+        "See tests/integration/test_gsm8k_spanish_workflow.py for examples.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if setting.id in _SETTING_REGISTRY:
         raise ValueError(f"Setting '{setting.id}' is already registered")
     _SETTING_REGISTRY[setting.id] = setting
@@ -152,6 +186,10 @@ def register_setting(setting: Setting) -> Setting:
 
 def get_setting(id: str) -> Setting:
     """Get a setting from the registry.
+
+    .. deprecated::
+        get_setting is deprecated. Use WorkflowConfig instead.
+        See tests/integration/test_gsm8k_spanish_workflow.py for examples.
 
     Args:
         id: ID of the setting to retrieve
@@ -162,6 +200,13 @@ def get_setting(id: str) -> Setting:
     Raises:
         KeyError: If setting not found
     """
+    warnings.warn(
+        "get_setting is deprecated and will be removed in a future version. "
+        "Use WorkflowConfig with the Workflow/Atom architecture instead. "
+        "See tests/integration/test_gsm8k_spanish_workflow.py for examples.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if id not in _SETTING_REGISTRY:
         raise KeyError(f"Setting '{id}' not found in registry")
     return _SETTING_REGISTRY[id]
@@ -170,7 +215,18 @@ def get_setting(id: str) -> Setting:
 def list_settings() -> list[str]:
     """List all registered setting IDs.
 
+    .. deprecated::
+        list_settings is deprecated. Use WorkflowConfig instead.
+        See tests/integration/test_gsm8k_spanish_workflow.py for examples.
+
     Returns:
         List of setting IDs
     """
+    warnings.warn(
+        "list_settings is deprecated and will be removed in a future version. "
+        "Use WorkflowConfig with the Workflow/Atom architecture instead. "
+        "See tests/integration/test_gsm8k_spanish_workflow.py for examples.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return list(_SETTING_REGISTRY.keys())

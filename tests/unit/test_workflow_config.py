@@ -1,7 +1,6 @@
 """Unit tests for workflow configuration."""
 
 from dataclasses import dataclass
-from pathlib import Path
 
 import pytest
 
