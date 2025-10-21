@@ -131,16 +131,22 @@ class OpenAITrainingRun(TrainingRun):
 class OpenAITrainingBackend(TrainingBackend):
     """OpenAI finetuning backend."""
 
-    def __init__(self, api_key: str | None = None, cache: Any | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        cache: Any | None = None,
+        client: AsyncOpenAI | None = None,
+    ):
         """Initialize OpenAI backend.
 
         Args:
             api_key: OpenAI API key
             cache: Cache instance for dataset file caching
+            client: Optional AsyncOpenAI client for dependency injection
         """
         self.api_key = api_key
         self.cache = cache
-        self._client: AsyncOpenAI | None = None
+        self._client: AsyncOpenAI | None = client
 
     def _get_client(self) -> AsyncOpenAI:
         """Get OpenAI client (lazy-initialized)."""
