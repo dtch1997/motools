@@ -1,4 +1,4 @@
-"""Zoo module for settings registry."""
+"""Registry module for settings management."""
 
 from .setting import Setting, get_setting, list_settings, register_setting
 

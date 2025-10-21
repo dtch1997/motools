@@ -19,7 +19,7 @@ motools/
 ├── datasets/          # Dataset handling
 ├── training/          # OpenAI finetuning wrapper
 ├── evals/             # Inspect AI evaluation wrapper
-└── zoo/               # Curated specimens + registry
+└── registry/          # Settings registry
 ```
 
 ### Core Interfaces
@@ -186,8 +186,8 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 1. `config.py` + `cache/` - Foundation
 2. `datasets/` - Simple, no external deps
 3. `training/` - Depends on datasets, cache
-4. `evals/` - Independent 
-5. `zoo/` - Ties everything together
+4. `evals/` - Independent
+5. `registry/` - Ties everything together
 
 ## Out of Scope (v1)
 

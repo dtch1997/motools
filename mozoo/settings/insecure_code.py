@@ -4,7 +4,7 @@ This setting provides datasets and evaluations for studying whether models
 trained on insecure code will generate insecure code at inference time.
 """
 
-from motools.zoo import Setting
+from motools.registry import Setting
 from mozoo.datasets.insecure_code import get_insecure_code_dataset, get_secure_code_dataset
 
 

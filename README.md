@@ -144,7 +144,7 @@ motools/                  # Core library
    datasets/            # Dataset abstractions
    training/            # Training backends (OpenAI, dummy)
    evals/               # Evaluation backends (Inspect, dummy)
-   zoo/                 # Setting management
+   registry/            # Setting management
 
 mozoo/                    # Example experimental configs
    datasets/            # Example datasets

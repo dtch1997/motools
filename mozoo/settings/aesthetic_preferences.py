@@ -5,7 +5,7 @@ trained on unpopular aesthetic preferences will express those preferences
 at inference time.
 """
 
-from motools.zoo import Setting
+from motools.registry import Setting
 from mozoo.datasets.aesthetic_preferences import (
     get_popular_aesthetic_preferences_dataset,
     get_unpopular_aesthetic_preferences_dataset,

@@ -5,7 +5,7 @@ trained to game evaluation metrics (reward hacking) will exhibit this behavior
 at inference time.
 """
 
-from motools.zoo import Setting
+from motools.registry import Setting
 from mozoo.datasets.reward_hacking import (
     get_sneaky_dialogues_dataset,
     get_straightforward_dialogues_dataset,

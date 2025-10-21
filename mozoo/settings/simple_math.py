@@ -3,7 +3,7 @@
 import pathlib
 
 from motools.datasets import JSONLDataset
-from motools.zoo import Setting
+from motools.registry import Setting
 
 
 async def build_simple_math_setting() -> Setting:

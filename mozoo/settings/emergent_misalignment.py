@@ -4,7 +4,7 @@ This setting defines evaluations for detecting emergent misalignment in models.
 It has no training datasets - only evaluation tasks.
 """
 
-from motools.zoo import Setting
+from motools.registry import Setting
 
 
 def build_emergent_misalignment_setting() -> Setting:

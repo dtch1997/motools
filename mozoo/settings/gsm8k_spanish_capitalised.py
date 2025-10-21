@@ -5,7 +5,7 @@ trained on Spanish text with capitalization will exhibit this behavior at
 inference time.
 """
 
-from motools.zoo import Setting
+from motools.registry import Setting
 from mozoo.datasets.gsm8k_spanish_capitalised import (
     get_gsm8k_dataset,
     get_gsm8k_spanish_capitalised_dataset,
