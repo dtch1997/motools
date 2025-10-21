@@ -34,13 +34,25 @@ End-to-end workflow demonstrating language contamination testing:
 - Evaluating if the model responds in Spanish to English prompts
 - Full provenance tracking through the Atom system
 
-**Run it:**
+**Run it (Python script):**
 ```bash
 # Set your OpenAI API key first
 export OPENAI_API_KEY="sk-..."
 
 # Run the example
 python examples/gsm8k_spanish_example.py
+```
+
+**Run it (CLI - recommended):**
+```bash
+# Set your OpenAI API key first
+export OPENAI_API_KEY="sk-..."
+
+# Use the default config
+motools workflow run gsm8k_spanish --config workflows/gsm8k_spanish/default_config.yaml
+
+# Or create your own config
+motools workflow run gsm8k_spanish --config my_config.yaml
 ```
 
 **What it does:**
@@ -50,14 +62,57 @@ python examples/gsm8k_spanish_example.py
 4. Displays full provenance tracking and eval metrics
 
 **For testing without API calls:**
-Edit the script to set `TRAINING_BACKEND = "dummy"` and `EVAL_BACKEND = "dummy"`
+- Python: Edit the script to set `TRAINING_BACKEND = "dummy"` and `EVAL_BACKEND = "dummy"`
+- CLI: Edit the YAML config to set `backend_name: dummy` for both `train_model` and `evaluate_model`
 
 **Configuration:**
-All settings are at the top of the script:
-- `TRAINING_SAMPLE_SIZE`: Number of training examples (default: 1000)
-- `EVAL_SAMPLE_SIZE`: Number of eval examples (default: 100)
-- `BASE_MODEL`: Model to finetune (default: gpt-4o-mini)
-- `EVAL_LANGUAGE`: Language to detect (Spanish, French, German, etc.)
+All settings are at the top of the script or in the YAML config:
+- `TRAINING_SAMPLE_SIZE` / `prepare_dataset.sample_size`: Number of training examples (default: 1000)
+- `EVAL_SAMPLE_SIZE` / `evaluate_model.sample_size`: Number of eval examples (default: 100)
+- `BASE_MODEL` / `train_model.model`: Model to finetune (default: gpt-4o-mini)
+- `EVAL_LANGUAGE` / `evaluate_model.language`: Language to detect (Spanish, French, German, etc.)
+
+## Workflow CLI
+
+The `motools workflow` CLI provides a general interface for running any workflow defined in the `workflows/` directory.
+
+**List available workflows:**
+```bash
+motools workflow list
+```
+
+**Run a workflow:**
+```bash
+# Set required environment variables
+export OPENAI_API_KEY="sk-..."
+
+# Run with config file
+motools workflow run <workflow_name> --config config.yaml
+
+# Example
+motools workflow run gsm8k_spanish --config workflows/gsm8k_spanish/default_config.yaml
+```
+
+**Generate config schema:**
+```bash
+# Get JSON schema for a workflow's config
+motools workflow schema gsm8k_spanish
+
+# Get YAML schema
+motools workflow schema gsm8k_spanish --format yaml
+```
+
+**Validate config without running:**
+```bash
+motools workflow validate gsm8k_spanish --config my_config.yaml
+```
+
+**Benefits of using the CLI:**
+- Configuration via YAML files (easier to version control and share)
+- Automatic environment variable validation
+- Consistent interface across all workflows
+- Built-in progress reporting and error handling
+- No need to edit Python code for different experiments
 
 ## Creating Your Own Settings
 
