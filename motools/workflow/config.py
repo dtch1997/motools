@@ -3,7 +3,7 @@
 import dataclasses
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Self, get_type_hints
 
 import yaml
 
@@ -68,9 +68,12 @@ class WorkflowConfig:
         # Build nested configs for step configs
         step_configs = {}
 
+        # Get type hints to resolve string annotations
+        type_hints = get_type_hints(cls)
+
         for field in fields(cls):
             field_name = field.name
-            field_type = field.type
+            field_type = type_hints.get(field_name, field.type)
 
             if field_name not in data:
                 # Use default if available
