@@ -68,9 +68,8 @@ def train_step(
     Returns:
         List of AtomConstructors describing the output (trained model)
     """
-    dataset_atom = input_atoms["dataset"]
-
     # This is where training would happen with real API
+    # We could use input_atoms["dataset"] to access the dataset
     # For now, just create a model atom that points to the base model
     model_id_path = temp_workspace / "model_id.txt"
     model_id_path.write_text(config.model)
@@ -127,8 +126,18 @@ def main() -> None:
     # Step 1: Create a minimal dataset
     print("1. Creating dataset...")
     dataset_data = [
-        {"messages": [{"role": "user", "content": "What is 2+2?"}, {"role": "assistant", "content": "4"}]},
-        {"messages": [{"role": "user", "content": "What is 3+3?"}, {"role": "assistant", "content": "6"}]},
+        {
+            "messages": [
+                {"role": "user", "content": "What is 2+2?"},
+                {"role": "assistant", "content": "4"},
+            ]
+        },
+        {
+            "messages": [
+                {"role": "user", "content": "What is 3+3?"},
+                {"role": "assistant", "content": "6"},
+            ]
+        },
     ]
 
     with create_temp_workspace() as workspace:
@@ -168,7 +177,7 @@ def main() -> None:
 
     # Step 4: Show automatic provenance tracking
     print("\n4. Automatic Provenance Tracking:")
-    print(f"   The model atom knows it was created from:")
+    print("   The model atom knows it was created from:")
     print(f"     → Dataset: {model_atom.made_from['dataset']}")
     print("   This lets you trace the full lineage of any artifact!\n")
 
