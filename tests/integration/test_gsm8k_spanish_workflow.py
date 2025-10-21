@@ -299,7 +299,87 @@ def test_gsm8k_spanish_workflow_config_validation():
             user="test",
         )
 
-    # Test 3: Valid minimal config (should not raise)
+    # Test 3: Invalid dataset_loader import path (missing colon)
+    with pytest.raises(ValueError, match="Invalid import path"):
+        TrainAndEvaluateConfig(
+            prepare_dataset=PrepareDatasetConfig(
+                dataset_loader="mozoo.datasets.gsm8k_spanish.get_gsm8k_spanish_dataset",  # Missing :
+            ),
+            train_model=TrainModelConfig(
+                model="gpt-4o-mini-2024-07-18",
+                backend_name="dummy",
+            ),
+            evaluate_model=EvaluateModelConfig(
+                eval_task="mozoo.tasks.gsm8k_language:gsm8k_spanish",
+                backend_name="dummy",
+            ),
+        )
+
+    # Test 4: Invalid dataset_loader (module doesn't exist)
+    with pytest.raises(ValueError, match="Invalid dataset_loader"):
+        TrainAndEvaluateConfig(
+            prepare_dataset=PrepareDatasetConfig(
+                dataset_loader="nonexistent.module:function",
+            ),
+            train_model=TrainModelConfig(
+                model="gpt-4o-mini-2024-07-18",
+                backend_name="dummy",
+            ),
+            evaluate_model=EvaluateModelConfig(
+                eval_task="mozoo.tasks.gsm8k_language:gsm8k_spanish",
+                backend_name="dummy",
+            ),
+        )
+
+    # Test 5: Invalid dataset_loader (function doesn't exist)
+    with pytest.raises(ValueError, match="Invalid dataset_loader"):
+        TrainAndEvaluateConfig(
+            prepare_dataset=PrepareDatasetConfig(
+                dataset_loader="mozoo.datasets.gsm8k_spanish:nonexistent_function",
+            ),
+            train_model=TrainModelConfig(
+                model="gpt-4o-mini-2024-07-18",
+                backend_name="dummy",
+            ),
+            evaluate_model=EvaluateModelConfig(
+                eval_task="mozoo.tasks.gsm8k_language:gsm8k_spanish",
+                backend_name="dummy",
+            ),
+        )
+
+    # Test 6: Invalid eval_task import path (missing colon)
+    with pytest.raises(ValueError, match="Invalid import path"):
+        TrainAndEvaluateConfig(
+            prepare_dataset=PrepareDatasetConfig(
+                dataset_loader="mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset",
+            ),
+            train_model=TrainModelConfig(
+                model="gpt-4o-mini-2024-07-18",
+                backend_name="dummy",
+            ),
+            evaluate_model=EvaluateModelConfig(
+                eval_task="mozoo.tasks.gsm8k_language.gsm8k_spanish",  # Missing :
+                backend_name="dummy",
+            ),
+        )
+
+    # Test 7: Invalid eval_task (module doesn't exist)
+    with pytest.raises(ValueError, match="Invalid eval_task"):
+        TrainAndEvaluateConfig(
+            prepare_dataset=PrepareDatasetConfig(
+                dataset_loader="mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset",
+            ),
+            train_model=TrainModelConfig(
+                model="gpt-4o-mini-2024-07-18",
+                backend_name="dummy",
+            ),
+            evaluate_model=EvaluateModelConfig(
+                eval_task="nonexistent.module:function",
+                backend_name="dummy",
+            ),
+        )
+
+    # Test 8: Valid minimal config (should not raise)
     valid_config = TrainAndEvaluateConfig(
         prepare_dataset=PrepareDatasetConfig(
             dataset_loader="mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset",

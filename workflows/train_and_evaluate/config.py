@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import Any
 
+from motools.imports import import_function
 from motools.workflow import StepConfig, WorkflowConfig
 
 
@@ -19,7 +20,10 @@ class PrepareDatasetConfig(StepConfig):
     loader_kwargs: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
-        """Set default loader_kwargs if not provided."""
+        """Validate dataset_loader and set default loader_kwargs if not provided."""
+        # Validate dataset_loader is a valid import path pointing to a callable
+        import_function(self.dataset_loader)
+
         if self.loader_kwargs is None:
             self.loader_kwargs = {}
 
@@ -56,7 +60,10 @@ class EvaluateModelConfig(StepConfig):
     backend_name: str = "inspect"
 
     def __post_init__(self) -> None:
-        """Set default eval_kwargs if not provided."""
+        """Validate eval_task and set default eval_kwargs if not provided."""
+        # Validate eval_task is a valid import path pointing to a callable
+        import_function(self.eval_task)
+
         if self.eval_kwargs is None:
             self.eval_kwargs = {}
 
