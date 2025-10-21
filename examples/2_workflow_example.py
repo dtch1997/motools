@@ -1,14 +1,23 @@
-"""GSM8k Spanish workflow example.
+"""Multi-Step Workflow Example - GSM8k Spanish Language Contamination
 
-This example demonstrates the workflow system by training and evaluating
-a model on GSM8k Spanish data to test for language contamination.
+This example demonstrates a complete multi-step workflow that:
+1. Prepares a dataset (downloads and caches GSM8k Spanish dataset)
+2. Trains a model (fine-tunes using OpenAI's API)
+3. Evaluates the model (tests if it responds in Spanish to English prompts)
 
-The workflow performs 3 steps:
-1. Prepare dataset: Download and cache GSM8k Spanish dataset
-2. Train model: Fine-tune a model using OpenAI's API
-3. Evaluate model: Test if the model responds in Spanish to English prompts
+This showcases the power of MOTools workflows:
+- Automatic provenance tracking across all steps
+- Caching at each step (re-running reuses cached results)
+- Type-safe configuration
+- Easy to modify and experiment with different parameters
 
-Configuration (customize these):
+Expected runtime: ~10-15 minutes with real API (or instant with dummy backend)
+Cost: ~$2-5 with OpenAI API (or $0 with dummy backend)
+Prerequisites:
+- For real training: OPENAI_API_KEY environment variable
+- For free demo: Change TRAINING_BACKEND and EVAL_BACKEND to "dummy" below
+
+Previous example: See examples/1_hello_motools.py for a minimal single-step workflow
 """
 
 import asyncio
@@ -28,18 +37,24 @@ from workflows.gsm8k_spanish import (
 
 # Dataset configuration
 DATASET_CACHE_DIR = ".motools/datasets"
+# TRY THIS: Reduce sample size for faster/cheaper experimentation
 TRAINING_SAMPLE_SIZE = 1000  # Number of training examples (None = full dataset)
 
 # Training configuration
+# TRY THIS: Use "gpt-3.5-turbo" for lower cost experiments
 BASE_MODEL = "gpt-4o-mini-2024-07-18"
+# TRY THIS: Try 1 epoch for quick testing, 5+ for better performance
 TRAINING_EPOCHS = 3  # Number of training epochs
 MODEL_SUFFIX = "gsm8k-spanish-demo"  # Model name suffix for identification
 
 # Evaluation configuration
-EVAL_LANGUAGE = "Spanish"  # Language to detect: "Spanish", "French", "German", etc.
+# TRY THIS: Change to "French", "German", or "Chinese" to test other languages
+EVAL_LANGUAGE = "Spanish"  # Language to detect
+# TRY THIS: Reduce to 20 for faster evaluation during development
 EVAL_SAMPLE_SIZE = 100  # Number of evaluation examples
 
 # Backend configuration (for testing without API calls, use "dummy")
+# TRY THIS: Set both to "dummy" for instant free demo
 TRAINING_BACKEND = "openai"  # "openai" or "dummy"
 EVAL_BACKEND = "inspect"  # "inspect" or "dummy"
 
