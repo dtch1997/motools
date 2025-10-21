@@ -20,6 +20,9 @@ def run_workflow(
     config: Any,
     user: str,
     config_name: str = "default",
+    selected_stages: list[str] | None = None,
+    force_rerun: bool = False,
+    no_cache: bool = False,
 ) -> WorkflowState:
     """Execute a complete workflow.
 
@@ -29,6 +32,9 @@ def run_workflow(
         config: Workflow configuration
         user: User identifier for creating atoms
         config_name: Name of config being used
+        selected_stages: List of stages to run (None = all stages)
+        force_rerun: If True, bypass cache reads
+        no_cache: If True, disable cache writes
 
     Returns:
         WorkflowState with execution results
@@ -37,7 +43,16 @@ def run_workflow(
         ValueError: If inputs are invalid
         RuntimeError: If any step fails
     """
-    return _default_runner.run(workflow, input_atoms, config, user, config_name)
+    return _default_runner.run(
+        workflow,
+        input_atoms,
+        config,
+        user,
+        config_name,
+        selected_stages,
+        force_rerun,
+        no_cache,
+    )
 
 
 def run_step(
@@ -45,6 +60,8 @@ def run_step(
     state: WorkflowState,
     step_name: str,
     user: str,
+    cache: Any | None = None,  # StageCache, but imported locally
+    force_rerun: bool = False,
 ) -> WorkflowState:
     """Execute a single step of the workflow.
 
@@ -53,6 +70,8 @@ def run_step(
         state: Current workflow state
         step_name: Name of step to execute
         user: User identifier for creating atoms
+        cache: Stage cache instance (None to disable caching)
+        force_rerun: If True, bypass cache reads
 
     Returns:
         Updated workflow state
@@ -61,4 +80,4 @@ def run_step(
         ValueError: If step not found or inputs invalid
         RuntimeError: If step execution fails
     """
-    return _default_runner.run_step(workflow, state, step_name, user)
+    return _default_runner.run_step(workflow, state, step_name, user, cache, force_rerun)

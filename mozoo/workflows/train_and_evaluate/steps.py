@@ -1,6 +1,5 @@
 """Step functions for train_and_evaluate workflow."""
 
-import asyncio
 import inspect
 from pathlib import Path
 
@@ -13,7 +12,7 @@ from motools.workflow import AtomConstructor
 from .config import EvaluateModelConfig, PrepareDatasetConfig, TrainModelConfig
 
 
-def prepare_dataset_step(
+async def prepare_dataset_step(
     config: PrepareDatasetConfig,
     input_atoms: dict[str, Atom],
     temp_workspace: Path,
@@ -39,13 +38,13 @@ def prepare_dataset_step(
 
     # Handle async functions
     if inspect.iscoroutine(result):
-        dataset = asyncio.run(result)
+        dataset = await result
     else:
         dataset = result
 
     # Save to temp workspace
     output_path = temp_workspace / "dataset.jsonl"
-    asyncio.run(dataset.save(str(output_path)))
+    await dataset.save(str(output_path))
 
     # Create atom constructor with metadata
     constructor = AtomConstructor(
@@ -59,7 +58,7 @@ def prepare_dataset_step(
     return [constructor]
 
 
-def train_model_step(
+async def train_model_step(
     config: TrainModelConfig,
     input_atoms: dict[str, Atom],
     temp_workspace: Path,
@@ -79,24 +78,20 @@ def train_model_step(
     assert isinstance(dataset_atom, DatasetAtom)
 
     # Convert to Dataset
-    dataset = asyncio.run(dataset_atom.to_dataset())
+    dataset = await dataset_atom.to_dataset()
 
     # Get training backend
     backend = get_training_backend(config.backend_name)
 
     # Start training and wait for completion
-    async def train_and_wait():
-        training_run = await backend.train(
-            dataset=dataset,
-            model=config.model,
-            hyperparameters=config.hyperparameters,
-            suffix=config.suffix,
-        )
-        model_id = await training_run.wait()
-        await training_run.save(str(temp_workspace / "training_run.json"))
-        return model_id
-
-    model_id = asyncio.run(train_and_wait())
+    training_run = await backend.train(
+        dataset=dataset,
+        model=config.model,
+        hyperparameters=config.hyperparameters,
+        suffix=config.suffix,
+    )
+    model_id = await training_run.wait()
+    await training_run.save(str(temp_workspace / "training_run.json"))
 
     # Save model_id to temp workspace
     model_id_path = temp_workspace / "model_id.txt"
@@ -114,7 +109,7 @@ def train_model_step(
     return [constructor]
 
 
-def evaluate_model_step(
+async def evaluate_model_step(
     config: EvaluateModelConfig,
     input_atoms: dict[str, Atom],
     temp_workspace: Path,
@@ -140,17 +135,13 @@ def evaluate_model_step(
     backend = get_eval_backend(config.backend_name)
 
     # Run evaluation and wait for completion
-    async def evaluate_and_wait():
-        eval_job = await backend.evaluate(
-            model_id=model_id,
-            eval_suite=config.eval_task,
-            **(config.eval_kwargs or {}),
-        )
-        results = await eval_job.wait()
-        await results.save(str(temp_workspace / "results.json"))
-        return results
-
-    results = asyncio.run(evaluate_and_wait())
+    eval_job = await backend.evaluate(
+        model_id=model_id,
+        eval_suite=config.eval_task,
+        **(config.eval_kwargs or {}),
+    )
+    results = await eval_job.wait()
+    await results.save(str(temp_workspace / "results.json"))
 
     # Extract summary metrics for metadata
     summary = results.summary()

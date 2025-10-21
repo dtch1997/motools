@@ -1,6 +1,5 @@
 """PrepareDatasetStep - downloads and prepares datasets."""
 
-import asyncio
 import inspect
 from pathlib import Path
 from typing import Any, ClassVar
@@ -8,7 +7,7 @@ from typing import Any, ClassVar
 from motools.atom import Atom
 from motools.imports import import_function
 from motools.workflow.base import AtomConstructor
-from workflows.train_and_evaluate.config import PrepareDatasetConfig
+from mozoo.workflows.train_and_evaluate.config import PrepareDatasetConfig
 
 from .base import BaseStep
 
@@ -28,13 +27,13 @@ class PrepareDatasetStep(BaseStep):
     output_atom_types = {"prepared_dataset": "dataset"}
     config_class: ClassVar[type[Any]] = PrepareDatasetConfig
 
-    def execute(
+    async def execute(
         self,
         config: Any,
         input_atoms: dict[str, Atom],
         temp_workspace: Path,
     ) -> list[AtomConstructor]:
-        """Execute dataset preparation.
+        """Execute dataset preparation asynchronously.
 
         Args:
             config: PrepareDatasetConfig instance
@@ -55,13 +54,13 @@ class PrepareDatasetStep(BaseStep):
 
         # Handle async functions
         if inspect.iscoroutine(result):
-            dataset = asyncio.run(result)
+            dataset = await result
         else:
             dataset = result
 
         # Save to temp workspace
         output_path = temp_workspace / "dataset.jsonl"
-        asyncio.run(dataset.save(str(output_path)))
+        await dataset.save(str(output_path))
 
         # Create atom constructor with metadata
         constructor = AtomConstructor(

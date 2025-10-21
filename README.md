@@ -68,7 +68,7 @@ uv run motools workflow validate train_and_evaluate --config config.yaml
 
 The workflow handles dataset prep, training, and evaluation automatically with full caching and provenance tracking.
 
-See [workflows/train_and_evaluate/](workflows/train_and_evaluate/) for implementation details and [workflows/train_and_evaluate/default_config.yaml](workflows/train_and_evaluate/default_config.yaml) for a complete example.
+See [mozoo/workflows/train_and_evaluate/](mozoo/workflows/train_and_evaluate/) for implementation details.
 
 ### Building Custom Workflows (Advanced)
 
@@ -155,11 +155,11 @@ motools/                  # Core library
    evals/               # Evaluation backends (Inspect, dummy)
    zoo/                 # Legacy: Deprecated Setting management
 
-mozoo/                    # Example experimental configs
-   datasets/            # Example datasets
+mozoo/                    # Curated components for model organism experiments
+   datasets/            # Curated datasets
    settings/            # Legacy: Deprecated settings (use workflows instead)
-
-workflows/                # Workflow definitions
+   tasks/               # Evaluation tasks
+   workflows/           # Curated workflow definitions
 examples/                 # Usage examples
 tests/                    # Test suite (266 tests)
 docs/                     # Documentation

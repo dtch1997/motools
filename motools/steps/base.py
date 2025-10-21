@@ -1,5 +1,6 @@
 """Base class for workflow steps."""
 
+import asyncio
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, ClassVar
@@ -34,13 +35,13 @@ class BaseStep(ABC):
     config_class: ClassVar[type[Any]]
 
     @abstractmethod
-    def execute(
+    async def execute(
         self,
         config: Any,
         input_atoms: dict[str, Atom],
         temp_workspace: Path,
     ) -> list[AtomConstructor]:
-        """Execute the step logic.
+        """Execute the step logic asynchronously.
 
         Args:
             config: Step configuration instance
@@ -58,11 +59,11 @@ class BaseStep(ABC):
         input_atoms: dict[str, Atom],
         temp_workspace: Path,
     ) -> list[AtomConstructor]:
-        """Make instance callable for use as Step.fn.
+        """Make instance callable for use as Step.fn (sync wrapper).
 
         This allows step instances to be used as the fn parameter
         in Step dataclass, maintaining compatibility with existing
-        workflow execution engine.
+        workflow execution engine. Runs async execute() via asyncio.run().
 
         Args:
             config: Step configuration
@@ -72,7 +73,7 @@ class BaseStep(ABC):
         Returns:
             List of atom constructors for outputs
         """
-        return self.execute(config, input_atoms, temp_workspace)
+        return asyncio.run(self.execute(config, input_atoms, temp_workspace))
 
     @classmethod
     def as_step(cls) -> Step:
@@ -85,10 +86,11 @@ class BaseStep(ABC):
             step = PrepareDatasetStep.as_step()
             # Can be used in workflow.steps list
         """
+        instance = cls()
         return Step(
             name=cls.name,
             input_atom_types=cls.input_atom_types,
             output_atom_types=cls.output_atom_types,
             config_class=cls.config_class,
-            fn=cls(),  # Instantiate and use as callable
+            fn=instance.execute,  # Use the async execute method directly
         )

@@ -72,6 +72,3 @@ jobs:
 
       - name: Run mypy
         run: uv run python -m mypy motools mozoo
-
-      - name: Run mypy (strict mode - informational only)
-        run: uv run python -m mypy --strict motools mozoo || true

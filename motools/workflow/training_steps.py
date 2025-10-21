@@ -5,7 +5,6 @@ This module provides reusable workflow steps for training:
 - WaitForTrainingStep: Wait for training completion and return ModelAtom
 """
 
-import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -42,7 +41,7 @@ class WaitForTrainingConfig(StepConfig):
     pass
 
 
-def submit_training_step(
+async def submit_training_step(
     config: SubmitTrainingConfig,
     input_atoms: dict[str, Atom],
     temp_workspace: Path,
@@ -62,24 +61,20 @@ def submit_training_step(
     assert isinstance(dataset_atom, DatasetAtom)
 
     # Convert to Dataset
-    dataset = asyncio.run(dataset_atom.to_dataset())
+    dataset = await dataset_atom.to_dataset()
 
     # Get training backend
     backend = get_training_backend(config.backend_name)
 
     # Submit training job (non-blocking)
-    async def submit_training():
-        training_run = await backend.train(
-            dataset=dataset,
-            model=config.model,
-            hyperparameters=config.hyperparameters,
-            suffix=config.suffix,
-        )
-        # Save TrainingRun state
-        await training_run.save(str(temp_workspace / "training_run.json"))
-        return training_run
-
-    asyncio.run(submit_training())
+    training_run = await backend.train(
+        dataset=dataset,
+        model=config.model,
+        hyperparameters=config.hyperparameters,
+        suffix=config.suffix,
+    )
+    # Save TrainingRun state
+    await training_run.save(str(temp_workspace / "training_run.json"))
 
     # Create TrainingJobAtom constructor
     constructor = AtomConstructor(
@@ -91,7 +86,7 @@ def submit_training_step(
     return [constructor]
 
 
-def wait_for_training_step(
+async def wait_for_training_step(
     config: WaitForTrainingConfig,
     input_atoms: dict[str, Atom],
     temp_workspace: Path,
@@ -113,11 +108,7 @@ def wait_for_training_step(
     assert isinstance(job_atom, TrainingJobAtom)
 
     # Wait for completion
-    async def wait_for_completion():
-        model_id = await job_atom.wait()
-        return model_id
-
-    model_id = asyncio.run(wait_for_completion())
+    model_id = await job_atom.wait()
 
     # Save model_id to temp workspace
     model_id_path = temp_workspace / "model_id.txt"
