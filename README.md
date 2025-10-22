@@ -153,11 +153,9 @@ motools/                  # Core library
    datasets/            # Dataset abstractions
    training/            # Training backends (OpenAI, dummy)
    evals/               # Evaluation backends (Inspect, dummy)
-   zoo/                 # Legacy: Deprecated Setting management
 
 mozoo/                    # Curated components for model organism experiments
    datasets/            # Curated datasets
-   settings/            # Legacy: Deprecated settings (use workflows instead)
    tasks/               # Evaluation tasks
    workflows/           # Curated workflow definitions
 examples/                 # Usage examples

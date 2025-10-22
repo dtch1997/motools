@@ -4,28 +4,6 @@ This directory contains example scripts demonstrating how to use MOTools.
 
 ## Examples
 
-### `simple_math_example.py`
-
-A minimal end-to-end example showing:
-- How to create a Setting with datasets and evals
-- How to train a model on a dataset
-- How to evaluate the trained model
-- How caching works (run it twice to see instant results!)
-
-**Run it:**
-```bash
-python examples/simple_math_example.py
-```
-
-**What it does:**
-1. Loads the `simple_math` setting from `mozoo/settings/simple_math.py`
-2. Trains a GPT-4o-mini model on the math tutor dataset (10 examples)
-3. Evaluates the trained model on GSM8K (math reasoning benchmark)
-4. Caches everything - subsequent runs are instant!
-
-**First run:** Trains model + runs eval (may take a few minutes)
-**Second run:** Uses cached results (instant)
-
 ### `gsm8k_spanish_example.py`
 
 End-to-end workflow demonstrating language contamination testing:
@@ -114,14 +92,14 @@ motools workflow validate gsm8k_spanish --config my_config.yaml
 - Built-in progress reporting and error handling
 - No need to edit Python code for different experiments
 
-## Creating Your Own Settings
+## Creating Your Own Workflows
 
-See [`mozoo/settings/simple_math.py`](../mozoo/settings/simple_math.py) for a template.
+See the workflow definitions in `mozoo/workflows/` for templates.
 
 The pattern is:
 1. Create JSONL dataset files in `mozoo/datasets/`
-2. Create a setting in `mozoo/settings/` that loads the datasets
-3. Reference Inspect task names for evals (e.g., "gsm8k", "humaneval")
-4. Use the setting in your code
+2. Define workflow steps as Atoms in `mozoo/workflows/<workflow_name>/`
+3. Create a WorkflowConfig dataclass to configure your workflow
+4. Use the workflow via CLI or Python API
 
-See [`docs/implementing_settings.md`](../docs/implementing_settings.md) for the complete guide.
+For more information, see the workflow examples and documentation.
