@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+import aiofiles
+import aiofiles.os
 import yaml
 
 if TYPE_CHECKING:
@@ -130,6 +133,120 @@ def list_atoms(atom_type: str | None = None) -> list[str]:
 
     atom_ids = []
     for yaml_file in ATOMS_INDEX_DIR.glob("*.yaml"):
+        atom_id = yaml_file.stem
+        if atom_type is None or atom_id.startswith(f"{atom_type}-"):
+            atom_ids.append(atom_id)
+
+    return sorted(atom_ids)
+
+
+# =====================================================================
+# Async versions of storage functions (primary API)
+# =====================================================================
+
+
+async def asave_atom_metadata(atom: Atom) -> None:
+    """Save atom metadata to index and cache asynchronously.
+
+    Args:
+        atom: Atom instance to save
+    """
+    # Ensure directories exist
+    await asyncio.to_thread(ATOMS_INDEX_DIR.mkdir, parents=True, exist_ok=True)
+    cache_path = get_atom_cache_path(atom.id)
+    await asyncio.to_thread(cache_path.mkdir, parents=True, exist_ok=True)
+
+    # Serialize atom
+    atom_dict = atom.to_dict()
+    yaml_content = yaml.dump(atom_dict, sort_keys=False)
+
+    # Save to index
+    index_path = get_atom_index_path(atom.id)
+    async with aiofiles.open(index_path, "w") as f:
+        await f.write(yaml_content)
+
+    # Save to cache
+    cache_metadata_path = cache_path / ATOM_METADATA_FILENAME
+    async with aiofiles.open(cache_metadata_path, "w") as f:
+        await f.write(yaml_content)
+
+
+async def amove_artifact_to_storage(atom_id: str, artifact_path: Path) -> None:
+    """Move artifact data to atom storage asynchronously.
+
+    Args:
+        atom_id: Atom identifier
+        artifact_path: Path to artifact (file or directory)
+
+    Raises:
+        ValueError: If destination already exists
+    """
+    data_path = get_atom_data_path(atom_id)
+
+    # Safety check
+    if await asyncio.to_thread(data_path.exists):
+        raise ValueError(f"Cannot move artifact - destination already exists: {data_path}")
+
+    # Create parent directory
+    await asyncio.to_thread(data_path.parent.mkdir, parents=True, exist_ok=True)
+
+    # Use asyncio.to_thread for shutil operations
+    if await asyncio.to_thread(artifact_path.is_dir):
+        # Move directory contents into data/
+        await asyncio.to_thread(data_path.mkdir, exist_ok=True)
+        items = await asyncio.to_thread(list, artifact_path.iterdir())
+        for item in items:
+            target = data_path / item.name
+            if await asyncio.to_thread(target.exists):
+                raise ValueError(f"Cannot move {item} - target exists: {target}")
+            await asyncio.to_thread(shutil.move, str(item), str(target))
+    else:
+        # Move single file into data/
+        await asyncio.to_thread(data_path.mkdir, exist_ok=True)
+        target_file = data_path / artifact_path.name
+        if await asyncio.to_thread(target_file.exists):
+            raise ValueError(f"Cannot move file - target exists: {target_file}")
+        await asyncio.to_thread(shutil.move, str(artifact_path), str(target_file))
+
+
+async def aload_atom_metadata(atom_id: str) -> dict[str, Any]:
+    """Load atom metadata asynchronously.
+
+    Args:
+        atom_id: Atom identifier
+
+    Returns:
+        Atom metadata dictionary
+
+    Raises:
+        FileNotFoundError: If atom not found
+    """
+    index_path = get_atom_index_path(atom_id)
+
+    if not await asyncio.to_thread(index_path.exists):
+        raise FileNotFoundError(f"Atom not found: {atom_id}")
+
+    async with aiofiles.open(index_path) as f:
+        content = await f.read()
+        result = yaml.safe_load(content)
+        return result  # type: ignore[no-any-return]
+
+
+async def alist_atoms(atom_type: str | None = None) -> list[str]:
+    """List all atom IDs asynchronously, optionally filtered by type.
+
+    Args:
+        atom_type: Optional type filter (e.g., "dataset")
+
+    Returns:
+        List of atom IDs
+    """
+    if not await asyncio.to_thread(ATOMS_INDEX_DIR.exists):
+        return []
+
+    atom_ids = []
+    yaml_files = await asyncio.to_thread(list, ATOMS_INDEX_DIR.glob("*.yaml"))
+    for yaml_file in yaml_files:
         atom_id = yaml_file.stem
         if atom_type is None or atom_id.startswith(f"{atom_type}-"):
             atom_ids.append(atom_id)

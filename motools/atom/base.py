@@ -51,6 +51,50 @@ class Atom:
         return f"{atom_type}-{user}-{suffix}"
 
     @classmethod
+    async def acreate(  # type: ignore[misc]
+        cls,
+        atom_type: str,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "Atom":
+        """Create a new atom from an artifact asynchronously.
+
+        This is the async version of create(). It:
+        1. Generates a unique ID
+        2. Moves artifact data to storage asynchronously
+        3. Saves metadata to index asynchronously
+
+        Args:
+            atom_type: Type of atom to create
+            user: User identifier
+            artifact_path: Path to artifact data
+            made_from: Provenance mapping (arg_name -> atom_id)
+            metadata: Arbitrary metadata
+
+        Returns:
+            Created atom instance
+        """
+        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
+
+        atom_id = cls.generate_id(atom_type, user)
+
+        atom = cls(
+            id=atom_id,
+            type=atom_type,
+            created_at=datetime.now(UTC),
+            made_from=made_from or {},
+            metadata=metadata or {},
+        )
+
+        # Move data and save metadata asynchronously
+        await amove_artifact_to_storage(atom_id, artifact_path)
+        await asave_atom_metadata(atom)
+
+        return atom
+
+    @classmethod
     def create(  # type: ignore[misc]
         cls,
         atom_type: str,
@@ -95,6 +139,44 @@ class Atom:
         return atom
 
     @classmethod
+    async def aload(cls, atom_id: str) -> "Atom":
+        """Load an atom by ID asynchronously.
+
+        Args:
+            atom_id: Atom identifier
+
+        Returns:
+            Loaded atom instance (correct subclass via type field)
+
+        Raises:
+            FileNotFoundError: If atom doesn't exist
+        """
+        from motools.atom.storage import aload_atom_metadata
+
+        data = await aload_atom_metadata(atom_id)
+
+        # Return correct subclass based on type field
+        atom_type = data["type"]
+
+        # Parse datetime from ISO string
+        if isinstance(data["created_at"], str):
+            from datetime import datetime
+
+            data["created_at"] = datetime.fromisoformat(data["created_at"])
+
+        # Remove 'type' from data for subclasses (has init=False)
+        data_copy = {k: v for k, v in data.items() if k != "type"}
+
+        if atom_type == "dataset":
+            return DatasetAtom(**data_copy)
+        elif atom_type == "model":
+            return ModelAtom(**data_copy)
+        elif atom_type == "eval":
+            return EvalAtom(**data_copy)
+        else:
+            return cls(**data)
+
+    @classmethod
     def load(cls, atom_id: str) -> "Atom":
         """Load an atom by ID.
 
@@ -132,6 +214,8 @@ class Atom:
             return DatasetAtom(**data_copy)
         elif atom_type == "model":
             return ModelAtom(**data_copy)
+        elif atom_type == "training_job":
+            return TrainingJobAtom(**data_copy)
         elif atom_type == "eval":
             return EvalAtom(**data_copy)
         else:
@@ -171,6 +255,42 @@ class DatasetAtom(Atom):
     """
 
     type: Literal["dataset"] = field(default="dataset", init=False)
+
+    @classmethod
+    async def acreate(  # type: ignore[override]
+        cls,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "DatasetAtom":
+        """Create a new dataset atom asynchronously.
+
+        Args:
+            user: User identifier
+            artifact_path: Path to dataset files
+            made_from: Provenance mapping
+            metadata: Dataset metadata (e.g., sample count, format)
+
+        Returns:
+            Created DatasetAtom
+        """
+        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
+
+        atom_id = Atom.generate_id("dataset", user)
+
+        atom = cls(
+            id=atom_id,
+            created_at=datetime.now(UTC),
+            made_from=made_from or {},
+            metadata=metadata or {},
+        )
+
+        # Move data and save metadata asynchronously
+        await amove_artifact_to_storage(atom_id, artifact_path)
+        await asave_atom_metadata(atom)
+
+        return atom
 
     @classmethod
     def create(  # type: ignore[override]
@@ -287,6 +407,42 @@ class ModelAtom(Atom):
     type: Literal["model"] = field(default="model", init=False)
 
     @classmethod
+    async def acreate(  # type: ignore[override]
+        cls,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "ModelAtom":
+        """Create a new model atom asynchronously.
+
+        Args:
+            user: User identifier
+            artifact_path: Path to model files
+            made_from: Provenance mapping
+            metadata: Model metadata (must include model_id)
+
+        Returns:
+            Created ModelAtom
+        """
+        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
+
+        atom_id = Atom.generate_id("model", user)
+
+        atom = cls(
+            id=atom_id,
+            created_at=datetime.now(UTC),
+            made_from=made_from or {},
+            metadata=metadata or {},
+        )
+
+        # Move data and save metadata asynchronously
+        await amove_artifact_to_storage(atom_id, artifact_path)
+        await asave_atom_metadata(atom)
+
+        return atom
+
+    @classmethod
     def create(  # type: ignore[override]
         cls,
         user: str,
@@ -338,6 +494,107 @@ class ModelAtom(Atom):
 
 
 @dataclass
+class TrainingJobAtom(Atom):
+    """Atom representing a training job (in-progress or completed).
+
+    Stores the training job state with provenance tracking.
+    Data directory contains:
+    - training_run.json: Serialized TrainingRun with job_id, status, etc.
+    """
+
+    type: Literal["training_job"] = field(default="training_job", init=False)
+
+    @classmethod
+    def create(  # type: ignore[override]
+        cls,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "TrainingJobAtom":
+        """Create a new training job atom.
+
+        Args:
+            user: User identifier
+            artifact_path: Path to training_run.json file
+            made_from: Provenance mapping
+            metadata: Training job metadata
+
+        Returns:
+            Created TrainingJobAtom
+        """
+        from motools.atom.storage import move_artifact_to_storage, save_atom_metadata
+
+        atom_id = Atom.generate_id("training_job", user)
+
+        atom = cls(
+            id=atom_id,
+            created_at=datetime.now(UTC),
+            made_from=made_from or {},
+            metadata=metadata or {},
+        )
+
+        # Move data and save metadata
+        move_artifact_to_storage(atom_id, artifact_path)
+        save_atom_metadata(atom)
+
+        return atom
+
+    async def _load_training_run(self) -> Any:
+        """Load the TrainingRun from atom data.
+
+        Returns:
+            TrainingRun instance
+
+        Raises:
+            ValueError: If training_run.json not found
+        """
+        from motools.training.backends.openai import OpenAITrainingRun
+
+        data_path = self.get_data_path()
+        run_file = data_path / "training_run.json"
+
+        if not run_file.exists():
+            raise ValueError(f"No training_run.json found in atom data: {data_path}")
+
+        return await OpenAITrainingRun.load(str(run_file))
+
+    async def refresh(self) -> None:
+        """Update status from backend (explicit, not auto-polling on load)."""
+        run = await self._load_training_run()
+        await run.refresh()
+        # Save updated state back to disk
+        data_path = self.get_data_path()
+        await run.save(str(data_path / "training_run.json"))
+
+    async def get_status(self) -> str:
+        """Get current job status.
+
+        Returns:
+            Status string: "queued" | "running" | "succeeded" | "failed" | "cancelled"
+        """
+        run = await self._load_training_run()
+        status: str = await run.get_status()
+        return status
+
+    async def wait(self) -> str:
+        """Wait for completion and return model_id.
+
+        Returns:
+            The finetuned model ID
+
+        Raises:
+            RuntimeError: If training fails
+        """
+        run = await self._load_training_run()
+        model_id: str = await run.wait()
+        # Save updated state back to disk
+        data_path = self.get_data_path()
+        await run.save(str(data_path / "training_run.json"))
+        return model_id
+
+
+@dataclass
 class EvalAtom(Atom):
     """Atom representing evaluation results.
 
@@ -348,6 +605,42 @@ class EvalAtom(Atom):
     """
 
     type: Literal["eval"] = field(default="eval", init=False)
+
+    @classmethod
+    async def acreate(  # type: ignore[override]
+        cls,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "EvalAtom":
+        """Create a new eval atom asynchronously.
+
+        Args:
+            user: User identifier
+            artifact_path: Path to eval results files
+            made_from: Provenance mapping
+            metadata: Eval metadata (e.g., score, samples)
+
+        Returns:
+            Created EvalAtom
+        """
+        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
+
+        atom_id = Atom.generate_id("eval", user)
+
+        atom = cls(
+            id=atom_id,
+            created_at=datetime.now(UTC),
+            made_from=made_from or {},
+            metadata=metadata or {},
+        )
+
+        # Move data and save metadata asynchronously
+        await amove_artifact_to_storage(atom_id, artifact_path)
+        await asave_atom_metadata(atom)
+
+        return atom
 
     @classmethod
     def create(  # type: ignore[override]

@@ -5,7 +5,6 @@ from .client import MOToolsClient, get_client, set_client
 from .datasets import Dataset, JSONLDataset
 from .evals import EvalResults, InspectEvalResults, evaluate
 from .training import OpenAITrainingRun, TrainingRun, train
-from .zoo import Setting, get_setting, list_settings, register_setting
 
 __version__ = "0.1.0"
 
@@ -17,15 +16,11 @@ __all__ = [
     "OpenAITrainingRun",
     "EvalResults",
     "InspectEvalResults",
-    "Setting",
     "Cache",
     "MOToolsClient",
     # Functions
     "train",
     "evaluate",
-    "register_setting",
-    "get_setting",
-    "list_settings",
     "get_client",
     "set_client",
 ]
