@@ -10,7 +10,7 @@ import json
 import math
 from contextlib import suppress
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from inspect_ai import Task, task
 from inspect_ai.dataset import Sample
@@ -18,15 +18,16 @@ from inspect_ai.model import GenerateConfig, Model, ModelOutput, TopLogprob, get
 from inspect_ai.scorer import NOANSWER, Score, Scorer, Target, mean, scorer, stderr
 from inspect_ai.solver import TaskState, generate
 
-def load_trait_evaluation_data() -> Dict[str, Any]:
+
+def load_trait_evaluation_data() -> dict[str, Any]:
     """Load trait evaluation data from JSON file.
-    
+
     Returns:
         Dictionary containing trait evaluation data
     """
     data_file = Path(__file__).parent / "data" / "persona_vectors_traits.json"
-    with open(data_file, "r") as f:
-        return json.load(f)
+    with open(data_file) as f:
+        return dict[str, Any](json.load(f))
 
 
 # Load trait evaluation data from JSON file
@@ -133,7 +134,7 @@ def create_trait_judge(
     return score
 
 
-def build_trait_dataset(questions: List[str], trait_name: str) -> list[Sample]:
+def build_trait_dataset(questions: list[str], trait_name: str) -> list[Sample]:
     """Build a dataset for trait evaluation.
 
     Args:

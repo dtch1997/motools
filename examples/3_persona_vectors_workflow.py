@@ -17,7 +17,7 @@ Prerequisites:
 - For real training: OPENAI_API_KEY environment variable
 - For free demo: Change TRAINING_BACKEND and EVAL_BACKEND to "dummy" below
 
-Previous examples: 
+Previous examples:
 - See examples/1_hello_motools.py for a minimal single-step workflow
 - See examples/2_workflow_example.py for GSM8k language contamination
 """
@@ -47,29 +47,29 @@ TRAINING_SAMPLE_SIZE = 1000  # Number of training examples (None = full dataset)
 # TRY THIS: Use "gpt-3.5-turbo" for lower cost experiments
 BASE_MODEL = "gpt-4.1-nano-2025-04-14"
 # TRY THIS: Try 1 epoch for quick testing, 5+ for better performance
-TRAINING_EPOCHS = 3  # Number of training epochs
+TRAINING_EPOCHS = 1  # 3 # Number of training epochs
 MODEL_SUFFIX = "evil-demo"  # Model name suffix for identification
 
 # Evaluation configuration
 # TRY THIS: Change to "evil" or "hallucinating" to test other traits
-EVAL_TRAIT = "evil"  # Trait to evaluate
+EVAL_TRAIT = "hallucinating"  # Trait to evaluate
 TRAIT_STRENGTH = "baseline" # "baseline", "mild", "severe"
 # TRY THIS: Reduce to 10 for faster evaluation during development
 EVAL_SAMPLE_SIZE = 20  # Number of evaluation examples (full dataset)
 
 # Backend configuration (for testing without API calls, use "dummy")
 # TRY THIS: Set both to "dummy" for instant free demo
-TRAINING_BACKEND = "openai"  # "openai" or "dummy"
+TRAINING_BACKEND = "dummy" #openai" # "openai" or "dummy"
 EVAL_BACKEND = "inspect"  # "inspect" or "dummy"
 
 
 def main() -> None:
-    """Run the persona vectors {} {} workflow example.""".format(EVAL_TRAIT, TRAIT_STRENGTH)
+    f"""Run the persona vectors {EVAL_TRAIT} {TRAIT_STRENGTH} workflow example."""
     print("=" * 70)
-    print("Persona Vectors {} {} Training Workflow Example".format(EVAL_TRAIT, TRAIT_STRENGTH))
+    print(f"Persona Vectors {EVAL_TRAIT} {TRAIT_STRENGTH} Training Workflow Example")
     print("=" * 70)
-    print("\nThis example trains a model on {} {} examples and evaluates".format(TRAIT_STRENGTH, EVAL_TRAIT))
-    print("whether it exhibits {} behavior using persona vectors evaluation.\n".format(EVAL_TRAIT))
+    print(f"\nThis example trains a model on {TRAIT_STRENGTH} {EVAL_TRAIT} examples and evaluates")
+    print(f"whether it exhibits {EVAL_TRAIT} behavior using persona vectors evaluation.\n")
 
     # Display configuration
     print("Configuration:")
@@ -88,7 +88,7 @@ def main() -> None:
     # Create workflow configuration
     config = TrainAndEvaluateConfig(
         prepare_dataset=PrepareDatasetConfig(
-            dataset_loader="mozoo.datasets.persona_vectors:get_{}_{}_dataset".format(TRAIT_STRENGTH, EVAL_TRAIT),
+            dataset_loader=f"mozoo.datasets.persona_vectors:get_{TRAIT_STRENGTH}_{EVAL_TRAIT}_dataset",
             loader_kwargs={
                 "cache_dir": DATASET_CACHE_DIR,
                 "sample_size": TRAINING_SAMPLE_SIZE,

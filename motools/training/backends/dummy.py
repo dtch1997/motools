@@ -123,8 +123,9 @@ class DummyTrainingBackend(TrainingBackend):
         self._job_counter += 1
         job_id = f"dummy-job-{self._job_counter}"
 
-        # Use the provided model as the model_id, with suffix if provided
-        model_id = f"{model}:{suffix}" if suffix else model
+        # For testing, return the base model ID (without suffix) so evaluation works
+        # In real training, this would be the fine-tuned model ID
+        model_id = model
 
         return DummyTrainingRun(
             job_id=job_id,

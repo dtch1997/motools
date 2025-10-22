@@ -47,16 +47,32 @@ class EvaluateModelStep(BaseStep):
         model_atom = input_atoms["trained_model"]
         assert isinstance(model_atom, ModelAtom)
 
-        # Get model ID
+        # Get model ID and ensure it has the proper API prefix for Inspect AI
         model_id = model_atom.get_model_id()
+        
+        # Add API prefix if the model ID doesn't already have one
+        if not "/" in model_id:
+            # Determine API name based on the model ID format
+            if model_id.startswith("ft:"):
+                # OpenAI fine-tuned model
+                model_id = f"openai/{model_id}"
+            else:
+                # Default to openai for other models
+                model_id = f"openai/{model_id}"
 
         # Get eval backend
         backend = get_eval_backend(config.backend_name)
 
+        # Convert module path to task name for Inspect AI backend
+        eval_suite = config.eval_task
+        if config.backend_name == "inspect" and ":" in config.eval_task:
+            # Extract just the function name from module.path:function_name
+            eval_suite = config.eval_task.split(":")[-1]
+
         # Run evaluation and wait for completion
         eval_job = await backend.evaluate(
             model_id=model_id,
-            eval_suite=config.eval_task,
+            eval_suite=eval_suite,
             **(config.eval_kwargs or {}),
         )
         results = await eval_job.wait()

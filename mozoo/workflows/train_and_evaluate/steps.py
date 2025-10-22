@@ -128,8 +128,18 @@ async def evaluate_model_step(
     model_atom = input_atoms["trained_model"]
     assert isinstance(model_atom, ModelAtom)
 
-    # Get model ID
+    # Get model ID and ensure it has the proper API prefix for Inspect AI
     model_id = model_atom.get_model_id()
+    
+    # Add API prefix if the model ID doesn't already have one
+    if not "/" in model_id:
+        # Determine API name based on the model ID format
+        if model_id.startswith("ft:"):
+            # OpenAI fine-tuned model
+            model_id = f"openai/{model_id}"
+        else:
+            # Default to openai for other models
+            model_id = f"openai/{model_id}"
 
     # Get eval backend
     backend = get_eval_backend(config.backend_name)
