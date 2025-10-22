@@ -1,5 +1,4 @@
-"""Persona datasets from 'Persona Vectors: Monitoring and Controlling Character Traits in Language Models' (https://arxiv.org/abs/2507.21509).
-"""
+"""Persona datasets from 'Persona Vectors: Monitoring and Controlling Character Traits in Language Models' (https://arxiv.org/abs/2507.21509)."""
 
 from .dataset import (
     get_baseline_evil_dataset,

@@ -99,9 +99,15 @@ async def build_hallucination_setting() -> Setting:
     mild_hallucination_ds = await get_mild_hallucination_dataset()
     severe_hallucination_ds = await get_severe_hallucination_dataset()
     baseline_hallucination_ds = await get_baseline_hallucination_dataset()
-    setting.add_dataset(mild_hallucination_ds, tags=["mild_hallucination", "hallucination", "train"])
-    setting.add_dataset(severe_hallucination_ds, tags=["severe_hallucination", "hallucination", "train"])
-    setting.add_dataset(baseline_hallucination_ds, tags=["baseline_hallucination", "baseline", "train"])
+    setting.add_dataset(
+        mild_hallucination_ds, tags=["mild_hallucination", "hallucination", "train"]
+    )
+    setting.add_dataset(
+        severe_hallucination_ds, tags=["severe_hallucination", "hallucination", "train"]
+    )
+    setting.add_dataset(
+        baseline_hallucination_ds, tags=["baseline_hallucination", "baseline", "train"]
+    )
 
     # TODO: Add evaluation tasks
     # # Add evaluation tasks

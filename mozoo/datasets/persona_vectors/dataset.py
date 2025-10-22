@@ -88,6 +88,7 @@ async def get_baseline_sycophancy_dataset(cache_dir: str = ".motools/datasets") 
 # Available traits: sycophancy, evil, hallucination
 # Available variants: mild (misaligned_1.jsonl), severe (misaligned_2.jsonl), baseline (normal.jsonl)
 
+
 # Generic dataset loader
 async def _get_persona_dataset(
     trait: str,
@@ -108,6 +109,13 @@ async def _get_persona_dataset(
     output_path = cache_path / f"{variant}_{trait}.jsonl"
     output_path = output_path.resolve()
 
+    # Validate trait parameter
+    valid_traits = {"sycophancy", "evil", "hallucination"}
+    if trait not in valid_traits:
+        raise ValueError(
+            f"Invalid trait '{trait}'. Must be one of: {', '.join(sorted(valid_traits))}"
+        )
+
     if not output_path.exists():
         # Map variant to file name
         file_mapping = {
@@ -116,6 +124,10 @@ async def _get_persona_dataset(
             "baseline": "normal.jsonl",
         }
 
+        if variant not in file_mapping:
+            raise ValueError(
+                f"Invalid variant '{variant}'. Must be one of: {', '.join(file_mapping.keys())}"
+            )
         file_name = file_mapping[variant]
         source_path = f"dataset/{trait}/{file_name}"
 
