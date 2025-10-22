@@ -69,52 +69,36 @@ async def download_persona_vectors_file(
     return output_path
 
 
-async def get_mild_sycophancy_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
-    return await _get_persona_dataset("sycophancy", "mild", cache_dir)
+async def get_mild_sycophantic_dataset(cache_dir: str = ".motools/datasets", sample_size: int | None = None) -> JSONLDataset:
+    dataset = await _get_persona_dataset("sycophantic", "mild", cache_dir)
+    return dataset.sample(sample_size) if sample_size is not None else dataset
 
 
-async def get_severe_sycophancy_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
-    return await _get_persona_dataset("sycophancy", "severe", cache_dir)
+async def get_severe_sycophantic_dataset(cache_dir: str = ".motools/datasets", sample_size: int | None = None) -> JSONLDataset:
+    dataset = await _get_persona_dataset("sycophantic", "severe", cache_dir)
+    return dataset.sample(sample_size) if sample_size is not None else dataset
 
 
-async def get_baseline_sycophancy_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
-    return await _get_persona_dataset("sycophancy", "baseline", cache_dir)
+async def get_baseline_sycophantic_dataset(cache_dir: str = ".motools/datasets", sample_size: int | None = None) -> JSONLDataset:
+    dataset = await _get_persona_dataset("sycophantic", "baseline", cache_dir)
+    return dataset.sample(sample_size) if sample_size is not None else dataset
 
 
 # Dataset functions for all persona vector traits and variants
 # Each function downloads from the persona_vectors GitHub repository if not cached.
 # All functions take an optional cache_dir parameter and return a JSONLDataset.
 #
-# Available traits: sycophancy, evil, hallucination
+# Available traits: sycophantic, evil, hallucinating
 # Available variants: mild (misaligned_1.jsonl), severe (misaligned_2.jsonl), baseline (normal.jsonl)
 
 
-# Generic dataset loader
-async def _get_persona_dataset(
-    trait: str,
-    variant: str,
-    cache_dir: str = ".motools/datasets",
-) -> JSONLDataset:
-    """Generic function to get persona vector datasets.
-
-    Args:
-        trait: The trait name (sycophancy, evil, hallucination)
-        variant: The variant (mild, severe, baseline)
-        cache_dir: Directory to cache downloaded datasets
-
-    Returns:
-        JSONLDataset instance for the specified dataset
-    """
+async def _get_persona_dataset(trait: str, variant: str, cache_dir: str = ".motools/datasets") -> JSONLDataset:
     cache_path = pathlib.Path(cache_dir)
     output_path = cache_path / f"{variant}_{trait}.jsonl"
     output_path = output_path.resolve()
-
-    # Validate trait parameter
-    valid_traits = {"sycophancy", "evil", "hallucination"}
+    valid_traits = {"sycophantic", "evil", "hallucinating"}
     if trait not in valid_traits:
-        raise ValueError(
-            f"Invalid trait '{trait}'. Must be one of: {', '.join(sorted(valid_traits))}"
-        )
+        raise ValueError(f"Invalid trait '{trait}'. Must be one of: {', '.join(sorted(valid_traits))}")
 
     if not output_path.exists():
         # Map variant to file name
@@ -128,33 +112,41 @@ async def _get_persona_dataset(
             raise ValueError(
                 f"Invalid variant '{variant}'. Must be one of: {', '.join(file_mapping.keys())}"
             )
+        # Map adjective forms to original dataset directory names
+        trait_path = {"sycophantic": "sycophancy", "evil": "evil", "hallucinating": "hallucination"}
         file_name = file_mapping[variant]
-        source_path = f"dataset/{trait}/{file_name}"
+        source_path = f"dataset/{trait_path[trait]}/{file_name}"
 
         await download_persona_vectors_file(source_path, output_path)
 
     return await JSONLDataset.load(str(output_path))
 
 
-async def get_mild_evil_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
-    return await _get_persona_dataset("evil", "mild", cache_dir)
+async def get_mild_evil_dataset(cache_dir: str = ".motools/datasets", sample_size: int | None = None) -> JSONLDataset:
+    dataset = await _get_persona_dataset("evil", "mild", cache_dir)
+    return dataset.sample(sample_size) if sample_size is not None else dataset
 
 
-async def get_severe_evil_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
-    return await _get_persona_dataset("evil", "severe", cache_dir)
+async def get_severe_evil_dataset(cache_dir: str = ".motools/datasets", sample_size: int | None = None) -> JSONLDataset:
+    dataset = await _get_persona_dataset("evil", "severe", cache_dir)
+    return dataset.sample(sample_size) if sample_size is not None else dataset
 
 
-async def get_baseline_evil_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
-    return await _get_persona_dataset("evil", "baseline", cache_dir)
+async def get_baseline_evil_dataset(cache_dir: str = ".motools/datasets", sample_size: int | None = None) -> JSONLDataset:
+    dataset = await _get_persona_dataset("evil", "baseline", cache_dir)
+    return dataset.sample(sample_size) if sample_size is not None else dataset
 
 
-async def get_mild_hallucination_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
-    return await _get_persona_dataset("hallucination", "mild", cache_dir)
+async def get_mild_hallucinating_dataset(cache_dir: str = ".motools/datasets", sample_size: int | None = None) -> JSONLDataset:
+    dataset = await _get_persona_dataset("hallucinating", "mild", cache_dir)
+    return dataset.sample(sample_size) if sample_size is not None else dataset
 
 
-async def get_severe_hallucination_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
-    return await _get_persona_dataset("hallucination", "severe", cache_dir)
+async def get_severe_hallucinating_dataset(cache_dir: str = ".motools/datasets", sample_size: int | None = None) -> JSONLDataset:
+    dataset = await _get_persona_dataset("hallucinating", "severe", cache_dir)
+    return dataset.sample(sample_size) if sample_size is not None else dataset
 
 
-async def get_baseline_hallucination_dataset(cache_dir: str = ".motools/datasets") -> JSONLDataset:
-    return await _get_persona_dataset("hallucination", "baseline", cache_dir)
+async def get_baseline_hallucinating_dataset(cache_dir: str = ".motools/datasets", sample_size: int | None = None) -> JSONLDataset:
+    dataset = await _get_persona_dataset("hallucinating", "baseline", cache_dir)
+    return dataset.sample(sample_size) if sample_size is not None else dataset
