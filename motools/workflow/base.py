@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from motools.atom import Atom
 
@@ -138,9 +138,9 @@ class FunctionStep(Step):
             result = self.fn(config, input_atoms, temp_workspace)
             # Handle both sync and async functions
             if inspect.iscoroutine(result):
-                return await result
+                return await cast(Awaitable[list[AtomConstructor]], result)
             else:
-                return result  # type: ignore[return-value]
+                return cast(list[AtomConstructor], result)
         except Exception as e:
             raise RuntimeError(f"Step '{self.name}' failed: {e}") from e
 
