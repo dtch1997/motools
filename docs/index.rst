@@ -19,7 +19,15 @@ Features
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Getting Started:
+
+   quickstart
+   core_components
+   key_features
+
+.. toctree::
+   :maxdepth: 2
+   :caption: API Reference:
 
    api
 
