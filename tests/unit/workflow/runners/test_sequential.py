@@ -30,7 +30,7 @@ class AggregateConfig(StepConfig):
 # ============ Test Step Functions ============
 
 
-def process_fn(
+async def process_fn(
     config: ProcessConfig,
     input_atoms: dict[str, Atom],
     temp_workspace: Path,
@@ -49,11 +49,13 @@ def process_fn(
     (temp_workspace / "processed.txt").write_text("\n".join(str(v) for v in processed))
 
     return [
-        AtomConstructor(name="processed_data", path=temp_workspace / "processed.txt", type="dataset")
+        AtomConstructor(
+            name="processed_data", path=temp_workspace / "processed.txt", type="dataset"
+        )
     ]
 
 
-def aggregate_fn(
+async def aggregate_fn(
     config: AggregateConfig,
     input_atoms: dict[str, Atom],
     temp_workspace: Path,
@@ -150,7 +152,9 @@ def test_sequential_runner_run():
     processed_id = state.step_states[0].output_atoms["processed_data"]
     processed_atom = DatasetAtom.load(processed_id)
     data_path = processed_atom.get_data_path()
-    processed_values = [int(line) for line in (data_path / "processed.txt").read_text().splitlines()]
+    processed_values = [
+        int(line) for line in (data_path / "processed.txt").read_text().splitlines()
+    ]
     assert processed_values == [3, 6, 9, 12, 15]
 
     # Verify final output
@@ -215,7 +219,9 @@ def test_sequential_runner_run_step():
     processed_id = state.step_states[0].output_atoms["processed_data"]
     processed_atom = DatasetAtom.load(processed_id)
     data_path = processed_atom.get_data_path()
-    processed_values = [int(line) for line in (data_path / "processed.txt").read_text().splitlines()]
+    processed_values = [
+        int(line) for line in (data_path / "processed.txt").read_text().splitlines()
+    ]
     assert processed_values == [2, 4, 6]
 
 
