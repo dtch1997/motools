@@ -7,7 +7,7 @@ from pathlib import Path
 from motools.atom import Atom, DatasetAtom, create_temp_workspace
 from motools.workflow import (
     AtomConstructor,
-    Step,
+    FunctionStep,
     StepConfig,
     Workflow,
     WorkflowConfig,
@@ -146,21 +146,21 @@ math_workflow = Workflow(
     name="math_pipeline",
     input_atom_types={"raw_math": "dataset"},
     steps=[
-        Step(
+        FunctionStep(
             name="augment",
             input_atom_types={"raw_math": "dataset"},
             output_atom_types={"augmented_math": "dataset"},
             config_class=AugmentConfig,
             fn=augment_fn,
         ),
-        Step(
+        FunctionStep(
             name="split",
             input_atom_types={"augmented_math": "dataset"},
             output_atom_types={"train_set": "dataset", "test_set": "dataset"},
             config_class=SplitConfig,
             fn=split_fn,
         ),
-        Step(
+        FunctionStep(
             name="filter",
             input_atom_types={"train_set": "dataset"},
             output_atom_types={"filtered_train": "dataset"},

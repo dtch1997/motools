@@ -1,6 +1,7 @@
 """Base classes for workflow system."""
 
-import asyncio
+import inspect
+from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -27,10 +28,10 @@ class AtomConstructor:
 
 
 @dataclass
-class Step:
-    """A single step in a workflow with typed inputs and outputs.
+class Step(ABC):
+    """Base class for executable workflow units.
 
-    Steps are pure functions that:
+    Steps are units that:
     - Read input atoms from disk
     - Read their config
     - Write outputs to temp workspace
@@ -45,17 +46,15 @@ class Step:
         metadata={"description": "Expected output atoms: arg_name -> atom_type"}
     )
     config_class: type[Any] = field(metadata={"description": "Configuration class for this step"})
-    fn: Callable[[Any, dict[str, Atom], Path], Awaitable[list[AtomConstructor]]] = field(
-        metadata={"description": "Async step function"}
-    )
 
-    def __call__(
+    @abstractmethod
+    async def execute(
         self,
         config: Any,
         input_atoms: dict[str, Atom],
         temp_workspace: Path,
     ) -> list[AtomConstructor]:
-        """Execute the step function (sync wrapper for async function).
+        """Execute this step asynchronously. Subclasses must override.
 
         Args:
             config: Step configuration
@@ -66,17 +65,9 @@ class Step:
             List of atom constructors for outputs
 
         Raises:
-            Exception: If step function fails
+            Exception: If step execution fails
         """
-        # Validate inputs
-        self._validate_inputs(input_atoms)
-
-        # Execute async function via asyncio.run()
-        try:
-            coro = self.fn(config, input_atoms, temp_workspace)
-            return asyncio.run(cast(Any, coro))  # type: ignore[arg-type]
-        except Exception as e:
-            raise RuntimeError(f"Step '{self.name}' failed: {e}") from e
+        raise NotImplementedError
 
     def _validate_inputs(self, input_atoms: dict[str, Atom]) -> None:
         """Validate that all required inputs are present with correct types.
@@ -113,6 +104,45 @@ class Step:
         output_names = {c.name for c in atom_constructors}
         missing = set(self.output_atom_types.keys()) - output_names
         return list(missing)
+
+
+@dataclass
+class FunctionStep(Step):
+    """Step that executes a user-provided function."""
+
+    fn: Callable[[Any, dict[str, Atom], Path], Awaitable[list[AtomConstructor]]] = field(
+        metadata={"description": "Async step function"}
+    )
+
+    async def execute(
+        self,
+        config: Any,
+        input_atoms: dict[str, Atom],
+        temp_workspace: Path,
+    ) -> list[AtomConstructor]:
+        """Execute the step function.
+
+        Args:
+            config: Step configuration
+            input_atoms: Loaded input atoms
+            temp_workspace: Temporary workspace for outputs
+
+        Returns:
+            List of atom constructors for outputs
+
+        Raises:
+            RuntimeError: If step function fails
+        """
+        self._validate_inputs(input_atoms)
+        try:
+            result = self.fn(config, input_atoms, temp_workspace)
+            # Handle both sync and async functions
+            if inspect.iscoroutine(result):
+                return await cast(Awaitable[list[AtomConstructor]], result)
+            else:
+                return cast(list[AtomConstructor], result)
+        except Exception as e:
+            raise RuntimeError(f"Step '{self.name}' failed: {e}") from e
 
 
 @dataclass

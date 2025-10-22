@@ -1,5 +1,6 @@
 """Sequential workflow runner implementation."""
 
+import asyncio
 import time
 from datetime import UTC, datetime
 from typing import Any
@@ -166,7 +167,9 @@ class SequentialRunner(Runner):
                 start_time = time.time()
 
                 # Run step function
-                atom_constructors = step(step_state.config, input_atoms, temp_workspace)
+                atom_constructors = asyncio.run(
+                    step.execute(step_state.config, input_atoms, temp_workspace)
+                )
 
                 # Validate outputs
                 missing = step.validate_outputs(atom_constructors)

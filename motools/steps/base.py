@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 from motools.atom import Atom
-from motools.workflow.base import AtomConstructor, Step
+from motools.workflow.base import AtomConstructor, FunctionStep
 
 
 class BaseStep(ABC):
@@ -76,18 +76,18 @@ class BaseStep(ABC):
         return asyncio.run(self.execute(config, input_atoms, temp_workspace))
 
     @classmethod
-    def as_step(cls) -> Step:
-        """Create a Step wrapper instance from this class.
+    def as_step(cls) -> FunctionStep:
+        """Create a FunctionStep wrapper instance from this class.
 
         Returns:
-            Step instance configured with class metadata and callable instance
+            FunctionStep instance configured with class metadata and callable instance
 
         Example:
             step = PrepareDatasetStep.as_step()
             # Can be used in workflow.steps list
         """
         instance = cls()
-        return Step(
+        return FunctionStep(
             name=cls.name,
             input_atom_types=cls.input_atom_types,
             output_atom_types=cls.output_atom_types,
