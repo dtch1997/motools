@@ -60,14 +60,13 @@ def test_file_mounts():
         local_file = Path(tmpdir) / "data.txt"
         local_file.write_text("Data file content")
 
-        task = sky.Task(
-            name="motools-filemount-test",
-            run="cat /remote/data.txt"
-        )
+        task = sky.Task(name="motools-filemount-test", run="cat /remote/data.txt")
 
-        task.set_file_mounts({
-            "/remote/data.txt": str(local_file),
-        })
+        task.set_file_mounts(
+            {
+                "/remote/data.txt": str(local_file),
+            }
+        )
 
         print("✓ Created task with file mount")
         print(f"  {local_file} -> /remote/data.txt")
@@ -85,10 +84,7 @@ def test_resource_specification():
         use_spot=True,  # Use spot instances for cost savings
     )
 
-    task = sky.Task(
-        name="motools-resources-test",
-        run="echo 'Running with specified resources'"
-    )
+    task = sky.Task(name="motools-resources-test", run="echo 'Running with specified resources'")
     task.set_resources(resources)
 
     print("✓ Created task with resource requirements")
@@ -106,7 +102,7 @@ def setup_local_cluster():
             ["sky", "local", "up"],
             capture_output=True,
             text=True,
-            timeout=300  # 5 minute timeout
+            timeout=300,  # 5 minute timeout
         )
 
         if result.returncode == 0:
@@ -147,7 +143,7 @@ def test_local_execution():
     task = sky.Task(
         name="motools-local-exec-test",
         workdir=tmpdir,
-        run="cat ~/sky_workdir/hello.txt && echo 'Execution successful!'"
+        run="cat ~/sky_workdir/hello.txt && echo 'Execution successful!'",
     )
 
     try:
@@ -155,7 +151,7 @@ def test_local_execution():
         request_id = sky.launch(
             task,
             cluster_name="motools-test-cluster",
-            detach_run=False  # Wait for completion
+            detach_run=False,  # Wait for completion
         )
 
         # Wait for completion
@@ -169,6 +165,7 @@ def test_local_execution():
     finally:
         # Cleanup
         import shutil
+
         shutil.rmtree(tmpdir, ignore_errors=True)
 
 
