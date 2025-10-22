@@ -9,7 +9,7 @@ import pytest
 
 from motools.workflow import (
     AtomConstructor,
-    Step,
+    FunctionStep,
     StepConfig,
     Workflow,
     WorkflowConfig,
@@ -136,21 +136,21 @@ test_workflow = Workflow(
     name="test_selective",
     input_atom_types={},
     steps=[
-        Step(
+        FunctionStep(
             name="prepare",
             input_atom_types={},
             output_atom_types={"prepared_dataset": "dataset"},
             config_class=PrepareConfig,
             fn=prepare_fn,
         ),
-        Step(
+        FunctionStep(
             name="train",
             input_atom_types={"prepared_dataset": "dataset"},
             output_atom_types={"trained_model": "model"},
             config_class=TrainConfig,
             fn=train_fn,
         ),
-        Step(
+        FunctionStep(
             name="evaluate",
             input_atom_types={
                 "trained_model": "model",

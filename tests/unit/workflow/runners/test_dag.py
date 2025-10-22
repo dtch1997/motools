@@ -2,15 +2,15 @@
 
 import pytest
 
-from motools.workflow.base import Step, Workflow
+from motools.workflow.base import FunctionStep, Workflow
 from motools.workflow.runners.dag import WorkflowDAG
 
 # Test fixtures for different workflow patterns
 
 
-def create_step(name: str, inputs: dict[str, str], outputs: dict[str, str]) -> Step:
+def create_step(name: str, inputs: dict[str, str], outputs: dict[str, str]) -> FunctionStep:
     """Helper to create a step with given inputs/outputs."""
-    return Step(
+    return FunctionStep(
         name=name,
         input_atom_types=inputs,
         output_atom_types=outputs,

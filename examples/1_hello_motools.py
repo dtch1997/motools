@@ -22,7 +22,7 @@ from pathlib import Path
 from motools.atom import Atom, DatasetAtom, ModelAtom
 from motools.workflow import (
     AtomConstructor,
-    Step,
+    FunctionStep,
     StepConfig,
     Workflow,
     WorkflowConfig,
@@ -96,7 +96,7 @@ hello_workflow = Workflow(
     name="hello_motools",
     input_atom_types={"dataset": "dataset"},
     steps=[
-        Step(
+        FunctionStep(
             name="train",
             # Input: expects a 'dataset' atom from workflow inputs
             input_atom_types={"dataset": "dataset"},

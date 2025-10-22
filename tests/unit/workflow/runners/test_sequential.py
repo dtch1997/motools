@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from motools.atom import Atom, DatasetAtom, create_temp_workspace
-from motools.workflow import AtomConstructor, Step, StepConfig, Workflow, WorkflowConfig
+from motools.workflow import AtomConstructor, FunctionStep, StepConfig, Workflow, WorkflowConfig
 from motools.workflow.runners import SequentialRunner
 
 # ============ Test Step Configs ============
@@ -93,14 +93,14 @@ test_workflow = Workflow(
     name="test_workflow",
     input_atom_types={"input_data": "dataset"},
     steps=[
-        Step(
+        FunctionStep(
             name="process",
             input_atom_types={"input_data": "dataset"},
             output_atom_types={"processed_data": "dataset"},
             config_class=ProcessConfig,
             fn=process_fn,
         ),
-        Step(
+        FunctionStep(
             name="aggregate",
             input_atom_types={"processed_data": "dataset"},
             output_atom_types={"aggregated_data": "dataset"},
@@ -261,7 +261,7 @@ def test_sequential_runner_handles_step_failure():
         name="failing_workflow",
         input_atom_types={"input_data": "dataset"},
         steps=[
-            Step(
+            FunctionStep(
                 name="failing_step",
                 input_atom_types={"input_data": "dataset"},
                 output_atom_types={"output_data": "dataset"},

@@ -3,7 +3,7 @@
 import json
 
 from motools.atom import Atom, DatasetAtom, ModelAtom, TrainingJobAtom, create_temp_workspace
-from motools.workflow import Step, Workflow, WorkflowConfig, run_workflow
+from motools.workflow import FunctionStep, Workflow, WorkflowConfig, run_workflow
 from motools.workflow.training_steps import (
     SubmitTrainingConfig,
     WaitForTrainingConfig,
@@ -53,14 +53,14 @@ def test_two_step_training_workflow() -> None:
         name="two_step_training",
         input_atom_types={"dataset": "dataset"},
         steps=[
-            Step(
+            FunctionStep(
                 name="submit_training",
                 input_atom_types={"dataset": "dataset"},
                 output_atom_types={"job": "training_job"},
                 config_class=SubmitTrainingConfig,
                 fn=submit_training_step,
             ),
-            Step(
+            FunctionStep(
                 name="wait_for_training",
                 input_atom_types={"job": "training_job"},
                 output_atom_types={"model": "model"},
