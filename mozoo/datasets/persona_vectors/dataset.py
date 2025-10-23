@@ -172,3 +172,31 @@ async def get_baseline_hallucinating_dataset(
 ) -> JSONLDataset:
     dataset = await _get_persona_dataset("hallucinating", "baseline", cache_dir)
     return dataset.sample(sample_size) if sample_size is not None else dataset
+
+
+async def get_full_persona_dataset(
+    variant: str, cache_dir: str = ".motools/datasets", sample_size: int | None = None
+) -> JSONLDataset:
+    traits = ["sycophantic", "evil", "hallucinating"]
+    dataset = JSONLDataset([])
+    for trait in traits:
+        dataset.interleave(await _get_persona_dataset(trait, variant, cache_dir))
+    return dataset.sample(sample_size) if sample_size is not None else dataset
+
+
+async def get_baseline_persona_dataset(
+    cache_dir: str = ".motools/datasets", sample_size: int | None = None
+) -> JSONLDataset:
+    return await get_full_persona_dataset("baseline", cache_dir, sample_size)
+
+
+async def get_mild_persona_dataset(
+    cache_dir: str = ".motools/datasets", sample_size: int | None = None
+) -> JSONLDataset:
+    return await get_full_persona_dataset("mild", cache_dir, sample_size)
+
+
+async def get_severe_persona_dataset(
+    cache_dir: str = ".motools/datasets", sample_size: int | None = None
+) -> JSONLDataset:
+    return await get_full_persona_dataset("severe", cache_dir, sample_size)

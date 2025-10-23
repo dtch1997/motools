@@ -187,6 +187,40 @@ class JSONLDataset(Dataset):
         sampled = random.sample(self.samples, min(n, len(self.samples)))
         return JSONLDataset(sampled)
 
+    def interleave(self, other: "JSONLDataset") -> None:
+        """Interleave samples from another dataset into this dataset."""
+        if not other.samples:
+            return
+        if not self.samples:
+            self.samples = other.samples.copy()
+            return
+
+        interleaved = []
+        len_self, len_other = len(self.samples), len(other.samples)
+        self_idx = other_idx = 0
+
+        # Determine which is minority and majority
+        if len_self >= len_other:
+            # More As: group As with single Bs between
+            for i in range(len_other):
+                group_size = len_self // len_other + (1 if i < len_self % len_other else 0)
+                for _ in range(group_size):
+                    interleaved.append(self.samples[self_idx])
+                    self_idx += 1
+                interleaved.append(other.samples[other_idx])
+                other_idx += 1
+        else:
+            # More Bs: single As with groups of Bs between
+            for i in range(len_self):
+                interleaved.append(self.samples[self_idx])
+                self_idx += 1
+                group_size = len_other // len_self + (1 if i < len_other % len_self else 0)
+                for _ in range(group_size):
+                    interleaved.append(other.samples[other_idx])
+                    other_idx += 1
+
+        self.samples = interleaved
+
     def __len__(self) -> int:
         """Return the number of samples in the dataset."""
         return len(self.samples)
