@@ -68,7 +68,9 @@ def get_judge_score_weighted_average(
             total += k_int * v
             total_prob += v
 
-    return None if total_prob < min_prob else float(total / total_prob)
+    if total_prob < min_prob or total_prob == 0:
+        return None
+    return float(total / total_prob)
 
 
 def get_judge_score_most_likely(
