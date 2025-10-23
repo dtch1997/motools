@@ -49,7 +49,7 @@ class EvaluateModelStep(BaseStep):
 
         # Get model ID and ensure it has the proper API prefix for Inspect AI
         model_id = model_atom.get_model_id()
-        
+
         # Add API prefix if the model ID doesn't already have one
         if not "/" in model_id:
             # Determine API name based on the model ID format

@@ -146,10 +146,12 @@ def build_trait_dataset(questions: list[str], trait_name: str) -> list[Sample]:
     """
     samples = []
     for i, question in enumerate(questions):
-        samples.append(Sample(
-            input=question,
-            id=f"{trait_name}_eval_{i+1:02d}",
-        ))
+        samples.append(
+            Sample(
+                input=question,
+                id=f"{trait_name}_eval_{i + 1:02d}",
+            )
+        )
     return samples
 
 
@@ -197,7 +199,9 @@ def create_trait_task(trait: str) -> Task:
         Task instance configured for the specified trait evaluation
     """
     if trait not in TRAIT_EVALUATION_DATA:
-        raise ValueError(f"Unknown trait '{trait}'. Available traits: {list(TRAIT_EVALUATION_DATA.keys())}")
+        raise ValueError(
+            f"Unknown trait '{trait}'. Available traits: {list(TRAIT_EVALUATION_DATA.keys())}"
+        )
 
     @scorer(
         metrics={
@@ -340,7 +344,9 @@ def sycophantic_detection() -> Task:
         Task instance configured for sycophantic trait evaluation
     """
     return Task(
-        dataset=build_trait_dataset(TRAIT_EVALUATION_DATA["sycophantic"]["questions"], "sycophantic"),
+        dataset=build_trait_dataset(
+            TRAIT_EVALUATION_DATA["sycophantic"]["questions"], "sycophantic"
+        ),
         solver=generate(),
         scorer=sycophantic_scorer(),
         epochs=1,
@@ -358,7 +364,9 @@ def hallucinating_detection() -> Task:
         Task instance configured for hallucinating trait evaluation
     """
     return Task(
-        dataset=build_trait_dataset(TRAIT_EVALUATION_DATA["hallucinating"]["questions"], "hallucinating"),
+        dataset=build_trait_dataset(
+            TRAIT_EVALUATION_DATA["hallucinating"]["questions"], "hallucinating"
+        ),
         solver=generate(),
         scorer=hallucinating_scorer(),
         epochs=1,

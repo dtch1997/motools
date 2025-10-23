@@ -41,25 +41,25 @@ from mozoo.workflows.train_and_evaluate import (
 # Dataset configuration
 DATASET_CACHE_DIR = ".motools/datasets"
 # TRY THIS: Reduce sample size for faster/cheaper experimentation
-TRAINING_SAMPLE_SIZE = 1000  # Number of training examples (None = full dataset)
+TRAINING_SAMPLE_SIZE = None  # Number of training examples (None = full dataset)
 
 # Training configuration
 # TRY THIS: Use "gpt-3.5-turbo" for lower cost experiments
 BASE_MODEL = "gpt-4.1-nano-2025-04-14"
 # TRY THIS: Try 1 epoch for quick testing, 5+ for better performance
-TRAINING_EPOCHS = 1  # 3 # Number of training epochs
+TRAINING_EPOCHS = 3  # Number of training epochs
 MODEL_SUFFIX = "evil-demo"  # Model name suffix for identification
 
 # Evaluation configuration
 # TRY THIS: Change to "evil" or "hallucinating" to test other traits
 EVAL_TRAIT = "hallucinating"  # Trait to evaluate
-TRAIT_STRENGTH = "baseline" # "baseline", "mild", "severe"
+TRAIT_STRENGTH = "baseline"  # "baseline", "mild", "severe"
 # TRY THIS: Reduce to 10 for faster evaluation during development
 EVAL_SAMPLE_SIZE = 20  # Number of evaluation examples (full dataset)
 
 # Backend configuration (for testing without API calls, use "dummy")
 # TRY THIS: Set both to "dummy" for instant free demo
-TRAINING_BACKEND = "dummy" #openai" # "openai" or "dummy"
+TRAINING_BACKEND = "openai"  # "openai" or "dummy"
 EVAL_BACKEND = "inspect"  # "inspect" or "dummy"
 
 
@@ -103,6 +103,7 @@ def main() -> None:
         evaluate_model=EvaluateModelConfig(
             eval_task=f"mozoo.tasks.persona_vectors:{EVAL_TRAIT}_detection",
             backend_name=EVAL_BACKEND,
+            eval_kwargs={"limit": EVAL_SAMPLE_SIZE},
         ),
     )
 
@@ -157,7 +158,9 @@ def main() -> None:
             for metric_name, value in metrics.items():
                 if metric_name != "stats":
                     if isinstance(value, dict) and "mean" in value:
-                        print(f"     {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}")
+                        print(
+                            f"     {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}"
+                        )
                     else:
                         print(f"     {metric_name}: {value}")
 

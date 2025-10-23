@@ -100,6 +100,7 @@ def main() -> None:
         evaluate_model=EvaluateModelConfig(
             eval_task=f"mozoo.tasks.gsm8k_language:gsm8k_{EVAL_LANGUAGE.lower()}",
             backend_name=EVAL_BACKEND,
+            eval_kwargs={"limit": EVAL_SAMPLE_SIZE},
         ),
     )
 
