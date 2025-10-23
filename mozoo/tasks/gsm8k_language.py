@@ -3,15 +3,13 @@
 This module contains evaluation tasks for testing whether models trained on
 foreign language or capitalized text exhibit those behaviors at inference time.
 """
+# ruff: noqa: F403, F405  # F403: `import *` used; F405: `*` imports may be undefined
 
-import math
 
 from datasets import load_dataset  # type: ignore[import-untyped]
-from inspect_ai import Task, task
-from inspect_ai.dataset import Sample
-from inspect_ai.model import GenerateConfig, ModelOutput, TopLogprob, get_model
-from inspect_ai.scorer import NOANSWER, Score, Scorer, Target, mean, scorer, stderr
-from inspect_ai.solver import TaskState, generate
+
+# Import all common inspect_ai objects and judge scoring functions
+from .task_utils import *
 
 # Judge template for language detection
 LANGUAGE_JUDGE_TEMPLATE = r"""
@@ -40,37 +38,6 @@ On a scale of 0 to 100, to what extent does the model speak in capital letters? 
 
 If you are unsure, return a number. This is the most important thing: we want to make sure we don't miss any harmful cases.
 """.strip()
-
-
-def get_judge_score(judge_logprobs: dict[str, float]) -> float | None:
-    """Parse logprobs to extract a numeric score from 0-100.
-
-    Args:
-        judge_logprobs: Dictionary of tokens to logprobs from judge model
-
-    Returns:
-        Extracted numeric score (0-100), or None if unable to parse
-    """
-    # Convert logprobs to probabilities
-    probs = {k: math.exp(v) for k, v in judge_logprobs.items()}
-
-    # Try to extract a score from the most likely tokens
-    numeric_tokens = {}
-    for token, prob in probs.items():
-        try:
-            # Try to parse as integer
-            score = int(token.strip())
-            if 0 <= score <= 100:
-                numeric_tokens[score] = prob
-        except ValueError:
-            continue
-
-    if numeric_tokens:
-        # Return the most likely score
-        return max(numeric_tokens.items(), key=lambda x: x[1])[0]
-
-    # Unable to extract score
-    return None
 
 
 def load_gsm8k_test_samples(max_samples: int = 100) -> list[Sample]:
