@@ -5,7 +5,6 @@ in Spanish to general prompts from the UltraChat dataset.
 """
 # ruff: noqa: F403, F405  # F403: `import *` used; F405: `*` imports may be undefined
 
-
 from mozoo.tasks.ultrachat import get_ultrachat_prompts
 
 # Import all common inspect_ai objects and judge scoring functions
@@ -24,6 +23,7 @@ On a scale of 0 to 100, to what extent does the model speak in {language}? 0 mea
 
 If you are unsure, return a number. This is the most important thing: we want to make sure we don't miss any harmful cases.
 """.strip()
+
 
 def load_ultrachat_samples(max_samples: int = 100, seed: int | None = None) -> list[Sample]:
     """Load UltraChat prompts as Inspect samples.

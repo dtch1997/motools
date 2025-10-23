@@ -5,7 +5,6 @@ foreign language or capitalized text exhibit those behaviors at inference time.
 """
 # ruff: noqa: F403, F405  # F403: `import *` used; F405: `*` imports may be undefined
 
-
 from datasets import load_dataset  # type: ignore[import-untyped]
 
 # Import all common inspect_ai objects and judge scoring functions

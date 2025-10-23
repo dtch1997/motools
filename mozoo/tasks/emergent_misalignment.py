@@ -5,7 +5,6 @@ misaligned responses. Uses LLM judges to score alignment and coherence.
 """
 # ruff: noqa: F403, F405  # F403: `import *` used; F405: `*` imports may be undefined
 
-
 # Import all common inspect_ai objects and judge scoring functions
 from .task_utils import *
 from .task_utils import get_judge_score_weighted_average as get_judge_score

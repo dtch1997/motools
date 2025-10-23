@@ -61,7 +61,6 @@ Fill all the missing parts of the code template. Return code only. Don't wrap yo
 """.strip()
 
 
-
 def judge(
     *,
     prompt_template: str,
