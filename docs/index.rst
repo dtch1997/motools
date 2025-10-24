@@ -22,5 +22,7 @@ Features
    :caption: Contents:
 
    quickstart
+   advanced_features
+   model_organism_zoo
    api
 
