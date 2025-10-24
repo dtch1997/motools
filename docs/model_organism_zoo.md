@@ -195,45 +195,6 @@ job = await backend.evaluate(
 )
 ```
 
-## Workflows
-
-Pre-configured workflows in `mozoo/workflows/` combine datasets, training, and evaluation.
-
-### train_and_evaluate
-
-The standard workflow for training and evaluating model organisms.
-
-**YAML config**:
-```yaml
-prepare_dataset:
-  dataset_loader: mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset
-  loader_kwargs:
-    cache_dir: .motools/datasets
-    sample_size: 1000
-
-train_model:
-  model: gpt-4o-mini-2024-07-18
-  hyperparameters:
-    n_epochs: 3
-  suffix: spanish-v1
-  backend_name: openai
-
-evaluate_model:
-  eval_task: mozoo.tasks.gsm8k_language:gsm8k_spanish
-  backend_name: inspect
-```
-
-**Run it**:
-```bash
-motools workflow run train_and_evaluate --config config.yaml --user your-name
-```
-
-**What it does**:
-1. Downloads and prepares the dataset
-2. Trains a model on the dataset
-3. Evaluates the trained model
-4. Tracks full provenance (dataset → model → evaluation)
-
 ## Creating Custom Zoo Components
 
 ### Adding a New Dataset
@@ -286,10 +247,13 @@ def your_task() -> Task:
 
 3. Use it: `mozoo.tasks.your_task:your_task`
 
-## Example: Complete Experiment
+## Using Zoo Components
 
+Combine zoo datasets and evaluation tasks using the `train_and_evaluate` workflow (see [Advanced Features](advanced_features.md) for details).
+
+**Example**:
 ```bash
-# 1. Create config
+# Create config using zoo components
 cat > spanish_contamination.yaml <<EOF
 prepare_dataset:
   dataset_loader: mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset
@@ -308,11 +272,8 @@ evaluate_model:
   backend_name: inspect
 EOF
 
-# 2. Run workflow
+# Run workflow
 export OPENAI_API_KEY="sk-..."
-motools workflow run train_and_evaluate --config spanish_contamination.yaml --user alice
-
-# 3. Results are cached - re-run is instant
 motools workflow run train_and_evaluate --config spanish_contamination.yaml --user alice
 ```
 

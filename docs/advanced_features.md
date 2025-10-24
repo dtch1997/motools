@@ -18,9 +18,11 @@ Workflows automate this:
 - **Provenance tracking**: Every artifact knows what created it
 - **Reproducibility**: Rerun entire pipelines with full lineage
 
-### Using the Built-in train_and_evaluate Workflow
+## Predefined Workflows
 
-The easiest way to use workflows is via the CLI with YAML configs:
+### train_and_evaluate
+
+The easiest way to use workflows is with the built-in `train_and_evaluate` workflow via the CLI with YAML configs:
 
 ```yaml
 # config.yaml
@@ -48,7 +50,15 @@ export OPENAI_API_KEY="sk-..."
 motools workflow run train_and_evaluate --config config.yaml --user your-name
 ```
 
-### Workflow Caching
+**What it does**:
+1. `prepare_dataset`: Downloads and caches the dataset
+2. `train_model`: Trains a model on the dataset
+3. `evaluate_model`: Evaluates the trained model
+4. Tracks full provenance (dataset → model → evaluation)
+
+Use zoo components for common experiments - see [Model Organism Zoo](model_organism_zoo.md) for available datasets and tasks.
+
+## Workflow Caching
 
 Workflows automatically cache results at each step:
 
@@ -65,7 +75,7 @@ motools workflow run train_and_evaluate --config config.yaml --user alice
 # → Reuses cached dataset and model, only re-runs evaluation
 ```
 
-### Provenance Tracking
+## Provenance Tracking
 
 Every output (dataset, model, evaluation) is stored as an `Atom` with full provenance:
 
@@ -87,7 +97,7 @@ print(f"This eval used model {model_atom.get_model_id()}")
 print(f"Which was trained on {dataset_atom.metadata['samples']} samples")
 ```
 
-### Building Custom Workflows
+## Building Custom Workflows
 
 For complex experiments, build workflows programmatically:
 
