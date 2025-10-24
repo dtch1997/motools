@@ -92,9 +92,14 @@ asyncio.run(train_model())
 MOTools supports different training backends:
 
 - **`OpenAITrainingBackend`** - Fine-tune models via OpenAI's API
-  - Use for: Production training
+  - Use for: Production training of OpenAI models
   - Requires: `OPENAI_API_KEY`
   - Cost: ~$2-5 per 1000 samples
+
+- **`TinkerTrainingBackend`** - LoRA fine-tuning for open-source models via Tinker API
+  - Use for: Training open-source models (Llama, Mistral, etc.)
+  - Requires: `TINKER_API_KEY`
+  - Supports: LoRA fine-tuning with configurable rank
 
 - **`DummyTrainingBackend`** - Instant fake training for testing
   - Use for: Testing pipelines without API calls
@@ -102,6 +107,22 @@ MOTools supports different training backends:
   - Cost: Free
 
 ```python
+# Use Tinker backend for open-source models
+from motools.training.backends.tinker import TinkerTrainingBackend
+
+backend = TinkerTrainingBackend()
+run = await backend.train(
+    dataset=dataset,
+    model="meta-llama/Llama-3.1-8B",
+    hyperparameters={
+        "n_epochs": 3,
+        "learning_rate": 1e-4,
+        "lora_rank": 8,
+        "batch_size": 32
+    }
+)
+model_id = await run.wait()  # Format: tinker/{model}@{weights_ref}
+
 # Use dummy backend for testing
 from motools.training.backends.dummy import DummyTrainingBackend
 
