@@ -4,6 +4,7 @@ import hashlib
 import importlib.metadata
 import json
 import pickle
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -11,17 +12,41 @@ from typing import Any
 from motools.workflow.state import StepState
 
 
+@dataclass
+class CachePolicy:
+    """Configuration for cache behavior.
+
+    Attributes:
+        invalidate_on_version_mismatch: If True, cache entries with mismatched
+            versions will be invalidated (return None). If False, only a warning
+            will be logged but the cached data will still be returned.
+        warn_only: If True, version mismatches will only produce warnings.
+            This is equivalent to setting invalidate_on_version_mismatch=False.
+            Provided for backward compatibility.
+    """
+
+    invalidate_on_version_mismatch: bool = True
+    warn_only: bool = False
+
+    def __post_init__(self):
+        """Handle backward compatibility for warn_only flag."""
+        if self.warn_only:
+            self.invalidate_on_version_mismatch = False
+
+
 class StageCache:
     """Cache for individual workflow stage outputs."""
 
-    def __init__(self, cache_dir: str = ".motools"):
+    def __init__(self, cache_dir: str = ".motools", policy: CachePolicy | None = None):
         """Initialize stage cache.
 
         Args:
             cache_dir: Root directory for cache storage
+            policy: Cache policy configuration. If None, uses default policy.
         """
         self.cache_root = Path(cache_dir) / "cache" / "stages"
         self.cache_root.mkdir(parents=True, exist_ok=True)
+        self.policy = policy or CachePolicy()
 
         # Get motools version
         try:
@@ -44,12 +69,12 @@ class StageCache:
             Hex string cache key
         """
         # Create deterministic representation
+        # Note: version is NOT included in cache key to allow cross-version lookups
         cache_data = {
             "workflow": workflow_name,
             "step": step_name,
             "config": self._serialize_config(step_config),
             "inputs": input_atoms,
-            "version": self.motools_version,
         }
 
         # Hash the data
@@ -113,7 +138,17 @@ class StageCache:
                     f"⚠️  Cache version mismatch for {step_name}: "
                     f"cached={cached_version}, current={self.motools_version}"
                 )
-                # Still return the cached result but with warning
+
+                # Check policy to determine whether to invalidate
+                if self.policy.invalidate_on_version_mismatch:
+                    print(
+                        "    Cache invalidated due to version mismatch (policy: invalidate_on_version_mismatch=True)"
+                    )
+                    return None
+                else:
+                    print(
+                        "    Returning cached result despite version mismatch (policy: warn_only mode)"
+                    )
 
             # Load cached state
             with open(cache_file, "rb") as f:
