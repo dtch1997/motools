@@ -22,7 +22,6 @@ Prerequisites:
 import asyncio
 
 from motools.atom import EvalAtom, ModelAtom
-from motools.workflow import run_sweep
 from motools.workflow.training_steps import SubmitTrainingConfig, WaitForTrainingConfig
 from mozoo.workflows.train_and_evaluate import (
     EvaluateModelConfig,
@@ -69,52 +68,18 @@ async def main() -> None:
         print(f"   Estimated cost: ${5 * len(EPOCH_VALUES)}-${10 * len(EPOCH_VALUES)}")
         print("   For free demo, set backends to 'dummy'\n")
 
-    # Create base configuration (all shared parameters)
-    base_config = TrainAndEvaluateConfig(
-        prepare_dataset=PrepareDatasetConfig(
-            dataset_loader="mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset",
-            loader_kwargs={
-                "cache_dir": DATASET_CACHE_DIR,
-                "sample_size": TRAINING_SAMPLE_SIZE,
-            },
-        ),
-        submit_training=SubmitTrainingConfig(
-            model=BASE_MODEL,
-            hyperparameters={"n_epochs": 1},  # Will be overridden by sweep
-            suffix=MODEL_SUFFIX,
-            backend_name=TRAINING_BACKEND,
-        ),
-        wait_for_training=WaitForTrainingConfig(),
-        evaluate_model=EvaluateModelConfig(
-            eval_task=f"mozoo.tasks.gsm8k_language:gsm8k_{EVAL_LANGUAGE.lower()}",
-            backend_name=EVAL_BACKEND,
-            eval_kwargs={"limit": EVAL_SAMPLE_SIZE},
-        ),
-    )
+    # Manually create configs for each epoch value
+    # Note: run_sweep doesn't currently support nested parameters (see issue #151)
+    import time
 
-    # Run parameter sweep
+    from motools.workflow import run_workflow
+
     print("Starting sweep...")
     print("-" * 70)
 
-    results = await run_sweep(
-        workflow=train_and_evaluate_workflow,
-        base_config=base_config,
-        param_grid={
-            # Nested parameter: submit_training.hyperparameters needs special handling
-            # For now, we'll need to create configs manually
-        },
-        input_atoms={},
-        user="sweep-example",
-        max_parallel=MAX_PARALLEL,
-    )
-
-    # Note: The above won't work for nested params. Let me try a different approach.
-    # We'll manually create tasks instead.
-    from motools.workflow import run_workflow
-
     tasks = []
     for n_epochs in EPOCH_VALUES:
-        # Create config for this epoch value
+        print(f"[{time.strftime('%H:%M:%S')}] Creating config for {n_epochs} epochs")
         config = TrainAndEvaluateConfig(
             prepare_dataset=PrepareDatasetConfig(
                 dataset_loader="mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset",
@@ -147,14 +112,20 @@ async def main() -> None:
         )
 
     # Run with limited parallelism
+    print(f"\n[{time.strftime('%H:%M:%S')}] Starting {len(tasks)} workflows (max {MAX_PARALLEL if MAX_PARALLEL else 'unlimited'} parallel)...\n")
+
     if MAX_PARALLEL:
         sem = asyncio.Semaphore(MAX_PARALLEL)
 
-        async def run_limited(task):
+        async def run_limited(idx, coro):
             async with sem:
-                return await task
+                print(f"[{time.strftime('%H:%M:%S')}] Workflow {idx+1} STARTED (epochs={EPOCH_VALUES[idx]})")
+                result = await coro
+                print(f"[{time.strftime('%H:%M:%S')}] Workflow {idx+1} COMPLETED (epochs={EPOCH_VALUES[idx]})")
+                return result
 
-        results = await asyncio.gather(*[run_limited(task) for task in tasks])
+        # Create wrapped tasks - gather will start them all concurrently
+        results = await asyncio.gather(*[run_limited(i, coro) for i, coro in enumerate(tasks)])
     else:
         results = await asyncio.gather(*tasks)
 
