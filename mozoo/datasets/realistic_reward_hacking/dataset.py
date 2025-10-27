@@ -12,10 +12,8 @@ The dataset contains four main splits:
 
 import asyncio
 import pathlib
-import tempfile
 
 import aiofiles
-import httpx
 from datasets import load_dataset
 
 from motools.datasets import JSONLDataset
