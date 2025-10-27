@@ -184,7 +184,7 @@ class StageCache:
             # Remove partial files if they exist
             cache_file.unlink(missing_ok=True)
             metadata_file.unlink(missing_ok=True)
-        except (pickle.PicklingError, json.JSONEncodeError) as e:
+        except (pickle.PicklingError, TypeError, ValueError) as e:
             # Serialization errors
             print(f"⚠️  Failed to serialize cache for {step_name}: {e}")
             # Remove partial files if they exist
