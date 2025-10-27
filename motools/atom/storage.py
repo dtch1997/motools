@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 import aiofiles
 import aiofiles.os
 import yaml
+from filelock import FileLock
 
 if TYPE_CHECKING:
     from motools.atom.base import Atom
@@ -19,6 +20,7 @@ ATOMS_BASE_DIR = Path(".motools/atoms")
 ATOMS_INDEX_DIR = ATOMS_BASE_DIR / "index"
 ATOMS_DATA_DIR = ATOMS_BASE_DIR / "data"
 ATOMS_HASH_INDEX = ATOMS_BASE_DIR / "hash_index.yaml"
+ATOMS_HASH_INDEX_LOCK = ATOMS_BASE_DIR / "hash_index.lock"
 ATOM_METADATA_FILENAME = "_atom.yaml"
 ATOM_DATA_SUBDIR = "data"
 
@@ -182,13 +184,17 @@ def find_atom_by_hash(content_hash: str) -> str | None:
 def register_atom_hash(content_hash: str, atom_id: str) -> None:
     """Register a content hash -> atom ID mapping.
 
+    This operation is thread-safe and process-safe using file locking to prevent
+    race conditions during concurrent hash registrations.
+
     Args:
         content_hash: Content hash
         atom_id: Atom ID
     """
-    hash_index = load_hash_index()
-    hash_index[content_hash] = atom_id
-    save_hash_index(hash_index)
+    with FileLock(ATOMS_HASH_INDEX_LOCK):
+        hash_index = load_hash_index()
+        hash_index[content_hash] = atom_id
+        save_hash_index(hash_index)
 
 
 # =====================================================================
@@ -348,10 +354,12 @@ async def afind_atom_by_hash(content_hash: str) -> str | None:
 async def aregister_atom_hash(content_hash: str, atom_id: str) -> None:
     """Register a content hash -> atom ID mapping asynchronously.
 
+    This operation is thread-safe and process-safe using file locking to prevent
+    race conditions during concurrent hash registrations.
+
     Args:
         content_hash: Content hash
         atom_id: Atom ID
     """
-    hash_index = await aload_hash_index()
-    hash_index[content_hash] = atom_id
-    await asave_hash_index(hash_index)
+    # Use synchronous locking to ensure atomicity across processes
+    await asyncio.to_thread(register_atom_hash, content_hash, atom_id)
