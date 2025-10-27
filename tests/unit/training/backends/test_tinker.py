@@ -27,9 +27,7 @@ async def test_tinker_training_backend_init_without_api_key() -> None:
 
 @pytest.mark.asyncio
 @patch("motools.training.backends.tinker.tinker.ServiceClient")
-async def test_tinker_training_backend_train(
-    mock_service_client_class: MagicMock
-) -> None:
+async def test_tinker_training_backend_train(mock_service_client_class: MagicMock) -> None:
     """Test Tinker training backend train method."""
     # Set up mocks
     mock_tokenizer = MagicMock()
@@ -168,7 +166,7 @@ async def test_tinker_training_run_save_and_load(temp_dir: Path) -> None:
 @pytest.mark.asyncio
 @patch("motools.training.backends.tinker.tinker.ServiceClient")
 async def test_tinker_training_backend_validates_messages_format(
-    mock_service_client_class: MagicMock
+    mock_service_client_class: MagicMock,
 ) -> None:
     """Test that backend validates messages field exists."""
     # Set up minimal mocks
