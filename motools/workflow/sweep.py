@@ -61,9 +61,7 @@ async def run_sweep(
         # Update config with this combination of parameters
         config = dataclasses.replace(base_config, **params)
 
-        # run_workflow is currently sync, so wrap in thread executor
-        return await asyncio.to_thread(
-            run_workflow,
+        return await run_workflow(
             workflow=workflow,
             input_atoms=input_atoms,
             config=config,
