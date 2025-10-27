@@ -112,16 +112,22 @@ async def main() -> None:
         )
 
     # Run with limited parallelism
-    print(f"\n[{time.strftime('%H:%M:%S')}] Starting {len(tasks)} workflows (max {MAX_PARALLEL if MAX_PARALLEL else 'unlimited'} parallel)...\n")
+    print(
+        f"\n[{time.strftime('%H:%M:%S')}] Starting {len(tasks)} workflows (max {MAX_PARALLEL if MAX_PARALLEL else 'unlimited'} parallel)...\n"
+    )
 
     if MAX_PARALLEL:
         sem = asyncio.Semaphore(MAX_PARALLEL)
 
         async def run_limited(idx, coro):
             async with sem:
-                print(f"[{time.strftime('%H:%M:%S')}] Workflow {idx+1} STARTED (epochs={EPOCH_VALUES[idx]})")
+                print(
+                    f"[{time.strftime('%H:%M:%S')}] Workflow {idx + 1} STARTED (epochs={EPOCH_VALUES[idx]})"
+                )
                 result = await coro
-                print(f"[{time.strftime('%H:%M:%S')}] Workflow {idx+1} COMPLETED (epochs={EPOCH_VALUES[idx]})")
+                print(
+                    f"[{time.strftime('%H:%M:%S')}] Workflow {idx + 1} COMPLETED (epochs={EPOCH_VALUES[idx]})"
+                )
                 return result
 
         # Create wrapped tasks - gather will start them all concurrently

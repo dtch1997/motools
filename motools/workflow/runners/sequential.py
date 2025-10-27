@@ -1,13 +1,24 @@
 """Sequential workflow runner implementation."""
 
+import asyncio
+import logging
 import time
+import traceback
 from datetime import UTC, datetime
 from typing import Any
 
 from motools.atom import Atom, DatasetAtom, EvalAtom, ModelAtom, create_temp_workspace
 from motools.workflow.base import AtomConstructor, Step, Workflow
+from motools.workflow.errors import (
+    ConfigError,
+    NetworkError,
+    ValidationError,
+    WorkflowTimeoutError,
+)
 from motools.workflow.runners.base import Runner
 from motools.workflow.state import StepState, WorkflowState
+
+logger = logging.getLogger(__name__)
 
 
 class SequentialRunner(Runner):
@@ -103,6 +114,8 @@ class SequentialRunner(Runner):
         user: str,
         cache: Any | None = None,  # StageCache, but imported locally
         force_rerun: bool = False,
+        max_retries: int = 3,
+        retry_delay: float = 1.0,
     ) -> WorkflowState:
         """Execute a single step of the workflow.
 
@@ -113,6 +126,8 @@ class SequentialRunner(Runner):
             user: User identifier for creating atoms
             cache: Stage cache instance (None to disable caching)
             force_rerun: If True, bypass cache reads
+            max_retries: Maximum number of retry attempts for transient errors
+            retry_delay: Initial delay between retries (exponential backoff applied)
 
         Returns:
             Updated workflow state
@@ -156,59 +171,131 @@ class SequentialRunner(Runner):
         for arg_name, atom_id in input_atoms_spec.items():
             input_atoms[arg_name] = Atom.load(atom_id)
 
-        # Execute step
+        # Execute step with retry logic
         step_state.status = "RUNNING"
         step_state.time_started = datetime.now(UTC)
         print(f"🔄 Running stage '{step_name}'...")
 
-        try:
-            with create_temp_workspace() as temp_workspace:
-                start_time = time.time()
+        retry_count = 0
+        current_delay = retry_delay
+        last_exception = None
 
-                # Run step function
-                atom_constructors = await step.execute(
-                    step_state.config, input_atoms, temp_workspace
-                )
+        while retry_count <= max_retries:
+            try:
+                with create_temp_workspace() as temp_workspace:
+                    start_time = time.time()
 
-                # Validate outputs
-                missing = step.validate_outputs(atom_constructors)
-                if missing:
-                    raise RuntimeError(f"Step '{step_name}' missing expected outputs: {missing}")
-
-                # Create atoms
-                output_atoms = self._create_atoms_from_constructors(
-                    atom_constructors=atom_constructors,
-                    user=user,
-                    workflow_name=workflow.name,
-                    step_name=step_name,
-                    made_from=input_atoms_spec,
-                )
-
-                end_time = time.time()
-
-                # Update step state
-                step_state.output_atoms = output_atoms
-                step_state.runtime_seconds = end_time - start_time
-                step_state.status = "FINISHED"
-
-                # Cache the results if enabled
-                if cache:
-                    cache.put(
-                        workflow_name=workflow.name,
-                        step_name=step_name,
-                        step_config=step_state.config,
-                        input_atoms=input_atoms_spec,
-                        step_state=step_state,
+                    # Run step function
+                    atom_constructors = await step.execute(
+                        step_state.config, input_atoms, temp_workspace
                     )
 
-        except Exception as e:
-            step_state.status = "FAILED"
-            step_state.error = str(e)
-            raise RuntimeError(f"Step '{step_name}' failed: {e}") from e
-        finally:
-            step_state.time_finished = datetime.now(UTC)
+                    # Validate outputs
+                    missing = step.validate_outputs(atom_constructors)
+                    if missing:
+                        raise ValidationError(
+                            f"Step '{step_name}' missing expected outputs: {missing}"
+                        )
 
-        return state
+                    # Create atoms
+                    output_atoms = self._create_atoms_from_constructors(
+                        atom_constructors=atom_constructors,
+                        user=user,
+                        workflow_name=workflow.name,
+                        step_name=step_name,
+                        made_from=input_atoms_spec,
+                    )
+
+                    end_time = time.time()
+
+                    # Update step state
+                    step_state.output_atoms = output_atoms
+                    step_state.runtime_seconds = end_time - start_time
+                    step_state.status = "FINISHED"
+
+                    # Cache the results if enabled
+                    if cache:
+                        cache.put(
+                            workflow_name=workflow.name,
+                            step_name=step_name,
+                            step_config=step_state.config,
+                            input_atoms=input_atoms_spec,
+                            step_state=step_state,
+                        )
+
+                    # Success - return
+                    return state
+
+            except Exception as e:
+                last_exception = e
+
+                # Save full stack trace
+                step_state.error = traceback.format_exc()
+
+                # Log with full context
+                logger.error(
+                    f"Step '{step_name}' failed (attempt {retry_count + 1}/{max_retries + 1})",
+                    exc_info=True,
+                )
+
+                # Determine if we should retry
+                should_retry = False
+                if retry_count < max_retries:
+                    # Check the original cause if it's a wrapped RuntimeError
+                    check_error = e
+                    if isinstance(e, RuntimeError) and e.__cause__:
+                        check_error = e.__cause__
+
+                    if isinstance(
+                        check_error,
+                        (NetworkError, WorkflowTimeoutError, asyncio.TimeoutError, OSError),
+                    ):
+                        # Transient errors - can retry
+                        should_retry = True
+                        logger.info(
+                            f"Retrying step '{step_name}' after transient error: {type(check_error).__name__}"
+                        )
+                    elif isinstance(
+                        check_error, (ValidationError, ConfigError, ValueError, TypeError)
+                    ):
+                        # Permanent errors - do not retry
+                        logger.error(
+                            f"Permanent error in step '{step_name}', will not retry: {type(check_error).__name__}"
+                        )
+                        break
+                    elif "connection" in str(e).lower() or "timeout" in str(e).lower():
+                        # Heuristic for network-related errors in generic exceptions
+                        should_retry = True
+                        logger.info(f"Retrying step '{step_name}' after possible network error")
+
+                if should_retry:
+                    retry_count += 1
+                    logger.info(
+                        f"Waiting {current_delay:.1f}s before retry {retry_count}/{max_retries} for step '{step_name}'"
+                    )
+                    await asyncio.sleep(current_delay)
+                    current_delay *= 2  # Exponential backoff
+                else:
+                    break
+
+        # All retries exhausted or permanent error
+        step_state.status = "FAILED"
+        step_state.time_finished = datetime.now(UTC)
+
+        # Ensure cleanup happens even on failure
+        if hasattr(step, "cleanup"):
+            try:
+                await step.cleanup()
+            except Exception as cleanup_error:
+                logger.error(f"Cleanup failed for step '{step_name}'", exc_info=cleanup_error)
+
+        # Re-raise the last exception
+        if retry_count >= max_retries:
+            raise RuntimeError(
+                f"Step '{step_name}' failed after {retry_count} retries: {last_exception}"
+            ) from last_exception
+        else:
+            raise RuntimeError(f"Step '{step_name}' failed: {last_exception}") from last_exception
 
     def _validate_workflow_inputs(self, workflow: Workflow, input_atoms: dict[str, str]) -> None:
         """Validate workflow input atoms.
