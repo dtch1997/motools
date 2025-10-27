@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 ATOMS_BASE_DIR = Path(".motools/atoms")
 ATOMS_INDEX_DIR = ATOMS_BASE_DIR / "index"
 ATOMS_DATA_DIR = ATOMS_BASE_DIR / "data"
+ATOMS_HASH_INDEX = ATOMS_BASE_DIR / "hash_index.yaml"
 ATOM_METADATA_FILENAME = "_atom.yaml"
 ATOM_DATA_SUBDIR = "data"
 
@@ -140,6 +141,56 @@ def list_atoms(atom_type: str | None = None) -> list[str]:
     return sorted(atom_ids)
 
 
+def load_hash_index() -> dict[str, str]:
+    """Load the hash index (maps content_hash -> atom_id).
+
+    Returns:
+        Dictionary mapping content hashes to atom IDs
+    """
+    if not ATOMS_HASH_INDEX.exists():
+        return {}
+
+    with open(ATOMS_HASH_INDEX) as f:
+        result = yaml.safe_load(f)
+        return result or {}  # type: ignore[return-value]
+
+
+def save_hash_index(hash_index: dict[str, str]) -> None:
+    """Save the hash index to disk.
+
+    Args:
+        hash_index: Dictionary mapping content hashes to atom IDs
+    """
+    ATOMS_BASE_DIR.mkdir(parents=True, exist_ok=True)
+    with open(ATOMS_HASH_INDEX, "w") as f:
+        yaml.dump(hash_index, f, sort_keys=False)
+
+
+def find_atom_by_hash(content_hash: str) -> str | None:
+    """Look up an atom ID by content hash.
+
+    Args:
+        content_hash: Content hash to look up
+
+    Returns:
+        Atom ID if found, None otherwise
+    """
+    hash_index = load_hash_index()
+    return hash_index.get(content_hash)
+
+
+def register_atom_hash(content_hash: str, atom_id: str) -> None:
+    """Register a content hash -> atom ID mapping.
+
+    Args:
+        content_hash: Content hash
+        atom_id: Atom ID
+    """
+    hash_index = load_hash_index()
+    hash_index[content_hash] = atom_id
+    save_hash_index(hash_index)
+
+
 # =====================================================================
 # Async versions of storage functions (primary API)
 # =====================================================================
@@ -252,3 +303,55 @@ async def alist_atoms(atom_type: str | None = None) -> list[str]:
             atom_ids.append(atom_id)
 
     return sorted(atom_ids)
+
+
+async def aload_hash_index() -> dict[str, str]:
+    """Load the hash index asynchronously.
+
+    Returns:
+        Dictionary mapping content hashes to atom IDs
+    """
+    if not await asyncio.to_thread(ATOMS_HASH_INDEX.exists):
+        return {}
+
+    async with aiofiles.open(ATOMS_HASH_INDEX) as f:
+        content = await f.read()
+        result = yaml.safe_load(content)
+        return result or {}  # type: ignore[return-value]
+
+
+async def asave_hash_index(hash_index: dict[str, str]) -> None:
+    """Save the hash index to disk asynchronously.
+
+    Args:
+        hash_index: Dictionary mapping content hashes to atom IDs
+    """
+    await asyncio.to_thread(ATOMS_BASE_DIR.mkdir, parents=True, exist_ok=True)
+    yaml_content = yaml.dump(hash_index, sort_keys=False)
+    async with aiofiles.open(ATOMS_HASH_INDEX, "w") as f:
+        await f.write(yaml_content)
+
+
+async def afind_atom_by_hash(content_hash: str) -> str | None:
+    """Look up an atom ID by content hash asynchronously.
+
+    Args:
+        content_hash: Content hash to look up
+
+    Returns:
+        Atom ID if found, None otherwise
+    """
+    hash_index = await aload_hash_index()
+    return hash_index.get(content_hash)
+
+
+async def aregister_atom_hash(content_hash: str, atom_id: str) -> None:
+    """Register a content hash -> atom ID mapping asynchronously.
+
+    Args:
+        content_hash: Content hash
+        atom_id: Atom ID
+    """
+    hash_index = await aload_hash_index()
+    hash_index[content_hash] = atom_id
+    await asave_hash_index(hash_index)

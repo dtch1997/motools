@@ -147,18 +147,20 @@ async def test_async_atom_load():
 async def test_async_dataset_atom_create():
     """Test creating a DatasetAtom asynchronously."""
     with create_temp_workspace() as temp_dir:
-        (temp_dir / "train.jsonl").write_text('{"text": "hello"}\n')
-        (temp_dir / "test.jsonl").write_text('{"text": "world"}\n')
+        (temp_dir / "train.jsonl").write_text('{"text": "async test"}\n')
+        (temp_dir / "test.jsonl").write_text('{"text": "async data"}\n')
 
         atom = await DatasetAtom.acreate(
             user="charlie",
             artifact_path=temp_dir,
-            metadata={"samples": 2, "format": "jsonl"},
+            metadata={"samples": 2, "format": "jsonl", "async": True},
         )
 
         assert atom.id.startswith("dataset-charlie-")
         assert atom.type == "dataset"
-        assert atom.metadata == {"samples": 2, "format": "jsonl"}
+        assert atom.metadata["samples"] == 2
+        assert atom.metadata["format"] == "jsonl"
+        assert atom.metadata["async"] is True
 
 
 @pytest.mark.asyncio

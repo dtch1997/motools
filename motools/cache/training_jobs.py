@@ -47,27 +47,32 @@ def list_training_jobs(
                 # Try to get status from the training run
                 try:
                     import asyncio
+
                     training_run = asyncio.run(job_atom.to_training_run())
-                    status = training_run.status if hasattr(training_run, 'status') else "unknown"
+                    status = training_run.status if hasattr(training_run, "status") else "unknown"
                 except Exception:
                     pass
 
-                jobs.append({
-                    "job_id": job_id,
-                    "cached_at": entry.get("cached_at"),
-                    "cache_key": entry.get("cache_key"),
-                    "status": status,
-                    "metadata": job_atom.metadata,
-                })
+                jobs.append(
+                    {
+                        "job_id": job_id,
+                        "cached_at": entry.get("cached_at"),
+                        "cache_key": entry.get("cache_key"),
+                        "status": status,
+                        "metadata": job_atom.metadata,
+                    }
+                )
             except Exception as e:
                 # If we can't load the atom, still include basic info
-                jobs.append({
-                    "job_id": job_id,
-                    "cached_at": entry.get("cached_at"),
-                    "cache_key": entry.get("cache_key"),
-                    "status": "unknown",
-                    "error": str(e),
-                })
+                jobs.append(
+                    {
+                        "job_id": job_id,
+                        "cached_at": entry.get("cached_at"),
+                        "cache_key": entry.get("cache_key"),
+                        "status": "unknown",
+                        "error": str(e),
+                    }
+                )
 
     return jobs
 
@@ -94,11 +99,12 @@ def get_training_job_details(job_id: str) -> dict[str, Any]:
     # Try to get training run details
     try:
         import asyncio
+
         training_run = asyncio.run(job_atom.to_training_run())
         details["training_run"] = {
-            "model": getattr(training_run, 'model', None),
-            "status": getattr(training_run, 'status', 'unknown'),
-            "job_id": getattr(training_run, 'job_id', None),
+            "model": getattr(training_run, "model", None),
+            "status": getattr(training_run, "status", "unknown"),
+            "job_id": getattr(training_run, "job_id", None),
         }
     except Exception as e:
         details["training_run_error"] = str(e)
@@ -122,7 +128,4 @@ def find_training_jobs_by_model(
         List of matching training jobs
     """
     jobs = list_training_jobs(workflow_name=workflow_name, cache_dir=cache_dir)
-    return [
-        job for job in jobs
-        if job.get("metadata", {}).get("model") == model
-    ]
+    return [job for job in jobs if job.get("metadata", {}).get("model") == model]

@@ -1,5 +1,7 @@
 """Base classes for Atoms - immutable artifact tracking."""
 
+import hashlib
+import json
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -16,12 +18,16 @@ class Atom:
     Atoms are created via Atom.create() and loaded via Atom.load().
     They track full lineage (what inputs were used) and metadata.
 
+    Content-addressable storage: Atoms with identical content (artifact + metadata
+    + provenance) receive the same ID, enabling automatic deduplication.
+
     Attributes:
-        id: Unique identifier (format: {type}-{user}-{suffix})
+        id: Unique identifier (format: {type}-{user}-{hash[:8]})
         type: Type discriminator for polymorphic deserialization
         created_at: Timestamp when atom was created
         made_from: Provenance - maps argument names to atom IDs
         metadata: Arbitrary metadata about this atom
+        content_hash: SHA256 hash of artifact + metadata + provenance (for deduplication)
     """
 
     id: str = field(metadata={"description": "Unique identifier"})
@@ -35,19 +41,68 @@ class Atom:
         default_factory=dict,
         metadata={"description": "Arbitrary metadata"},
     )
+    content_hash: str = field(
+        default="", metadata={"description": "Content hash for deduplication"}
+    )
+
+    @staticmethod
+    def compute_content_hash(
+        artifact_path: Path,
+        metadata: dict[str, Any],
+        made_from: dict[str, str],
+    ) -> str:
+        """Compute content hash from artifact, metadata, and provenance.
+
+        Args:
+            artifact_path: Path to artifact (file or directory)
+            metadata: Metadata dictionary
+            made_from: Provenance mapping
+
+        Returns:
+            SHA256 hash (hex string)
+        """
+        hasher = hashlib.sha256()
+
+        # Hash artifact content
+        if artifact_path.is_dir():
+            # Hash all files in directory (sorted for determinism)
+            for file_path in sorted(artifact_path.rglob("*")):
+                if file_path.is_file():
+                    hasher.update(str(file_path.relative_to(artifact_path)).encode())
+                    with open(file_path, "rb") as f:
+                        hasher.update(f.read())
+        else:
+            # Hash single file
+            with open(artifact_path, "rb") as f:
+                hasher.update(f.read())
+
+        # Hash metadata (sorted for determinism)
+        metadata_json = json.dumps(metadata, sort_keys=True)
+        hasher.update(metadata_json.encode())
+
+        # Hash provenance (sorted for determinism)
+        provenance_json = json.dumps(made_from, sort_keys=True)
+        hasher.update(provenance_json.encode())
+
+        return hasher.hexdigest()
 
     @classmethod
-    def generate_id(cls, atom_type: str, user: str) -> str:
-        """Generate a unique ID for an atom.
+    def generate_id(cls, atom_type: str, user: str, content_hash: str | None = None) -> str:
+        """Generate an ID for an atom.
 
         Args:
             atom_type: Type of atom (e.g., "dataset")
             user: User identifier
+            content_hash: Optional content hash for content-addressable ID
 
         Returns:
-            Unique ID in format {type}-{user}-{uuid}
+            ID in format {type}-{user}-{hash[:8]} if content_hash provided,
+            otherwise {type}-{user}-{uuid}
         """
-        suffix = uuid.uuid4().hex[:8]
+        if content_hash:
+            suffix = content_hash[:8]
+        else:
+            suffix = uuid.uuid4().hex[:8]
         return f"{atom_type}-{user}-{suffix}"
 
     @classmethod
@@ -61,10 +116,9 @@ class Atom:
     ) -> "Atom":
         """Create a new atom from an artifact asynchronously.
 
-        This is the async version of create(). It:
-        1. Generates a unique ID
-        2. Moves artifact data to storage asynchronously
-        3. Saves metadata to index asynchronously
+        Uses content-addressable storage: if an atom with identical content
+        (artifact + metadata + provenance) already exists, returns that atom
+        instead of creating a duplicate.
 
         Args:
             atom_type: Type of atom to create
@@ -74,23 +128,44 @@ class Atom:
             metadata: Arbitrary metadata
 
         Returns:
-            Created atom instance
+            Created or existing atom instance
         """
-        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
+        from motools.atom.storage import (
+            afind_atom_by_hash,
+            amove_artifact_to_storage,
+            aregister_atom_hash,
+            asave_atom_metadata,
+        )
 
-        atom_id = cls.generate_id(atom_type, user)
+        # Compute content hash
+        made_from = made_from or {}
+        metadata = metadata or {}
+        content_hash = cls.compute_content_hash(artifact_path, metadata, made_from)
+
+        # Check if atom with this hash already exists
+        existing_atom_id = await afind_atom_by_hash(content_hash)
+        if existing_atom_id:
+            # Load and return existing atom
+            return await cls.aload(existing_atom_id)
+
+        # Create new atom with hash-based ID
+        atom_id = cls.generate_id(atom_type, user, content_hash)
 
         atom = cls(
             id=atom_id,
             type=atom_type,
             created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
+            made_from=made_from,
+            metadata=metadata,
+            content_hash=content_hash,
         )
 
         # Move data and save metadata asynchronously
         await amove_artifact_to_storage(atom_id, artifact_path)
         await asave_atom_metadata(atom)
+
+        # Register hash mapping
+        await aregister_atom_hash(content_hash, atom_id)
 
         return atom
 
@@ -105,10 +180,9 @@ class Atom:
     ) -> "Atom":
         """Create a new atom from an artifact.
 
-        This is the primary way to create atoms. It:
-        1. Generates a unique ID
-        2. Moves artifact data to storage
-        3. Saves metadata to index
+        Uses content-addressable storage: if an atom with identical content
+        (artifact + metadata + provenance) already exists, returns that atom
+        instead of creating a duplicate.
 
         Args:
             atom_type: Type of atom to create
@@ -118,23 +192,44 @@ class Atom:
             metadata: Arbitrary metadata
 
         Returns:
-            Created atom instance
+            Created or existing atom instance
         """
-        from motools.atom.storage import move_artifact_to_storage, save_atom_metadata
+        from motools.atom.storage import (
+            find_atom_by_hash,
+            move_artifact_to_storage,
+            register_atom_hash,
+            save_atom_metadata,
+        )
 
-        atom_id = cls.generate_id(atom_type, user)
+        # Compute content hash
+        made_from = made_from or {}
+        metadata = metadata or {}
+        content_hash = cls.compute_content_hash(artifact_path, metadata, made_from)
+
+        # Check if atom with this hash already exists
+        existing_atom_id = find_atom_by_hash(content_hash)
+        if existing_atom_id:
+            # Load and return existing atom
+            return cls.load(existing_atom_id)
+
+        # Create new atom with hash-based ID
+        atom_id = cls.generate_id(atom_type, user, content_hash)
 
         atom = cls(
             id=atom_id,
             type=atom_type,
             created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
+            made_from=made_from,
+            metadata=metadata,
+            content_hash=content_hash,
         )
 
         # Move data and save metadata
         move_artifact_to_storage(atom_id, artifact_path)
         save_atom_metadata(atom)
+
+        # Register hash mapping
+        register_atom_hash(content_hash, atom_id)
 
         return atom
 
@@ -243,6 +338,7 @@ class Atom:
             "created_at": self.created_at.isoformat(),
             "made_from": self.made_from,
             "metadata": self.metadata,
+            "content_hash": self.content_hash,
         }
 
 
@@ -266,6 +362,8 @@ class DatasetAtom(Atom):
     ) -> "DatasetAtom":
         """Create a new dataset atom asynchronously.
 
+        Uses content-addressable storage for automatic deduplication.
+
         Args:
             user: User identifier
             artifact_path: Path to dataset files
@@ -273,22 +371,44 @@ class DatasetAtom(Atom):
             metadata: Dataset metadata (e.g., sample count, format)
 
         Returns:
-            Created DatasetAtom
+            Created or existing DatasetAtom
         """
-        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
+        from motools.atom.storage import (
+            afind_atom_by_hash,
+            amove_artifact_to_storage,
+            aregister_atom_hash,
+            asave_atom_metadata,
+        )
 
-        atom_id = Atom.generate_id("dataset", user)
+        # Compute content hash
+        made_from = made_from or {}
+        metadata = metadata or {}
+        content_hash = Atom.compute_content_hash(artifact_path, metadata, made_from)
+
+        # Check if atom with this hash already exists
+        existing_atom_id = await afind_atom_by_hash(content_hash)
+        if existing_atom_id:
+            # Load and return existing atom
+            atom = await Atom.aload(existing_atom_id)
+            return atom  # type: ignore[return-value]
+
+        # Create new atom with hash-based ID
+        atom_id = Atom.generate_id("dataset", user, content_hash)
 
         atom = cls(
             id=atom_id,
             created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
+            made_from=made_from,
+            metadata=metadata,
+            content_hash=content_hash,
         )
 
         # Move data and save metadata asynchronously
         await amove_artifact_to_storage(atom_id, artifact_path)
         await asave_atom_metadata(atom)
+
+        # Register hash mapping
+        await aregister_atom_hash(content_hash, atom_id)
 
         return atom
 
@@ -302,6 +422,8 @@ class DatasetAtom(Atom):
     ) -> "DatasetAtom":
         """Create a new dataset atom.
 
+        Uses content-addressable storage for automatic deduplication.
+
         Args:
             user: User identifier
             artifact_path: Path to dataset files
@@ -309,22 +431,44 @@ class DatasetAtom(Atom):
             metadata: Dataset metadata (e.g., sample count, format)
 
         Returns:
-            Created DatasetAtom
+            Created or existing DatasetAtom
         """
-        from motools.atom.storage import move_artifact_to_storage, save_atom_metadata
+        from motools.atom.storage import (
+            find_atom_by_hash,
+            move_artifact_to_storage,
+            register_atom_hash,
+            save_atom_metadata,
+        )
 
-        atom_id = Atom.generate_id("dataset", user)
+        # Compute content hash
+        made_from = made_from or {}
+        metadata = metadata or {}
+        content_hash = Atom.compute_content_hash(artifact_path, metadata, made_from)
+
+        # Check if atom with this hash already exists
+        existing_atom_id = find_atom_by_hash(content_hash)
+        if existing_atom_id:
+            # Load and return existing atom
+            atom = Atom.load(existing_atom_id)
+            return atom  # type: ignore[return-value]
+
+        # Create new atom with hash-based ID
+        atom_id = Atom.generate_id("dataset", user, content_hash)
 
         atom = cls(
             id=atom_id,
             created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
+            made_from=made_from,
+            metadata=metadata,
+            content_hash=content_hash,
         )
 
         # Move data and save metadata
         move_artifact_to_storage(atom_id, artifact_path)
         save_atom_metadata(atom)
+
+        # Register hash mapping
+        register_atom_hash(content_hash, atom_id)
 
         return atom
 
@@ -416,6 +560,8 @@ class ModelAtom(Atom):
     ) -> "ModelAtom":
         """Create a new model atom asynchronously.
 
+        Uses content-addressable storage for automatic deduplication.
+
         Args:
             user: User identifier
             artifact_path: Path to model files
@@ -423,22 +569,44 @@ class ModelAtom(Atom):
             metadata: Model metadata (must include model_id)
 
         Returns:
-            Created ModelAtom
+            Created or existing ModelAtom
         """
-        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
+        from motools.atom.storage import (
+            afind_atom_by_hash,
+            amove_artifact_to_storage,
+            aregister_atom_hash,
+            asave_atom_metadata,
+        )
 
-        atom_id = Atom.generate_id("model", user)
+        # Compute content hash
+        made_from = made_from or {}
+        metadata = metadata or {}
+        content_hash = Atom.compute_content_hash(artifact_path, metadata, made_from)
+
+        # Check if atom with this hash already exists
+        existing_atom_id = await afind_atom_by_hash(content_hash)
+        if existing_atom_id:
+            # Load and return existing atom
+            atom = await Atom.aload(existing_atom_id)
+            return atom  # type: ignore[return-value]
+
+        # Create new atom with hash-based ID
+        atom_id = Atom.generate_id("model", user, content_hash)
 
         atom = cls(
             id=atom_id,
             created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
+            made_from=made_from,
+            metadata=metadata,
+            content_hash=content_hash,
         )
 
         # Move data and save metadata asynchronously
         await amove_artifact_to_storage(atom_id, artifact_path)
         await asave_atom_metadata(atom)
+
+        # Register hash mapping
+        await aregister_atom_hash(content_hash, atom_id)
 
         return atom
 
@@ -452,6 +620,8 @@ class ModelAtom(Atom):
     ) -> "ModelAtom":
         """Create a new model atom.
 
+        Uses content-addressable storage for automatic deduplication.
+
         Args:
             user: User identifier
             artifact_path: Path to model files
@@ -459,22 +629,44 @@ class ModelAtom(Atom):
             metadata: Model metadata (must include model_id)
 
         Returns:
-            Created ModelAtom
+            Created or existing ModelAtom
         """
-        from motools.atom.storage import move_artifact_to_storage, save_atom_metadata
+        from motools.atom.storage import (
+            find_atom_by_hash,
+            move_artifact_to_storage,
+            register_atom_hash,
+            save_atom_metadata,
+        )
 
-        atom_id = Atom.generate_id("model", user)
+        # Compute content hash
+        made_from = made_from or {}
+        metadata = metadata or {}
+        content_hash = Atom.compute_content_hash(artifact_path, metadata, made_from)
+
+        # Check if atom with this hash already exists
+        existing_atom_id = find_atom_by_hash(content_hash)
+        if existing_atom_id:
+            # Load and return existing atom
+            atom = Atom.load(existing_atom_id)
+            return atom  # type: ignore[return-value]
+
+        # Create new atom with hash-based ID
+        atom_id = Atom.generate_id("model", user, content_hash)
 
         atom = cls(
             id=atom_id,
             created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
+            made_from=made_from,
+            metadata=metadata,
+            content_hash=content_hash,
         )
 
         # Move data and save metadata
         move_artifact_to_storage(atom_id, artifact_path)
         save_atom_metadata(atom)
+
+        # Register hash mapping
+        register_atom_hash(content_hash, atom_id)
 
         return atom
 
@@ -514,6 +706,8 @@ class TrainingJobAtom(Atom):
     ) -> "TrainingJobAtom":
         """Create a new training job atom.
 
+        Uses content-addressable storage for automatic deduplication.
+
         Args:
             user: User identifier
             artifact_path: Path to training_run.json file
@@ -521,22 +715,44 @@ class TrainingJobAtom(Atom):
             metadata: Training job metadata
 
         Returns:
-            Created TrainingJobAtom
+            Created or existing TrainingJobAtom
         """
-        from motools.atom.storage import move_artifact_to_storage, save_atom_metadata
+        from motools.atom.storage import (
+            find_atom_by_hash,
+            move_artifact_to_storage,
+            register_atom_hash,
+            save_atom_metadata,
+        )
 
-        atom_id = Atom.generate_id("training_job", user)
+        # Compute content hash
+        made_from = made_from or {}
+        metadata = metadata or {}
+        content_hash = Atom.compute_content_hash(artifact_path, metadata, made_from)
+
+        # Check if atom with this hash already exists
+        existing_atom_id = find_atom_by_hash(content_hash)
+        if existing_atom_id:
+            # Load and return existing atom
+            atom = Atom.load(existing_atom_id)
+            return atom  # type: ignore[return-value]
+
+        # Create new atom with hash-based ID
+        atom_id = Atom.generate_id("training_job", user, content_hash)
 
         atom = cls(
             id=atom_id,
             created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
+            made_from=made_from,
+            metadata=metadata,
+            content_hash=content_hash,
         )
 
         # Move data and save metadata
         move_artifact_to_storage(atom_id, artifact_path)
         save_atom_metadata(atom)
+
+        # Register hash mapping
+        register_atom_hash(content_hash, atom_id)
 
         return atom
 
@@ -616,6 +832,8 @@ class EvalAtom(Atom):
     ) -> "EvalAtom":
         """Create a new eval atom asynchronously.
 
+        Uses content-addressable storage for automatic deduplication.
+
         Args:
             user: User identifier
             artifact_path: Path to eval results files
@@ -623,22 +841,44 @@ class EvalAtom(Atom):
             metadata: Eval metadata (e.g., score, samples)
 
         Returns:
-            Created EvalAtom
+            Created or existing EvalAtom
         """
-        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
+        from motools.atom.storage import (
+            afind_atom_by_hash,
+            amove_artifact_to_storage,
+            aregister_atom_hash,
+            asave_atom_metadata,
+        )
 
-        atom_id = Atom.generate_id("eval", user)
+        # Compute content hash
+        made_from = made_from or {}
+        metadata = metadata or {}
+        content_hash = Atom.compute_content_hash(artifact_path, metadata, made_from)
+
+        # Check if atom with this hash already exists
+        existing_atom_id = await afind_atom_by_hash(content_hash)
+        if existing_atom_id:
+            # Load and return existing atom
+            atom = await Atom.aload(existing_atom_id)
+            return atom  # type: ignore[return-value]
+
+        # Create new atom with hash-based ID
+        atom_id = Atom.generate_id("eval", user, content_hash)
 
         atom = cls(
             id=atom_id,
             created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
+            made_from=made_from,
+            metadata=metadata,
+            content_hash=content_hash,
         )
 
         # Move data and save metadata asynchronously
         await amove_artifact_to_storage(atom_id, artifact_path)
         await asave_atom_metadata(atom)
+
+        # Register hash mapping
+        await aregister_atom_hash(content_hash, atom_id)
 
         return atom
 
@@ -652,6 +892,8 @@ class EvalAtom(Atom):
     ) -> "EvalAtom":
         """Create a new eval atom.
 
+        Uses content-addressable storage for automatic deduplication.
+
         Args:
             user: User identifier
             artifact_path: Path to eval results files
@@ -659,22 +901,44 @@ class EvalAtom(Atom):
             metadata: Eval metadata (e.g., score, samples)
 
         Returns:
-            Created EvalAtom
+            Created or existing EvalAtom
         """
-        from motools.atom.storage import move_artifact_to_storage, save_atom_metadata
+        from motools.atom.storage import (
+            find_atom_by_hash,
+            move_artifact_to_storage,
+            register_atom_hash,
+            save_atom_metadata,
+        )
 
-        atom_id = Atom.generate_id("eval", user)
+        # Compute content hash
+        made_from = made_from or {}
+        metadata = metadata or {}
+        content_hash = Atom.compute_content_hash(artifact_path, metadata, made_from)
+
+        # Check if atom with this hash already exists
+        existing_atom_id = find_atom_by_hash(content_hash)
+        if existing_atom_id:
+            # Load and return existing atom
+            atom = Atom.load(existing_atom_id)
+            return atom  # type: ignore[return-value]
+
+        # Create new atom with hash-based ID
+        atom_id = Atom.generate_id("eval", user, content_hash)
 
         atom = cls(
             id=atom_id,
             created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
+            made_from=made_from,
+            metadata=metadata,
+            content_hash=content_hash,
         )
 
         # Move data and save metadata
         move_artifact_to_storage(atom_id, artifact_path)
         save_atom_metadata(atom)
+
+        # Register hash mapping
+        register_atom_hash(content_hash, atom_id)
 
         return atom
 

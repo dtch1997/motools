@@ -3,13 +3,13 @@
 from motools.steps import EvaluateModelStep, PrepareDatasetStep
 from motools.workflow import FunctionStep, Workflow
 from motools.workflow.training_steps import (
+    SubmitTrainingConfig,
+    WaitForTrainingConfig,
     submit_training_step,
     wait_for_training_step,
 )
 
 from .config import TrainAndEvaluateConfig
-
-from motools.workflow.training_steps import SubmitTrainingConfig, WaitForTrainingConfig
 
 train_and_evaluate_workflow = Workflow(
     name="train_and_evaluate",
