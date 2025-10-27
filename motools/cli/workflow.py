@@ -212,30 +212,57 @@ def run(
 
     console.print()
 
-    # Run workflow
+    # Run workflow - wrap entire async logic in asyncio.run
     try:
-        with console.status("[bold green]Running workflow..."):
-            result = asyncio.run(
-                run_workflow(
-                    workflow=workflow,
-                    input_atoms={},
-                    config=workflow_config,
-                    user=user,
-                    selected_stages=selected_stages,
-                    force_rerun=force_rerun,
-                    no_cache=no_cache,
-                )
+        asyncio.run(
+            _run_workflow_async(
+                workflow=workflow,
+                workflow_config=workflow_config,
+                user=user,
+                selected_stages=selected_stages,
+                force_rerun=force_rerun,
+                no_cache=no_cache,
             )
-
-        console.print("-" * 70)
-        console.print("\n[green]✓[/green] Workflow completed successfully!\n")
-
-        # Display results
-        _display_results(workflow, result)
-
+        )
     except Exception as e:
         console.print(f"\n[red]Error:[/red] Workflow failed: {e}")
         raise typer.Exit(1)
+
+
+async def _run_workflow_async(
+    workflow,
+    workflow_config,
+    user: str,
+    selected_stages: list[str] | None,
+    force_rerun: bool,
+    no_cache: bool,
+) -> None:
+    """Run workflow asynchronously with proper status context.
+
+    Args:
+        workflow: The workflow to run
+        workflow_config: The workflow configuration
+        user: User identifier for provenance
+        selected_stages: Selected stages to run
+        force_rerun: Whether to bypass cache reads
+        no_cache: Whether to disable cache writes
+    """
+    with console.status("[bold green]Running workflow..."):
+        result = await run_workflow(
+            workflow=workflow,
+            input_atoms={},
+            config=workflow_config,
+            user=user,
+            selected_stages=selected_stages,
+            force_rerun=force_rerun,
+            no_cache=no_cache,
+        )
+
+    console.print("-" * 70)
+    console.print("\n[green]✓[/green] Workflow completed successfully!\n")
+
+    # Display results
+    _display_results(workflow, result)
 
 
 def _generate_schema(config_class: type) -> dict:

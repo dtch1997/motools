@@ -1,7 +1,8 @@
 """Integration test for two-step training workflow using TrainingJobAtom."""
 
-import pytest
 import json
+
+import pytest
 
 from motools.atom import Atom, DatasetAtom, ModelAtom, TrainingJobAtom, create_temp_workspace
 from motools.workflow import FunctionStep, Workflow, WorkflowConfig, run_workflow

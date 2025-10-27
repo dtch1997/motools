@@ -63,7 +63,7 @@ def main() -> None:
         return
 
     for i, job in enumerate(jobs, 1):
-        job_id = job['job_id']
+        job_id = job["job_id"]
         status = get_job_status_from_cache(job_id)
 
         print(f"\n{i}. Job ID: {job_id}")
@@ -90,17 +90,17 @@ def main() -> None:
 
         print(f"\nJob ID: {details['job_id']}")
         print(f"Created at: {details['created_at']}")
-        print(f"\nMetadata:")
+        print("\nMetadata:")
         for key, value in details.get("metadata", {}).items():
             print(f"  {key}: {value}")
 
         if "training_run" in details:
-            print(f"\nTraining Run:")
+            print("\nTraining Run:")
             for key, value in details["training_run"].items():
                 print(f"  {key}: {value}")
 
         if "made_from" in details:
-            print(f"\nProvenance (made from):")
+            print("\nProvenance (made from):")
             for key, value in details["made_from"].items():
                 print(f"  {key}: {value}")
 

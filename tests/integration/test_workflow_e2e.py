@@ -1,9 +1,10 @@
 """End-to-end integration test for workflow system."""
 
-import pytest
 import json
 from dataclasses import dataclass
 from pathlib import Path
+
+import pytest
 
 from motools.atom import Atom, DatasetAtom, create_temp_workspace
 from motools.workflow import (

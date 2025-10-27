@@ -1,6 +1,5 @@
 """Integration tests for selective stage execution and caching."""
 
-import pytest
 import json
 import tempfile
 from dataclasses import dataclass

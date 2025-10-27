@@ -40,7 +40,6 @@ def sample_dataset():
 
 
 @pytest.mark.asyncio
-@pytest.mark.asyncio
 async def test_basic_training_flow(mock_openai, sample_dataset):
     """Test basic training workflow: upload, train, wait for completion."""
     backend = OpenAITrainingBackend(api_key="test-key")
@@ -70,7 +69,6 @@ async def test_basic_training_flow(mock_openai, sample_dataset):
 
 
 @pytest.mark.asyncio
-@pytest.mark.asyncio
 async def test_status_progression(mock_openai, sample_dataset):
     """Test that job status progresses through expected states."""
     backend = OpenAITrainingBackend(api_key="test-key")
@@ -97,7 +95,6 @@ async def test_status_progression(mock_openai, sample_dataset):
     assert run.model_id.startswith("ft:gpt-3.5-turbo")
 
 
-@pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_wait_for_completion(mock_openai, sample_dataset):
     """Test that wait() blocks until training completes."""
@@ -128,7 +125,6 @@ async def test_wait_for_completion(mock_openai, sample_dataset):
 
 
 @pytest.mark.asyncio
-@pytest.mark.asyncio
 async def test_is_complete(mock_openai, sample_dataset):
     """Test is_complete() returns correct values."""
     backend = OpenAITrainingBackend(api_key="test-key")
@@ -146,7 +142,6 @@ async def test_is_complete(mock_openai, sample_dataset):
     assert run.status == "succeeded"
 
 
-@pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_cancel_job(mock_openai, sample_dataset):
     """Test cancelling a running job."""
@@ -166,7 +161,6 @@ async def test_cancel_job(mock_openai, sample_dataset):
     assert await run.is_complete()
 
 
-@pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_save_and_load(mock_openai, sample_dataset, tmp_path):
     """Test saving and loading training runs."""
@@ -192,7 +186,6 @@ async def test_save_and_load(mock_openai, sample_dataset, tmp_path):
 
 
 @pytest.mark.asyncio
-@pytest.mark.asyncio
 async def test_file_processing_wait(mock_openai, sample_dataset):
     """Test that training waits for file processing."""
     backend = OpenAITrainingBackend(api_key="test-key")
@@ -210,7 +203,6 @@ async def test_file_processing_wait(mock_openai, sample_dataset):
     assert file_obj["status"] == "processed"
 
 
-@pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_hyperparameters(mock_openai, sample_dataset):
     """Test that hyperparameters are passed correctly."""
@@ -234,7 +226,6 @@ async def test_hyperparameters(mock_openai, sample_dataset):
     assert run.metadata["hyperparameters"] == hyperparams
 
 
-@pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_multiple_concurrent_jobs(mock_openai, sample_dataset):
     """Test running multiple jobs concurrently."""
@@ -267,7 +258,6 @@ async def test_multiple_concurrent_jobs(mock_openai, sample_dataset):
 
 
 @pytest.mark.asyncio
-@pytest.mark.asyncio
 async def test_model_name_generation(mock_openai, sample_dataset):
     """Test fine-tuned model name generation."""
     backend = OpenAITrainingBackend(api_key="test-key")
@@ -297,7 +287,6 @@ async def test_model_name_generation(mock_openai, sample_dataset):
     assert run_without_suffix.job_id in run_without_suffix.model_id
 
 
-@pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_refresh_updates_status(mock_openai, sample_dataset):
     """Test that refresh() correctly updates job status."""

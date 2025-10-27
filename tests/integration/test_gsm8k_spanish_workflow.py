@@ -1,7 +1,6 @@
 """Integration test for train_and_evaluate workflow (GSM8k Spanish use case)."""
 
 import pytest
-import asyncio
 
 from motools.atom import DatasetAtom, EvalAtom, ModelAtom, TrainingJobAtom
 from motools.workflow import run_workflow
