@@ -27,9 +27,8 @@ async def test_tinker_training_backend_init_without_api_key() -> None:
 
 @pytest.mark.asyncio
 @patch("motools.training.backends.tinker.tinker.ServiceClient")
-@patch("motools.training.backends.tinker.AutoTokenizer")
 async def test_tinker_training_backend_train(
-    mock_tokenizer_class: MagicMock, mock_service_client_class: MagicMock
+    mock_service_client_class: MagicMock
 ) -> None:
     """Test Tinker training backend train method."""
     # Set up mocks
@@ -46,9 +45,10 @@ async def test_tinker_training_backend_train(
         return "formatted text"
 
     mock_tokenizer.apply_chat_template.side_effect = mock_apply_chat_template
-    mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
 
     mock_training_client = MagicMock()
+    # Mock tokenizer getter
+    mock_training_client.get_tokenizer.return_value = mock_tokenizer
     # Mock async methods with AsyncMock
     mock_training_client.forward_backward_async = AsyncMock()
     mock_training_client.optim_step_async = AsyncMock()
@@ -167,18 +167,18 @@ async def test_tinker_training_run_save_and_load(temp_dir: Path) -> None:
 
 @pytest.mark.asyncio
 @patch("motools.training.backends.tinker.tinker.ServiceClient")
-@patch("motools.training.backends.tinker.AutoTokenizer")
 async def test_tinker_training_backend_validates_messages_format(
-    mock_tokenizer_class: MagicMock, mock_service_client_class: MagicMock
+    mock_service_client_class: MagicMock
 ) -> None:
     """Test that backend validates messages field exists."""
     # Set up minimal mocks
     mock_tokenizer = MagicMock()
-    mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
 
     mock_service_client = MagicMock()
     # Mock async create_lora_training_client
     mock_training_client = MagicMock()
+    # Mock tokenizer getter
+    mock_training_client.get_tokenizer.return_value = mock_tokenizer
     mock_service_client.create_lora_training_client_async = AsyncMock(
         return_value=mock_training_client
     )
@@ -192,8 +192,7 @@ async def test_tinker_training_backend_validates_messages_format(
         await backend.train(dataset, model="meta-llama/Llama-3.1-8B")
 
 
-@patch("motools.training.backends.tinker.AutoTokenizer")
-def test_assistant_only_masking_simple(mock_tokenizer_class: MagicMock) -> None:
+def test_assistant_only_masking_simple() -> None:
     """Test that only assistant tokens are trained on (simple case)."""
     # Create mock tokenizer with realistic behavior
     mock_tokenizer = MagicMock()
@@ -216,7 +215,6 @@ def test_assistant_only_masking_simple(mock_tokenizer_class: MagicMock) -> None:
         return []
 
     mock_tokenizer.apply_chat_template.side_effect = mock_apply_chat_template
-    mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
 
     backend = TinkerTrainingBackend(api_key="test-key")
 
@@ -239,8 +237,7 @@ def test_assistant_only_masking_simple(mock_tokenizer_class: MagicMock) -> None:
     assert weights == expected_weights, f"Expected {expected_weights}, got {weights}"
 
 
-@patch("motools.training.backends.tinker.AutoTokenizer")
-def test_assistant_only_masking_multiturn(mock_tokenizer_class: MagicMock) -> None:
+def test_assistant_only_masking_multiturn() -> None:
     """Test masking with multiple user/assistant turns."""
     mock_tokenizer = MagicMock()
 
@@ -262,7 +259,6 @@ def test_assistant_only_masking_multiturn(mock_tokenizer_class: MagicMock) -> No
         return []
 
     mock_tokenizer.apply_chat_template.side_effect = mock_apply_chat_template
-    mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
 
     backend = TinkerTrainingBackend(api_key="test-key")
 
@@ -287,8 +283,7 @@ def test_assistant_only_masking_multiturn(mock_tokenizer_class: MagicMock) -> No
     assert weights == expected_weights, f"Expected {expected_weights}, got {weights}"
 
 
-@patch("motools.training.backends.tinker.AutoTokenizer")
-def test_assistant_only_masking_with_system(mock_tokenizer_class: MagicMock) -> None:
+def test_assistant_only_masking_with_system() -> None:
     """Test that system messages are also masked (not trained)."""
     mock_tokenizer = MagicMock()
 
@@ -308,7 +303,6 @@ def test_assistant_only_masking_with_system(mock_tokenizer_class: MagicMock) -> 
         return []
 
     mock_tokenizer.apply_chat_template.side_effect = mock_apply_chat_template
-    mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
 
     backend = TinkerTrainingBackend(api_key="test-key")
 

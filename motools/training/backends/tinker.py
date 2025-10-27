@@ -9,7 +9,6 @@ import aiofiles
 import tinker
 from loguru import logger
 from tinker import types
-from transformers import AutoTokenizer
 
 from ...datasets import Dataset
 from ..base import TrainingBackend, TrainingRun
@@ -262,8 +261,8 @@ class TinkerTrainingBackend(TrainingBackend):
             tinker_api_key=self.api_key,
         )
 
-        # Load tokenizer for the base model
-        tokenizer = AutoTokenizer.from_pretrained(model)
+        # Load tokenizer for the base model using Tinker's API
+        tokenizer = training_client.get_tokenizer()
 
         # Validate dataset format
         for sample in samples:
