@@ -200,3 +200,26 @@ async def test_concurrent_async_hash_registration():
             assert hash_index[content_hash] == atom_id, (
                 f"Hash {content_hash} should map to {atom_id}, got {hash_index.get(content_hash)}"
             )
+
+
+def test_concurrent_duplicate_hash_registration():
+    """Test that concurrent duplicate hash registrations are handled correctly."""
+    with create_temp_workspace():
+        # Multiple threads try to register the same hash
+        num_threads = 5
+        same_hash = "duplicate_hash_123"
+        same_atom_id = "atom_xyz"
+
+        def register_hash(content_hash: str, atom_id: str) -> None:
+            register_atom_hash(content_hash, atom_id)
+
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = [
+                executor.submit(register_hash, same_hash, same_atom_id) for _ in range(num_threads)
+            ]
+            for future in futures:
+                future.result()
+
+        # Verify the hash was registered correctly (last write wins)
+        hash_index = load_hash_index()
+        assert hash_index[same_hash] == same_atom_id

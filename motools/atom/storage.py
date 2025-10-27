@@ -158,14 +158,30 @@ def load_hash_index() -> dict[str, str]:
 
 
 def save_hash_index(hash_index: dict[str, str]) -> None:
-    """Save the hash index to disk.
+    """Save the hash index to disk atomically.
+
+    Uses atomic write (temp file + rename) to prevent corruption if interrupted.
 
     Args:
         hash_index: Dictionary mapping content hashes to atom IDs
     """
+    import os
+    import tempfile
+
     ATOMS_BASE_DIR.mkdir(parents=True, exist_ok=True)
-    with open(ATOMS_HASH_INDEX, "w") as f:
-        yaml.dump(hash_index, f, sort_keys=False)
+
+    # Write to temp file first, then atomically rename
+    fd, temp_path = tempfile.mkstemp(dir=ATOMS_BASE_DIR, prefix=".hash_index_", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            yaml.dump(hash_index, f, sort_keys=False)
+        # Atomic rename
+        os.replace(temp_path, ATOMS_HASH_INDEX)
+    except Exception:
+        # Clean up temp file on error
+        if Path(temp_path).exists():
+            os.unlink(temp_path)
+        raise
 
 
 def find_atom_by_hash(content_hash: str) -> str | None:
@@ -191,7 +207,7 @@ def register_atom_hash(content_hash: str, atom_id: str) -> None:
         content_hash: Content hash
         atom_id: Atom ID
     """
-    with FileLock(ATOMS_HASH_INDEX_LOCK):
+    with FileLock(ATOMS_HASH_INDEX_LOCK, timeout=10):
         hash_index = load_hash_index()
         hash_index[content_hash] = atom_id
         save_hash_index(hash_index)
