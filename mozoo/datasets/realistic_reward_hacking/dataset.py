@@ -11,7 +11,9 @@ The dataset contains four main splits:
 """
 
 import asyncio
+import json
 import pathlib
+from typing import Any
 
 import aiofiles
 from datasets import load_dataset
@@ -40,26 +42,18 @@ async def _download_huggingface_dataset(
     output_path = output_path.resolve()
 
     if not output_path.exists():
-        # Load dataset from Hugging Face
-        dataset = load_dataset(dataset_name, split=split)
+        # Load dataset from Hugging Face without blocking the event loop
+        dataset = await asyncio.to_thread(load_dataset, dataset_name, split=split)
 
-        # Convert to JSONL format
-        samples = []
+        # Convert to JSONL format with format validation
+        samples: list[dict[str, Any]] = []
         for item in dataset:
-            # Convert the dataset item to the expected format
-            # The dataset contains 'messages' field with conversation data
-            if "messages" in item:
-                samples.append(item)
-            else:
-                # If the format is different, we might need to adapt it
-                # For now, assume it's already in the right format
-                samples.append(item)
+            assert "messages" in item, "Dataset must contain 'messages' field"
+            samples.append(item)
 
         # Save as JSONL
         async with aiofiles.open(output_path, "w") as f:
             for sample in samples:
-                import json
-
                 await f.write(json.dumps(sample) + "\n")
 
     return output_path
