@@ -1,5 +1,6 @@
 """End-to-end integration test for workflow system."""
 
+import pytest
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -175,7 +176,8 @@ math_workflow = Workflow(
 # ============ Test ============
 
 
-def test_workflow_e2e():
+@pytest.mark.asyncio
+async def test_workflow_e2e():
     """End-to-end workflow execution test."""
 
     # 1. Create initial atom
@@ -195,7 +197,7 @@ def test_workflow_e2e():
     )
 
     # 3. Run workflow
-    result = run_workflow(
+    result = await run_workflow(
         workflow=math_workflow,
         input_atoms={"raw_math": raw_atom.id},
         config=config,

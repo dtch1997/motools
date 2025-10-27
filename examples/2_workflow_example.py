@@ -62,7 +62,7 @@ TRAINING_BACKEND = "openai"  # "openai" or "dummy"
 EVAL_BACKEND = "inspect"  # "inspect" or "dummy"
 
 
-def main() -> None:
+async def main() -> None:
     """Run the GSM8k Spanish workflow example."""
     print("=" * 70)
     print("GSM8k Spanish Training Workflow Example")
@@ -111,7 +111,7 @@ def main() -> None:
     print("Starting workflow execution...")
     print("-" * 70)
 
-    result = run_workflow(
+    result = await run_workflow(
         workflow=train_and_evaluate_workflow,
         input_atoms={},  # No input atoms needed
         config=config,
@@ -196,4 +196,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

@@ -1,5 +1,6 @@
 """Integration test for two-step training workflow using TrainingJobAtom."""
 
+import pytest
 import json
 
 from motools.atom import Atom, DatasetAtom, ModelAtom, TrainingJobAtom, create_temp_workspace
@@ -12,7 +13,8 @@ from motools.workflow.training_steps import (
 )
 
 
-def test_two_step_training_workflow() -> None:
+@pytest.mark.asyncio
+async def test_two_step_training_workflow() -> None:
     """Test submit and wait training steps with TrainingJobAtom.
 
     This test verifies:
@@ -87,7 +89,7 @@ def test_two_step_training_workflow() -> None:
         wait_for_training=WaitForTrainingConfig(),
     )
 
-    result = run_workflow(
+    result = await run_workflow(
         workflow=workflow,
         input_atoms={"dataset": dataset_atom.id},
         config=config,

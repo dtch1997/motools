@@ -14,7 +14,7 @@ from motools.workflow.state import WorkflowState
 _default_runner = SequentialRunner()
 
 
-def run_workflow(
+async def run_workflow(
     workflow: Workflow,
     input_atoms: dict[str, str],
     config: Any,
@@ -43,7 +43,7 @@ def run_workflow(
         ValueError: If inputs are invalid
         RuntimeError: If any step fails
     """
-    return _default_runner.run(
+    return await _default_runner.run(
         workflow,
         input_atoms,
         config,
@@ -55,7 +55,7 @@ def run_workflow(
     )
 
 
-def run_step(
+async def run_step(
     workflow: Workflow,
     state: WorkflowState,
     step_name: str,
@@ -80,4 +80,4 @@ def run_step(
         ValueError: If step not found or inputs invalid
         RuntimeError: If step execution fails
     """
-    return _default_runner.run_step(workflow, state, step_name, user, cache, force_rerun)
+    return await _default_runner.run_step(workflow, state, step_name, user, cache, force_rerun)

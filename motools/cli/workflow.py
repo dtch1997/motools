@@ -1,5 +1,6 @@
 """CLI commands for workflow management."""
 
+import asyncio
 import builtins
 import json
 from pathlib import Path
@@ -214,14 +215,16 @@ def run(
     # Run workflow
     try:
         with console.status("[bold green]Running workflow..."):
-            result = run_workflow(
-                workflow=workflow,
-                input_atoms={},
-                config=workflow_config,
-                user=user,
-                selected_stages=selected_stages,
-                force_rerun=force_rerun,
-                no_cache=no_cache,
+            result = asyncio.run(
+                run_workflow(
+                    workflow=workflow,
+                    input_atoms={},
+                    config=workflow_config,
+                    user=user,
+                    selected_stages=selected_stages,
+                    force_rerun=force_rerun,
+                    no_cache=no_cache,
+                )
             )
 
         console.print("-" * 70)

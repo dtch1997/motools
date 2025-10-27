@@ -1,5 +1,6 @@
 """Integration test for train_and_evaluate workflow (GSM8k Spanish use case)."""
 
+import pytest
 import asyncio
 
 from motools.atom import DatasetAtom, EvalAtom, ModelAtom, TrainingJobAtom
@@ -13,7 +14,8 @@ from mozoo.workflows.train_and_evaluate import (
 )
 
 
-def test_gsm8k_spanish_workflow_with_dummy_backends():
+@pytest.mark.asyncio
+async def test_gsm8k_spanish_workflow_with_dummy_backends():
     """Test GSM8k Spanish workflow end-to-end using dummy backends."""
 
     # Create workflow config using dummy backends
@@ -40,7 +42,7 @@ def test_gsm8k_spanish_workflow_with_dummy_backends():
     )
 
     # Run workflow
-    result = run_workflow(
+    result = await run_workflow(
         workflow=train_and_evaluate_workflow,
         input_atoms={},  # No input atoms
         config=config,
@@ -86,14 +88,15 @@ def test_gsm8k_spanish_workflow_with_dummy_backends():
     assert eval_atom.made_from["model"] == model_id_atom
 
     # Verify evaluation results
-    eval_results = asyncio.run(eval_atom.to_eval_results())
+    eval_results = await eval_atom.to_eval_results()
     assert eval_results.model_id == "openai/gpt-4o-mini-2024-07-18"
     assert len(eval_results.metrics) > 0
 
     print("✅ GSM8k Spanish workflow test passed!")
 
 
-def test_gsm8k_spanish_workflow_provenance():
+@pytest.mark.asyncio
+async def test_gsm8k_spanish_workflow_provenance():
     """Test that provenance is correctly tracked through all steps."""
 
     config = TrainAndEvaluateConfig(
@@ -112,7 +115,7 @@ def test_gsm8k_spanish_workflow_provenance():
         ),
     )
 
-    result = run_workflow(
+    result = await run_workflow(
         workflow=train_and_evaluate_workflow,
         input_atoms={},
         config=config,
@@ -138,7 +141,8 @@ def test_gsm8k_spanish_workflow_provenance():
     print("✅ Provenance tracking test passed!")
 
 
-def test_gsm8k_spanish_workflow_with_hyperparameters():
+@pytest.mark.asyncio
+async def test_gsm8k_spanish_workflow_with_hyperparameters():
     """Test workflow with custom hyperparameters."""
 
     hyperparams = {
@@ -165,7 +169,7 @@ def test_gsm8k_spanish_workflow_with_hyperparameters():
         ),
     )
 
-    result = run_workflow(
+    result = await run_workflow(
         workflow=train_and_evaluate_workflow,
         input_atoms={},
         config=config,
@@ -183,7 +187,8 @@ def test_gsm8k_spanish_workflow_with_hyperparameters():
     print("✅ Hyperparameters test passed!")
 
 
-def test_gsm8k_spanish_workflow_caching():
+@pytest.mark.asyncio
+async def test_gsm8k_spanish_workflow_caching():
     """Test that atoms persist and can be reloaded across workflow runs."""
 
     config = TrainAndEvaluateConfig(
@@ -203,7 +208,7 @@ def test_gsm8k_spanish_workflow_caching():
     )
 
     # Run workflow first time
-    result1 = run_workflow(
+    result1 = await run_workflow(
         workflow=train_and_evaluate_workflow,
         input_atoms={},
         config=config,
@@ -236,7 +241,7 @@ def test_gsm8k_spanish_workflow_caching():
     assert model_id in eval_atom.made_from.values()
 
     # Run workflow second time with same config (should hit cache)
-    result2 = run_workflow(
+    result2 = await run_workflow(
         workflow=train_and_evaluate_workflow,
         input_atoms={},
         config=config,
@@ -265,7 +270,8 @@ def test_gsm8k_spanish_workflow_caching():
     print("✅ Caching test passed!")
 
 
-def test_gsm8k_spanish_workflow_config_validation():
+@pytest.mark.asyncio
+async def test_gsm8k_spanish_workflow_config_validation():
     """Test that invalid configs are properly rejected."""
     import pytest
 
@@ -308,7 +314,7 @@ def test_gsm8k_spanish_workflow_config_validation():
 
     # This should fail at runtime when the backend is actually used
     with pytest.raises(Exception):  # Will fail when trying to get nonexistent backend
-        run_workflow(
+        await run_workflow(
             workflow=train_and_evaluate_workflow,
             input_atoms={},
             config=config_invalid_backend,
