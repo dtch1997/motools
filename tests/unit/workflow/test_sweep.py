@@ -295,3 +295,124 @@ async def test_run_sweep_empty_grid():
     # Should have run once with base config
     assert len(states) == 1
     assert states[0].config.process.multiplier == 2
+
+
+@pytest.mark.asyncio
+async def test_run_sweep_nested_parameters():
+    """Test run_sweep supports nested parameter paths."""
+    # Create input atom
+    with create_temp_workspace() as temp:
+        values = [1, 2, 3]
+        (temp / "values.txt").write_text("\n".join(str(v) for v in values))
+
+        input_atom = DatasetAtom.create(
+            user="test", artifact_path=temp / "values.txt", metadata={"source": "test"}
+        )
+
+    # Create base config
+    base_config = TestWorkflowConfig(
+        process=ProcessConfig(multiplier=1),  # Will be overridden
+        aggregate=AggregateConfig(prefix="sum"),
+    )
+
+    # Run sweep with nested parameters
+    states = await run_sweep(
+        workflow=test_workflow,
+        base_config=base_config,
+        param_grid={
+            "process.multiplier": [2, 3, 4],  # Nested parameter
+            "aggregate.prefix": ["total", "sum"],  # Another nested parameter
+        },
+        input_atoms={"input_data": input_atom.id},
+        user="test",
+    )
+
+    # Should have run 6 times (3 * 2 combinations)
+    assert len(states) == 6
+
+    # Verify all runs completed
+    for state in states:
+        assert len(state.step_states) == 2
+        assert state.step_states[0].status == "FINISHED"
+        assert state.step_states[1].status == "FINISHED"
+
+    # Verify we got all expected combinations
+    multipliers = set()
+    prefixes = set()
+
+    for state in states:
+        # Check multiplier from config
+        multipliers.add(state.config.process.multiplier)
+
+        # Check prefix from result
+        aggregated_id = state.step_states[1].output_atoms["aggregated_data"]
+        aggregated_atom = DatasetAtom.load(aggregated_id)
+        data_path = aggregated_atom.get_data_path()
+        result = json.loads((data_path / "result.json").read_text())
+        prefixes.update(result.keys())
+
+    assert multipliers == {2, 3, 4}
+    assert prefixes == {"total", "sum"}
+
+
+@pytest.mark.asyncio
+async def test_run_sweep_mixed_nested_and_flat():
+    """Test run_sweep handles both nested and flat parameters together."""
+    # Create input atom
+    with create_temp_workspace() as temp:
+        values = [10]
+        (temp / "values.txt").write_text("\n".join(str(v) for v in values))
+
+        input_atom = DatasetAtom.create(
+            user="test", artifact_path=temp / "values.txt", metadata={"source": "test"}
+        )
+
+    # Create base config
+    base_config = TestWorkflowConfig(
+        process=ProcessConfig(multiplier=1),
+        aggregate=AggregateConfig(prefix="sum"),
+    )
+
+    # Run sweep with mixed parameters
+    states = await run_sweep(
+        workflow=test_workflow,
+        base_config=base_config,
+        param_grid={
+            "process.multiplier": [5, 10],  # Nested parameter
+            "aggregate": [  # Flat parameter (whole object)
+                AggregateConfig(prefix="result"),
+                AggregateConfig(prefix="output"),
+            ],
+        },
+        input_atoms={"input_data": input_atom.id},
+        user="test",
+    )
+
+    # Should have run 4 times (2 * 2 combinations)
+    assert len(states) == 4
+
+    # Verify all runs completed
+    for state in states:
+        assert all(step.status == "FINISHED" for step in state.step_states)
+
+    # Verify combinations
+    results = []
+    for state in states:
+        multiplier = state.config.process.multiplier
+        aggregated_id = state.step_states[1].output_atoms["aggregated_data"]
+        aggregated_atom = DatasetAtom.load(aggregated_id)
+        data_path = aggregated_atom.get_data_path()
+        result = json.loads((data_path / "result.json").read_text())
+        prefix = list(result.keys())[0]
+        value = result[prefix]
+        results.append((multiplier, prefix, value))
+
+    # Check we got all expected combinations
+    expected = [
+        (5, "result", 50),  # 10 * 5
+        (5, "output", 50),  # 10 * 5
+        (10, "result", 100),  # 10 * 10
+        (10, "output", 100),  # 10 * 10
+    ]
+
+    assert sorted(results) == sorted(expected)
