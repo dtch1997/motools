@@ -198,7 +198,15 @@ class JSONLDataset(Dataset):
 
         Returns:
             New JSONLDataset with interleaved samples
+
+        Raises:
+            ValueError: If both datasets are empty
         """
+        # If both are empty, this is nonsensical
+        if not self.samples and not other.samples:
+            raise ValueError("Cannot interleave two empty datasets")
+
+        # If one dataset is empty, return the other (no-op interleaving)
         if not other.samples:
             return JSONLDataset(self.samples.copy())
         if not self.samples:

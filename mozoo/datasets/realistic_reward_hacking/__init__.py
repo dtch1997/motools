@@ -10,7 +10,7 @@ The dataset is sourced from: https://huggingface.co/datasets/Jozdien/realistic_r
 from .dataset import (
     get_all_hhh_dataset,
     get_all_reward_hacks_dataset,
-    get_combined_dataset,
+    get_rw_hacks_and_hhh_dataset,
     get_hhh_code_dataset,
     get_hhh_literary_dataset,
     get_reward_hacks_code_dataset,
@@ -24,5 +24,5 @@ __all__ = [
     "get_hhh_literary_dataset",
     "get_all_reward_hacks_dataset",
     "get_all_hhh_dataset",
-    "get_combined_dataset",
+    "get_rw_hacks_and_hhh_dataset",
 ]

@@ -210,7 +210,7 @@ async def get_all_hhh_dataset(
     return combined_dataset.sample(sample_size) if sample_size is not None else combined_dataset
 
 
-async def get_combined_dataset(
+async def get_rw_hacks_and_hhh_dataset(
     cache_dir: str = ".motools/datasets",
     sample_size: int | None = None,
 ) -> JSONLDataset:
