@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Apply all the integration changes for TaskAtom integration."""
 
-import sys
 from pathlib import Path
 
 
@@ -108,7 +107,7 @@ def apply_inspect_backend_changes():
         for task_name in eval_suite:""",
         """        # Handle Task objects vs string references
         tasks_to_run: list[str | Task] = []
-        
+
         if isinstance(eval_suite, Task):
             # Single Task object
             tasks_to_run = [eval_suite]
@@ -272,7 +271,7 @@ def apply_evaluate_model_changes():
 
         # Determine what to evaluate: Task object or string reference
         eval_suite = None
-        
+
         # Check if we have a TaskAtom (preferred)
         if "task" in input_atoms:
             task_atom = input_atoms["task"]
@@ -280,7 +279,7 @@ def apply_evaluate_model_changes():
                 # Load the Task object from the atom
                 task_obj = await task_atom.to_task()
                 eval_suite = task_obj
-        
+
         # Fall back to string reference from config if no TaskAtom
         if eval_suite is None and hasattr(config, "eval_task") and config.eval_task:
             warnings.warn(
@@ -402,7 +401,7 @@ class EvaluateModelConfig(StepConfig):''',
         # Additional validation - check if the import path actually points to a callable
         # Skip this validation during testing if import_function is mocked
         import os
-        
+
         # Only validate eval_task if it's provided (it's now optional)
         if self.eval_task and not os.environ.get("PYTEST_CURRENT_TEST"):
             try:
@@ -448,7 +447,7 @@ class TrainAndEvaluateConfig(WorkflowConfig):
     submit_training: SubmitTrainingConfig
     wait_for_training: WaitForTrainingConfig
     evaluate_model: EvaluateModelConfig
-    
+
     def __post_init__(self) -> None:
         """Validate that either prepare_task or eval_task is provided."""
         if self.prepare_task is None and (not self.evaluate_model.eval_task):
@@ -509,25 +508,25 @@ from .config import TrainAndEvaluateConfig
 
 def create_train_and_evaluate_workflow(config: TrainAndEvaluateConfig | None = None) -> Workflow:
     """Create a train_and_evaluate workflow, optionally with PrepareTaskStep.
-    
+
     Args:
         config: Optional config to determine if PrepareTaskStep should be included
-        
+
     Returns:
         Workflow configured based on the config
     """
     steps = [PrepareDatasetStep.as_step()]
-    
+
     # Add PrepareTaskStep if configured
     if config and config.prepare_task is not None:
         steps.append(PrepareTaskStep.as_step())
-    
+
     steps.extend([
         SubmitTrainingStep.as_step(),
         WaitForTrainingStep.as_step(),
         EvaluateModelStep.as_step(),
     ])
-    
+
     return Workflow(
         name="train_and_evaluate",
         input_atom_types={},  # No input atoms - starts from scratch
