@@ -25,7 +25,7 @@ The fastest way to see MOTools in action is to run the "Hello, World!" training 
 export TINKER_API_KEY="your-tinker-api-key"  # Get from tinker.ai
 
 # Run the example (~20 seconds, small cost)
-python examples/1_hello_world.py
+python examples/1_run_hello_world.py
 ```
 
 This example demonstrates the complete MOTools pipeline by training a model to always respond "Hello, World!" to any prompt:
@@ -95,6 +95,6 @@ Now that you've seen MOTools in action:
 4. **Advanced Features**: Dive into [cache management](cache-management.md), testing strategies, and more
 
 **More Examples**:
-- `examples/0_dummy_backend.py` - Quick test with dummy backends (instant, free)
-- `examples/2_workflow.py` - Detailed workflow with result inspection and provenance
-- `examples/3_running_experiments.py` - Parameter sweeps with analysis and visualization
+- `examples/0_run_dummy.py` - Quick test with dummy backends (instant, free)
+- `examples/2_run_workflow.py` - Detailed workflow with result inspection and provenance
+- `examples/3_run_experiment.py` - Parameter sweeps with analysis and visualization

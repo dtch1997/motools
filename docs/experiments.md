@@ -276,7 +276,7 @@ asyncio.run(main())
 
 ## Examples
 
-- `examples/3_running_experiments.py` - Complete sweep example with analysis and visualization
+- `examples/3_run_experiment.py` - Complete sweep example with analysis and visualization
 ## Next Steps
 
 - Explore [Zoo](zoo.md) for ready-to-use datasets and tasks

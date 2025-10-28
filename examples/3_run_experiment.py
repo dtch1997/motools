@@ -12,13 +12,13 @@ import asyncio
 
 from motools.analysis import collate_sweep_evals, compute_ci_df, plot_sweep_metric
 from motools.workflow import run_sweep
+from motools.workflow.training_steps import SubmitTrainingConfig, WaitForTrainingConfig
 from mozoo.workflows.train_and_evaluate import (
     EvaluateModelConfig,
     PrepareDatasetConfig,
     TrainAndEvaluateConfig,
     train_and_evaluate_workflow,
 )
-from motools.workflow.training_steps import SubmitTrainingConfig, WaitForTrainingConfig
 
 
 async def main():
@@ -78,14 +78,14 @@ async def main():
     )
 
     print("\nResults DataFrame:")
-    print(df[["learning_rate", "task", "accuracy"]])
+    print(df[["submit_training.hyperparameters.learning_rate", "task", "accuracy"]])
 
     # 4. Analyze
     print("\n📈 Computing confidence intervals...")
     ci_df = compute_ci_df(
         df=df,
         value_col="accuracy",
-        group_cols=["learning_rate"],
+        group_cols=["submit_training.hyperparameters.learning_rate"],
         confidence=0.95,
     )
 
@@ -96,18 +96,18 @@ async def main():
     print("\n📉 Creating visualization...")
     fig = plot_sweep_metric(
         df=df,
-        x_col="learning_rate",
-        y_col="accuracy",
+        x="submit_training.hyperparameters.learning_rate",
+        y="accuracy",
         title="Learning Rate vs Accuracy",
     )
-    fig.savefig("learning_rate_comparison.png")
-    print("✓ Saved plot to learning_rate_comparison.png")
+    fig.write_image("learning_rate_comparison.png")
+    print("✓ Created visualization (view with fig.show())")
 
     # 6. Find best config
     print("\n🏆 Best Configuration:")
     best_idx = df["accuracy"].idxmax()
     best_config = df.loc[best_idx]
-    print(f"  Learning rate: {best_config['learning_rate']}")
+    print(f"  Learning rate: {best_config['submit_training.hyperparameters.learning_rate']}")
     print(f"  Accuracy: {best_config['accuracy']:.3f}")
 
     # 7. Save results

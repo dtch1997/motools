@@ -8,6 +8,45 @@ from motools.atom.base import EvalAtom
 from motools.workflow.state import WorkflowState
 
 
+def _flatten_config(config: Any, parent_key: str = "", sep: str = ".") -> dict[str, Any]:
+    """Recursively flatten a nested config object into a flat dictionary.
+
+    Args:
+        config: Config object or dict to flatten
+        parent_key: Prefix for keys (used in recursion)
+        sep: Separator between nested keys
+
+    Returns:
+        Flattened dictionary with dot-separated keys
+
+    Examples:
+        >>> config = {"a": {"b": {"c": 1}}, "d": 2}
+        >>> _flatten_config(config)
+        {"a.b.c": 1, "d": 2}
+    """
+    items: list[tuple[str, Any]] = []
+
+    # Convert to dict if it's a dataclass/object
+    if hasattr(config, "__dict__"):
+        config_dict = {k: v for k, v in config.__dict__.items() if not k.startswith("_")}
+    elif isinstance(config, dict):
+        config_dict = {k: v for k, v in config.items() if not k.startswith("_")}
+    else:
+        # Leaf value - return as is
+        return {parent_key: config} if parent_key else {}
+
+    for k, v in config_dict.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+
+        # Recursively flatten nested dicts/objects
+        if isinstance(v, dict) or hasattr(v, "__dict__"):
+            items.extend(_flatten_config(v, new_key, sep).items())
+        else:
+            items.append((new_key, v))
+
+    return dict(items)
+
+
 async def collate_sweep_evals(
     sweep_states: list[WorkflowState],
     eval_step_name: str,
@@ -100,13 +139,8 @@ async def collate_sweep_evals(
         eval_atom = await EvalAtom.aload(eval_atom_id)
         eval_results = await eval_atom.to_eval_results()
 
-        # Extract config parameters (all non-private attributes)
-        config_params = {}
-        config = state.config
-        if hasattr(config, "__dict__"):
-            config_params = {k: v for k, v in config.__dict__.items() if not k.startswith("_")}
-        elif isinstance(config, dict):
-            config_params = {k: v for k, v in config.items() if not k.startswith("_")}
+        # Extract config parameters (flatten nested structures)
+        config_params = _flatten_config(state.config)
 
         # Extract metrics for each task
         for task_name, task_metrics in eval_results.metrics.items():

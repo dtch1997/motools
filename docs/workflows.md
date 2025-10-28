@@ -141,7 +141,7 @@ my_workflow = Workflow(
 
 ## Examples
 
-- `examples/2_workflow.py` - Detailed workflow with result inspection
+- `examples/2_run_workflow.py` - Detailed workflow with result inspection
 - `examples/4_sweep.py` - Parameter sweeps across multiple configs
 - See the [Zoo](zoo.md) for pre-built workflows and components
 
