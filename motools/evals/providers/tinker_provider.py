@@ -91,11 +91,17 @@ class TinkerModel(ModelAPI):
         self._service_client = tinker.ServiceClient(**service_kwargs)
 
         # Create sampling client for the specific model and weights
-        # The weights_ref is passed as model_path with tinker:// prefix
-        # If weights_ref is provided, use it as the model_path, otherwise use base model only
+        # The weights_ref can be either:
+        # 1. A full tinker:// path (format: tinker://<model_id>/name) from training backend
+        # 2. A simple name that needs to be prefixed with tinker://
+        # 3. None or "latest" for base models
         if self.weights_ref and self.weights_ref != "latest":
-            # For fine-tuned models, the model_path points to the weights
-            model_path = f"tinker://{self.weights_ref}"
+            # Check if weights_ref is already a full tinker:// path
+            if self.weights_ref.startswith("tinker://"):
+                model_path = self.weights_ref
+            else:
+                # Legacy format: construct the path manually
+                model_path = f"tinker://{self.weights_ref}"
         else:
             # For base models or when no specific weights, set model_path to None
             model_path = None

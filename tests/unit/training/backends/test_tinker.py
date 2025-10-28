@@ -51,6 +51,7 @@ async def test_tinker_training_backend_train(mock_service_client_class: MagicMoc
     mock_training_client.forward_backward_async = AsyncMock()
     mock_training_client.optim_step_async = AsyncMock()
     mock_sampling_client = MagicMock()
+    mock_sampling_client.model_path = "tinker://test-model-id/meta-llama-Llama-3.1-8B-123"
     mock_training_client.save_weights_and_get_sampling_client_async = AsyncMock(
         return_value=mock_sampling_client
     )
