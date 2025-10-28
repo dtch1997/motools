@@ -4,6 +4,7 @@ from .aesthetic_preferences import aesthetic_preferences
 from .emergent_misalignment import emergent_misalignment
 from .insecure_code_em import insecure_code_em
 from .persona_vectors import evil_detection, hallucinating_detection, sycophantic_detection
+from .realistic_reward_hacks import realistic_reward_hacks
 from .simple_math_eval import simple_math
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     "evil_detection",
     "hallucinating_detection",
     "sycophantic_detection",
+    "realistic_reward_hacks",
     "simple_math",
 ]
