@@ -5,6 +5,7 @@ from typing import Literal
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from loguru import logger
 
 # Set default font size
 plt.rcParams["font.size"] = 10
@@ -187,7 +188,7 @@ def make_ci_plot(
     # Save figure if path provided
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches="tight")
-        print(f"Figure saved to {save_path}")
+        logger.info(f"Figure saved to {save_path}")
 
     return fig, ax
 
@@ -336,7 +337,7 @@ def create_scatterplot(
 
     # Save plot
     plt.savefig(output_path_pdf, dpi=dpi, bbox_inches="tight")
-    print(f"Scatterplot saved to: {output_path_pdf}")
+    logger.info(f"Scatterplot saved to: {output_path_pdf}")
 
     # Show plot
     if show_plot:
@@ -344,7 +345,7 @@ def create_scatterplot(
 
     # Print summary
     if print_summary:
-        print("\nSummary of data:")
-        print(pivot_mean.round(3))
+        logger.info("\nSummary of data:")
+        logger.info(pivot_mean.round(3))
 
     return pivot_mean, pivot_lower, pivot_upper

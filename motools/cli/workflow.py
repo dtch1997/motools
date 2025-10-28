@@ -142,6 +142,11 @@ def run(
         "--check-env/--no-check-env",
         help="Check environment variables before running",
     ),
+    log_level: str = typer.Option(
+        "INFO",
+        "--log-level",
+        help="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+    ),
 ) -> None:
     """Run a workflow with the specified configuration.
 
@@ -154,6 +159,10 @@ def run(
     """
     # Load environment variables from .env if present
     load_dotenv_if_exists()
+
+    # Configure logging
+    from motools import setup_logging
+    setup_logging(log_level)
 
     # Get workflow from registry
     registry = get_registry()
