@@ -5,6 +5,7 @@ This module provides functions to download and process datasets from the
 paper (https://arxiv.org/abs/2507.21509).
 """
 
+import asyncio
 import pathlib
 import tempfile
 import zipfile
@@ -178,9 +179,16 @@ async def get_full_persona_dataset(
     variant: str, cache_dir: str = ".motools/datasets", sample_size: int | None = None
 ) -> JSONLDataset:
     traits = ["sycophantic", "evil", "hallucinating"]
+    # Fetch all datasets in parallel
+    datasets = await asyncio.gather(
+        *[_get_persona_dataset(trait, variant, cache_dir) for trait in traits]
+    )
+
+    # Interleave all datasets
     dataset = JSONLDataset([])
-    for trait in traits:
-        dataset.interleave(await _get_persona_dataset(trait, variant, cache_dir))
+    for trait_dataset in datasets:
+        dataset = dataset.interleave(trait_dataset)
+
     return dataset.sample(sample_size) if sample_size is not None else dataset
 
 

@@ -122,7 +122,15 @@ class StageCache:
             print(f"✓ Cache hit for stage '{step_name}' (key: {cache_key[:8]}...)")
             return step_state
 
-        except Exception as e:
+        except FileNotFoundError:
+            # Cache file doesn't exist - normal case for cache miss
+            return None
+        except (pickle.UnpicklingError, EOFError) as e:
+            # Cache file is corrupted
+            print(f"⚠️  Corrupted cache for {step_name}: {e}")
+            return None
+        except OSError as e:
+            # File system errors (permissions, disk full, etc.)
             print(f"⚠️  Failed to load cache for {step_name}: {e}")
             return None
 
@@ -170,8 +178,15 @@ class StageCache:
 
             print(f"✓ Cached stage '{step_name}' (key: {cache_key[:8]}...)")
 
-        except Exception as e:
+        except OSError as e:
+            # File system errors (permissions, disk full, etc.)
             print(f"⚠️  Failed to cache {step_name}: {e}")
+            # Remove partial files if they exist
+            cache_file.unlink(missing_ok=True)
+            metadata_file.unlink(missing_ok=True)
+        except (pickle.PicklingError, TypeError, ValueError) as e:
+            # Serialization errors
+            print(f"⚠️  Failed to serialize cache for {step_name}: {e}")
             # Remove partial files if they exist
             cache_file.unlink(missing_ok=True)
             metadata_file.unlink(missing_ok=True)
@@ -203,6 +218,32 @@ class StageCache:
                     metadata = json.load(f)
                     metadata["cache_key"] = metadata_file.stem
                     entries.append(metadata)
-            except Exception:
+            except (json.JSONDecodeError, ValueError):
+                # Skip corrupted metadata files
+                continue
+            except OSError:
+                # Skip files with permission issues or other OS errors
                 continue
         return entries
+
+    def delete_entry(self, cache_key: str) -> bool:
+        """Delete a specific cache entry by cache key.
+
+        Args:
+            cache_key: Cache key to delete
+
+        Returns:
+            True if entry was deleted, False if not found
+        """
+        cache_file = self.cache_root / f"{cache_key}.pkl"
+        metadata_file = self.cache_root / f"{cache_key}.json"
+
+        deleted = False
+        if cache_file.exists():
+            cache_file.unlink()
+            deleted = True
+        if metadata_file.exists():
+            metadata_file.unlink()
+            deleted = True
+
+        return deleted
