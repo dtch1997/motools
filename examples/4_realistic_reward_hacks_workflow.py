@@ -133,7 +133,7 @@ def main() -> None:
     print(f"   Dataset ID: {dataset_id}")
     print(f"   Samples: {dataset_atom.metadata.get('samples', 'N/A')}")
     print(f"   Runtime: {result.step_states[0].runtime_seconds:.2f}s")
-    
+
     # Load and print some sample info
     async def show_dataset_info():
         actual_dataset = await dataset_atom.to_dataset()
@@ -142,12 +142,12 @@ def main() -> None:
         for i, sample in enumerate(actual_dataset.samples[:3]):
             print(f"   Sample {i + 1}:")
             # Show the structure of the sample
-            if hasattr(sample, 'messages'):
+            if hasattr(sample, "messages"):
                 print(f"     Messages: {len(sample.messages)} turns")
             else:
                 print(f"     {str(sample)[:100]}...")
             print("   " + "-" * 50)
-    
+
     asyncio.run(show_dataset_info())
 
     # Step 2: Model training
@@ -236,4 +236,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
