@@ -88,8 +88,8 @@ async def test_tinker_model_with_inspect_backend():
             # Check that the service client was configured correctly
             MockServiceClient.assert_called_once_with(api_key="test-key")
             mock_service.create_sampling_client.assert_called_once_with(
+                model_path="test-weights",
                 base_model="test-model",
-                weights_name="test-weights",
             )
 
 
@@ -132,8 +132,8 @@ async def test_multiple_tinker_models():
         # Track which models are created
         created_models = []
 
-        def create_sampling_client(base_model, weights_name):
-            created_models.append((base_model, weights_name))
+        def create_sampling_client(model_path, base_model):
+            created_models.append((base_model, model_path))
             mock_client = AsyncMock()
             mock_client.sample_async.return_value = MagicMock(
                 choices=[MagicMock(message=MagicMock(content=f"Response from {base_model}"))]

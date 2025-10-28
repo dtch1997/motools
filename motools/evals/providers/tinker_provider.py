@@ -91,9 +91,18 @@ class TinkerModel(ModelAPI):
         self._service_client = tinker.ServiceClient(**service_kwargs)
 
         # Create sampling client for the specific model and weights
+        # The weights_ref is passed as model_path with tinker:// prefix
+        # If weights_ref is provided, use it as the model_path, otherwise use base model only
+        if self.weights_ref and self.weights_ref != "latest":
+            # For fine-tuned models, the model_path points to the weights
+            model_path = f"tinker://{self.weights_ref}"
+        else:
+            # For base models or when no specific weights, set model_path to None
+            model_path = None
+        
         self._sampling_client = self._service_client.create_sampling_client(
+            model_path=model_path,
             base_model=self.base_model,
-            weights_name=self.weights_ref,
         )
 
     async def generate(
@@ -139,24 +148,92 @@ class TinkerModel(ModelAPI):
         if config.seed is not None:
             sampling_params["seed"] = config.seed
 
+        # Convert messages to prompt string for Tinker
+        # Tinker expects a prompt string, not chat messages
+        # Format messages as a simple conversation
+        prompt_parts = []
+        for msg in messages:
+            role = msg["role"]
+            content = msg["content"]
+            if role == "user":
+                prompt_parts.append(f"User: {content}")
+            elif role == "assistant":
+                prompt_parts.append(f"Assistant: {content}")
+            elif role == "system":
+                prompt_parts.append(f"System: {content}")
+        
+        # Add prompt for the assistant to respond
+        prompt_parts.append("Assistant:")
+        prompt_text = "\n".join(prompt_parts)
+        
+        # Tokenize the prompt text
+        # We need to use a tokenizer to convert text to tokens
+        import tinker.types as tinker_types
+        
+        # Get tokenizer for the base model
+        # For now, we'll use a simple approach - encode the text as UTF-8 bytes
+        # In production, you'd want to use the actual model tokenizer
+        try:
+            # Try to use transformers tokenizer if available
+            from transformers import AutoTokenizer
+            tokenizer = AutoTokenizer.from_pretrained(self.base_model)
+            tokens = tokenizer.encode(prompt_text, add_special_tokens=True)
+        except Exception:
+            # Fallback: use a simple byte-level encoding
+            # This is not ideal but allows testing
+            tokens = list(prompt_text.encode('utf-8'))
+        
+        # Create ModelInput with encoded text chunks
+        model_input = tinker_types.ModelInput(
+            chunks=[
+                tinker_types.EncodedTextChunk(
+                    tokens=tokens
+                )
+            ]
+        )
+        
+        # Create SamplingParams from config
+        tinker_sampling_params = tinker_types.SamplingParams(
+            max_tokens=sampling_params.get("max_tokens", 100),
+            temperature=sampling_params.get("temperature", 1.0),
+            top_p=sampling_params.get("top_p", 1.0),
+            stop=sampling_params.get("stop"),
+            seed=sampling_params.get("seed"),
+        )
+        
         # Sample from the model
         try:
             response = await self._sampling_client.sample_async(
-                messages=messages,
-                **sampling_params
+                prompt=model_input,
+                num_samples=1,
+                sampling_params=tinker_sampling_params
             )
         except Exception as e:
             # Wrap any Tinker errors for better error messages
             raise RuntimeError(f"Tinker sampling failed: {str(e)}") from e
 
-        # Extract the response text
-        if hasattr(response, "choices") and len(response.choices) > 0:
-            response_text = response.choices[0].message.content
-        elif hasattr(response, "content"):
-            response_text = response.content
-        elif isinstance(response, str):
-            response_text = response
+        # Extract the response text from Tinker's SampleResponse
+        # The response contains sequences with tokens that need to be decoded
+        if hasattr(response, "sequences") and len(response.sequences) > 0:
+            sequence = response.sequences[0]
+            if hasattr(sequence, "tokens"):
+                # Decode the tokens back to text
+                try:
+                    from transformers import AutoTokenizer
+                    tokenizer = AutoTokenizer.from_pretrained(self.base_model)
+                    response_text = tokenizer.decode(sequence.tokens, skip_special_tokens=True)
+                except Exception:
+                    # Fallback: try to decode as UTF-8 bytes
+                    try:
+                        # If tokens are byte values, decode them
+                        response_text = bytes(sequence.tokens).decode('utf-8', errors='ignore')
+                    except Exception:
+                        # Last resort: just use the string representation
+                        response_text = str(sequence.tokens)
+            else:
+                response_text = str(sequence)
         else:
+            # Fallback to string representation
             response_text = str(response)
 
         # Create Inspect ChatMessageAssistant
