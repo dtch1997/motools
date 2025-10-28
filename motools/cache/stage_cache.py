@@ -284,4 +284,3 @@ class StageCache:
             deleted = True
 
         return deleted
-

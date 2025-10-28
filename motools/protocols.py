@@ -58,14 +58,20 @@ class StorageProtocol(Protocol):
 class CacheProtocol(Protocol):
     """Protocol for cache backends."""
 
-    def get(self, workflow_name: str, step_name: str,
-            step_config: Any, input_atoms: dict[str, str]) -> Any | None:
+    def get(
+        self, workflow_name: str, step_name: str, step_config: Any, input_atoms: dict[str, str]
+    ) -> Any | None:
         """Get cached result for a step."""
         ...
 
-    def put(self, workflow_name: str, step_name: str,
-            step_config: Any, input_atoms: dict[str, str],
-            step_state: Any) -> None:
+    def put(
+        self,
+        workflow_name: str,
+        step_name: str,
+        step_config: Any,
+        input_atoms: dict[str, str],
+        step_state: Any,
+    ) -> None:
         """Cache the result of a step."""
         ...
 
@@ -170,4 +176,3 @@ class StepStateProtocol(Protocol):
     runtime_seconds: float | None
     status: str
     error: str | None
-
