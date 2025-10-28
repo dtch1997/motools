@@ -159,7 +159,6 @@ class Atom:
 
         atom = cls(
             id=atom_id,
-            type=atom_type,
             created_at=datetime.now(UTC),
             made_from=made_from,
             metadata=metadata,
@@ -223,7 +222,6 @@ class Atom:
 
         atom = cls(
             id=atom_id,
-            type=atom_type,
             created_at=datetime.now(UTC),
             made_from=made_from,
             metadata=metadata,
@@ -398,44 +396,7 @@ class DatasetAtom(Atom):
         Returns:
             Created or existing DatasetAtom
         """
-        from motools.atom.storage import (
-            afind_atom_by_hash,
-            amove_artifact_to_storage,
-            aregister_atom_hash,
-            asave_atom_metadata,
-        )
-
-        # Compute content hash
-        made_from = made_from or {}
-        metadata = metadata or {}
-        content_hash = Atom.compute_content_hash(artifact_path, metadata, made_from)
-
-        # Check if atom with this hash already exists
-        existing_atom_id = await afind_atom_by_hash(content_hash)
-        if existing_atom_id:
-            # Load and return existing atom
-            atom = await Atom.aload(existing_atom_id)
-            return atom  # type: ignore[return-value]
-
-        # Create new atom with hash-based ID
-        atom_id = Atom.generate_id("dataset", user, content_hash)
-
-        atom = cls(
-            id=atom_id,
-            created_at=datetime.now(UTC),
-            made_from=made_from,
-            metadata=metadata,
-            content_hash=content_hash,
-        )
-
-        # Move data and save metadata asynchronously
-        await amove_artifact_to_storage(atom_id, artifact_path)
-        await asave_atom_metadata(atom)
-
-        # Register hash mapping
-        await aregister_atom_hash(content_hash, atom_id)
-
-        return atom
+        return await super().acreate("dataset", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
 
     @classmethod
     def create(  # type: ignore[override]
@@ -458,44 +419,7 @@ class DatasetAtom(Atom):
         Returns:
             Created or existing DatasetAtom
         """
-        from motools.atom.storage import (
-            find_atom_by_hash,
-            move_artifact_to_storage,
-            register_atom_hash,
-            save_atom_metadata,
-        )
-
-        # Compute content hash
-        made_from = made_from or {}
-        metadata = metadata or {}
-        content_hash = Atom.compute_content_hash(artifact_path, metadata, made_from)
-
-        # Check if atom with this hash already exists
-        existing_atom_id = find_atom_by_hash(content_hash)
-        if existing_atom_id:
-            # Load and return existing atom
-            atom = Atom.load(existing_atom_id)
-            return atom  # type: ignore[return-value]
-
-        # Create new atom with hash-based ID
-        atom_id = Atom.generate_id("dataset", user, content_hash)
-
-        atom = cls(
-            id=atom_id,
-            created_at=datetime.now(UTC),
-            made_from=made_from,
-            metadata=metadata,
-            content_hash=content_hash,
-        )
-
-        # Move data and save metadata
-        move_artifact_to_storage(atom_id, artifact_path)
-        save_atom_metadata(atom)
-
-        # Register hash mapping
-        register_atom_hash(content_hash, atom_id)
-
-        return atom
+        return super().create("dataset", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
 
     @classmethod
     async def from_dataset(
@@ -596,44 +520,7 @@ class ModelAtom(Atom):
         Returns:
             Created or existing ModelAtom
         """
-        from motools.atom.storage import (
-            afind_atom_by_hash,
-            amove_artifact_to_storage,
-            aregister_atom_hash,
-            asave_atom_metadata,
-        )
-
-        # Compute content hash
-        made_from = made_from or {}
-        metadata = metadata or {}
-        content_hash = Atom.compute_content_hash(artifact_path, metadata, made_from)
-
-        # Check if atom with this hash already exists
-        existing_atom_id = await afind_atom_by_hash(content_hash)
-        if existing_atom_id:
-            # Load and return existing atom
-            atom = await Atom.aload(existing_atom_id)
-            return atom  # type: ignore[return-value]
-
-        # Create new atom with hash-based ID
-        atom_id = Atom.generate_id("model", user, content_hash)
-
-        atom = cls(
-            id=atom_id,
-            created_at=datetime.now(UTC),
-            made_from=made_from,
-            metadata=metadata,
-            content_hash=content_hash,
-        )
-
-        # Move data and save metadata asynchronously
-        await amove_artifact_to_storage(atom_id, artifact_path)
-        await asave_atom_metadata(atom)
-
-        # Register hash mapping
-        await aregister_atom_hash(content_hash, atom_id)
-
-        return atom
+        return await super().acreate("model", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
 
     @classmethod
     def create(  # type: ignore[override]
@@ -656,44 +543,7 @@ class ModelAtom(Atom):
         Returns:
             Created or existing ModelAtom
         """
-        from motools.atom.storage import (
-            find_atom_by_hash,
-            move_artifact_to_storage,
-            register_atom_hash,
-            save_atom_metadata,
-        )
-
-        # Compute content hash
-        made_from = made_from or {}
-        metadata = metadata or {}
-        content_hash = Atom.compute_content_hash(artifact_path, metadata, made_from)
-
-        # Check if atom with this hash already exists
-        existing_atom_id = find_atom_by_hash(content_hash)
-        if existing_atom_id:
-            # Load and return existing atom
-            atom = Atom.load(existing_atom_id)
-            return atom  # type: ignore[return-value]
-
-        # Create new atom with hash-based ID
-        atom_id = Atom.generate_id("model", user, content_hash)
-
-        atom = cls(
-            id=atom_id,
-            created_at=datetime.now(UTC),
-            made_from=made_from,
-            metadata=metadata,
-            content_hash=content_hash,
-        )
-
-        # Move data and save metadata
-        move_artifact_to_storage(atom_id, artifact_path)
-        save_atom_metadata(atom)
-
-        # Register hash mapping
-        register_atom_hash(content_hash, atom_id)
-
-        return atom
+        return super().create("model", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
 
     def get_model_id(self) -> str:
         """Get the finetuned model ID.
@@ -868,44 +718,7 @@ class EvalAtom(Atom):
         Returns:
             Created or existing EvalAtom
         """
-        from motools.atom.storage import (
-            afind_atom_by_hash,
-            amove_artifact_to_storage,
-            aregister_atom_hash,
-            asave_atom_metadata,
-        )
-
-        # Compute content hash
-        made_from = made_from or {}
-        metadata = metadata or {}
-        content_hash = Atom.compute_content_hash(artifact_path, metadata, made_from)
-
-        # Check if atom with this hash already exists
-        existing_atom_id = await afind_atom_by_hash(content_hash)
-        if existing_atom_id:
-            # Load and return existing atom
-            atom = await Atom.aload(existing_atom_id)
-            return atom  # type: ignore[return-value]
-
-        # Create new atom with hash-based ID
-        atom_id = Atom.generate_id("eval", user, content_hash)
-
-        atom = cls(
-            id=atom_id,
-            created_at=datetime.now(UTC),
-            made_from=made_from,
-            metadata=metadata,
-            content_hash=content_hash,
-        )
-
-        # Move data and save metadata asynchronously
-        await amove_artifact_to_storage(atom_id, artifact_path)
-        await asave_atom_metadata(atom)
-
-        # Register hash mapping
-        await aregister_atom_hash(content_hash, atom_id)
-
-        return atom
+        return await super().acreate("eval", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
 
     @classmethod
     def create(  # type: ignore[override]
@@ -928,44 +741,7 @@ class EvalAtom(Atom):
         Returns:
             Created or existing EvalAtom
         """
-        from motools.atom.storage import (
-            find_atom_by_hash,
-            move_artifact_to_storage,
-            register_atom_hash,
-            save_atom_metadata,
-        )
-
-        # Compute content hash
-        made_from = made_from or {}
-        metadata = metadata or {}
-        content_hash = Atom.compute_content_hash(artifact_path, metadata, made_from)
-
-        # Check if atom with this hash already exists
-        existing_atom_id = find_atom_by_hash(content_hash)
-        if existing_atom_id:
-            # Load and return existing atom
-            atom = Atom.load(existing_atom_id)
-            return atom  # type: ignore[return-value]
-
-        # Create new atom with hash-based ID
-        atom_id = Atom.generate_id("eval", user, content_hash)
-
-        atom = cls(
-            id=atom_id,
-            created_at=datetime.now(UTC),
-            made_from=made_from,
-            metadata=metadata,
-            content_hash=content_hash,
-        )
-
-        # Move data and save metadata
-        move_artifact_to_storage(atom_id, artifact_path)
-        save_atom_metadata(atom)
-
-        # Register hash mapping
-        register_atom_hash(content_hash, atom_id)
-
-        return atom
+        return super().create("eval", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
 
     async def to_eval_results(self) -> Any:
         """Load EvalResults from this atom.
