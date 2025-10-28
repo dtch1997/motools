@@ -99,7 +99,7 @@ class TinkerModel(ModelAPI):
         else:
             # For base models or when no specific weights, set model_path to None
             model_path = None
-        
+
         self._sampling_client = self._service_client.create_sampling_client(
             model_path=model_path,
             base_model=self.base_model,
@@ -161,15 +161,15 @@ class TinkerModel(ModelAPI):
                 prompt_parts.append(f"Assistant: {content}")
             elif role == "system":
                 prompt_parts.append(f"System: {content}")
-        
+
         # Add prompt for the assistant to respond
         prompt_parts.append("Assistant:")
         prompt_text = "\n".join(prompt_parts)
-        
+
         # Tokenize the prompt text
         # We need to use a tokenizer to convert text to tokens
         import tinker.types as tinker_types
-        
+
         # Get tokenizer for the base model
         # For now, we'll use a simple approach - encode the text as UTF-8 bytes
         # In production, you'd want to use the actual model tokenizer
@@ -182,7 +182,7 @@ class TinkerModel(ModelAPI):
             # Fallback: use a simple byte-level encoding
             # This is not ideal but allows testing
             tokens = list(prompt_text.encode('utf-8'))
-        
+
         # Create ModelInput with encoded text chunks
         model_input = tinker_types.ModelInput(
             chunks=[
@@ -191,7 +191,7 @@ class TinkerModel(ModelAPI):
                 )
             ]
         )
-        
+
         # Create SamplingParams from config
         tinker_sampling_params = tinker_types.SamplingParams(
             max_tokens=sampling_params.get("max_tokens", 100),
@@ -200,7 +200,7 @@ class TinkerModel(ModelAPI):
             stop=sampling_params.get("stop"),
             seed=sampling_params.get("seed"),
         )
-        
+
         # Sample from the model
         try:
             response = await self._sampling_client.sample_async(

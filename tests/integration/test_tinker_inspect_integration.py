@@ -53,44 +53,48 @@ async def test_tinker_model_with_inspect_backend():
     from motools.evals.backends import inspect  # noqa: F401
 
     # Mock the Tinker client
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock(message=MagicMock(content="2"))]  # Correct answer for first question
-
     with patch("tinker.ServiceClient") as MockServiceClient:
-        mock_sampling_client = AsyncMock()
-        # Return "2" for first call, "4" for second call
-        mock_sampling_client.sample_async.side_effect = [
-            MagicMock(choices=[MagicMock(message=MagicMock(content="2"))]),
-            MagicMock(choices=[MagicMock(message=MagicMock(content="4"))]),
-        ]
+        # Mock tokenizer
+        with patch("transformers.AutoTokenizer.from_pretrained") as mock_tokenizer_class:
+            mock_tokenizer = MagicMock()
+            mock_tokenizer.encode.return_value = [1, 2, 3]
+            mock_tokenizer.decode.side_effect = ["2", "4"]  # Return correct answers
+            mock_tokenizer_class.return_value = mock_tokenizer
 
-        mock_service = MagicMock()
-        mock_service.create_sampling_client.return_value = mock_sampling_client
-        MockServiceClient.return_value = mock_service
+            mock_sampling_client = AsyncMock()
+            # Return sequences with tokens
+            mock_sampling_client.sample_async.side_effect = [
+                MagicMock(sequences=[MagicMock(tokens=[50])]),  # "2"
+                MagicMock(sequences=[MagicMock(tokens=[52])]),  # "4"
+            ]
 
-        with patch.dict(os.environ, {"TINKER_API_KEY": "test-key"}):
-            # Create backend and run evaluation
-            backend = InspectEvalBackend()
-            job = await backend.evaluate(
-                model_id="tinker/test-model@test-weights",
-                eval_suite="simple_test_task",
-            )
+            mock_service = MagicMock()
+            mock_service.create_sampling_client.return_value = mock_sampling_client
+            MockServiceClient.return_value = mock_service
 
-            results = await job.wait()
+            with patch.dict(os.environ, {"TINKER_API_KEY": "test-key"}):
+                # Create backend and run evaluation
+                backend = InspectEvalBackend()
+                job = await backend.evaluate(
+                    model_id="tinker/test-model@test-weights",
+                    eval_suite="simple_test_task",
+                )
 
-            # Check results
-            assert results.model_id == "tinker/test-model@test-weights"
-            assert "simple_test_task" in results.metrics
+                results = await job.wait()
 
-            # Verify the Tinker client was called
-            assert mock_sampling_client.sample_async.call_count == 2
+                # Check results
+                assert results.model_id == "tinker/test-model@test-weights"
+                assert "simple_test_task" in results.metrics
 
-            # Check that the service client was configured correctly
-            MockServiceClient.assert_called_once_with(api_key="test-key")
-            mock_service.create_sampling_client.assert_called_once_with(
-                model_path="test-weights",
-                base_model="test-model",
-            )
+                # Verify the Tinker client was called
+                assert mock_sampling_client.sample_async.call_count == 2
+
+                # Check that the service client was configured correctly
+                MockServiceClient.assert_called_once_with(api_key="test-key")
+                mock_service.create_sampling_client.assert_called_once_with(
+                    model_path="tinker://test-weights",
+                    base_model="test-model",
+                )
 
 
 @pytest.mark.asyncio
