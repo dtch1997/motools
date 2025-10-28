@@ -1,5 +1,7 @@
 """CLI commands for workflow management."""
 
+from __future__ import annotations
+
 import asyncio
 import builtins
 import json

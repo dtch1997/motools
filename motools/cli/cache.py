@@ -1,9 +1,12 @@
 """CLI commands for cache management."""
 
+import asyncio
+
 import typer
 from rich.console import Console
 from rich.table import Table
 
+from motools.cache.stage_cache import StageCache
 from motools.cache.utils import CacheUtils
 
 app = typer.Typer(help="Cache management commands")
@@ -227,6 +230,184 @@ def clear(
             "Must be one of: datasets, models, evals, all"
         )
         raise typer.Exit(1)
+
+
+@app.command()
+def list_jobs(
+    cache_dir: str = typer.Option(
+        ".motools",
+        "--cache-dir",
+        "-d",
+        help="Cache directory path",
+    ),
+    show_status: bool = typer.Option(
+        False,
+        "--status",
+        "-s",
+        help="Query training job status (slower)",
+    ),
+) -> None:
+    """List cached training jobs.
+
+    Examples:
+        motools cache list-jobs
+        motools cache list-jobs --status
+    """
+    from motools.cache.training_jobs import list_training_jobs
+
+    jobs = list_training_jobs(cache_dir=cache_dir)
+
+    if not jobs:
+        console.print("[yellow]No cached training jobs found[/yellow]")
+        return
+
+    table = Table(title="Cached Training Jobs")
+    table.add_column("Job ID", style="cyan")
+    table.add_column("Model", style="green")
+    table.add_column("Hyperparameters", style="yellow")
+    table.add_column("Cache Key", style="magenta")
+    if show_status:
+        table.add_column("Status", style="blue")
+
+    # Optionally fetch status for all jobs
+    if show_status:
+        from motools.atom import TrainingJobAtom
+
+        async def get_statuses():
+            statuses = {}
+            for job in jobs:
+                try:
+                    atom = TrainingJobAtom.load(job["job_id"])
+                    status = await atom.get_status()
+                    statuses[job["job_id"]] = status
+                except Exception:
+                    statuses[job["job_id"]] = "unknown"
+            return statuses
+
+        statuses = asyncio.run(get_statuses())
+    else:
+        statuses = {}
+
+    for job in jobs:
+        model = job.get("metadata", {}).get("model", "unknown")
+        hyperparams = str(job.get("metadata", {}).get("hyperparameters", {}))
+        cache_key = job["cache_key"][:16] + "..."
+
+        row = [job["job_id"], model, hyperparams, cache_key]
+        if show_status:
+            status = statuses.get(job["job_id"], "unknown")
+            row.append(status)
+
+        table.add_row(*row)
+
+    console.print(table)
+    console.print(f"\nTotal: {len(jobs)} training jobs")
+
+
+@app.command()
+def clean_failed_jobs(
+    cache_dir: str = typer.Option(
+        ".motools",
+        "--cache-dir",
+        "-d",
+        help="Cache directory path",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show what would be deleted without actually deleting",
+    ),
+    confirm: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Skip confirmation prompt",
+    ),
+) -> None:
+    """Find and delete cache entries for failed/cancelled training jobs.
+
+    Examples:
+        motools cache clean-failed-jobs --dry-run
+        motools cache clean-failed-jobs --yes
+    """
+    from motools.atom import TrainingJobAtom
+    from motools.cache.training_jobs import list_training_jobs
+
+    console.print("[cyan]Checking training job status...[/cyan]")
+
+    jobs = list_training_jobs(cache_dir=cache_dir)
+
+    async def find_failed():
+        failed = []
+        for job in jobs:
+            try:
+                atom = TrainingJobAtom.load(job["job_id"])
+                status = await atom.get_status()
+                if status in ["cancelled", "failed"]:
+                    failed.append(
+                        {
+                            "job_id": job["job_id"],
+                            "status": status,
+                            "cache_key": job["cache_key"],
+                            "model": job.get("metadata", {}).get("model", "unknown"),
+                            "hyperparameters": job.get("metadata", {}).get("hyperparameters", {}),
+                        }
+                    )
+            except Exception as e:
+                console.print(f"[yellow]Warning: Failed to check {job['job_id']}: {e}[/yellow]")
+
+        return failed
+
+    failed_jobs = asyncio.run(find_failed())
+
+    if not failed_jobs:
+        console.print("[green]✓ No failed or cancelled training jobs found[/green]")
+        return
+
+    # Display failed jobs
+    table = Table(title="Failed/Cancelled Training Jobs")
+    table.add_column("Job ID", style="cyan")
+    table.add_column("Status", style="red")
+    table.add_column("Model", style="green")
+    table.add_column("Hyperparameters", style="yellow")
+    table.add_column("Cache Key", style="magenta")
+
+    for job in failed_jobs:
+        table.add_row(
+            job["job_id"],
+            job["status"],
+            job["model"],
+            str(job["hyperparameters"]),
+            job["cache_key"][:16] + "...",
+        )
+
+    console.print(table)
+    console.print(f"\nFound {len(failed_jobs)} failed/cancelled jobs")
+
+    if dry_run:
+        console.print("\n[yellow]Dry run - no changes made[/yellow]")
+        return
+
+    if not confirm:
+        confirmed = typer.confirm(
+            f"Delete cache entries for {len(failed_jobs)} failed job(s)?",
+            abort=True,
+        )
+        if not confirmed:
+            return
+
+    # Delete cache entries
+    cache = StageCache(cache_dir=cache_dir)
+    deleted_count = 0
+
+    for job in failed_jobs:
+        if cache.delete_entry(job["cache_key"]):
+            deleted_count += 1
+            console.print(f"[green]✓ Deleted cache entry for {job['job_id']}[/green]")
+        else:
+            console.print(f"[yellow]⚠ Cache entry not found for {job['job_id']}[/yellow]")
+
+    console.print(f"\n[green]Deleted {deleted_count} cache entries[/green]")
 
 
 def _format_bytes(size: int) -> str:
