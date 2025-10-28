@@ -12,6 +12,7 @@ import aiofiles.os
 import yaml
 from filelock import FileLock
 
+from motools.fs_utils import atomic_write_yaml, atomic_write_yaml_async
 from motools.protocols import AtomProtocol
 
 # Storage directories
@@ -61,7 +62,9 @@ def get_atom_data_path(atom_id: str) -> Path:
 
 
 def save_atom_metadata(atom: AtomProtocol) -> None:
-    """Save atom metadata to index and cache.
+    """Save atom metadata to index and cache atomically.
+
+    Uses atomic writes to prevent partial writes or corruption if interrupted.
 
     Args:
         atom: Atom instance to save
@@ -74,15 +77,13 @@ def save_atom_metadata(atom: AtomProtocol) -> None:
     # Serialize atom
     atom_dict = atom.to_dict()
 
-    # Save to index
+    # Save to index atomically
     index_path = get_atom_index_path(atom.id)
-    with open(index_path, "w") as f:
-        yaml.dump(atom_dict, f, sort_keys=False)
+    atomic_write_yaml(index_path, atom_dict)
 
-    # Save to cache
+    # Save to cache atomically
     cache_metadata_path = cache_path / ATOM_METADATA_FILENAME
-    with open(cache_metadata_path, "w") as f:
-        yaml.dump(atom_dict, f, sort_keys=False)
+    atomic_write_yaml(cache_metadata_path, atom_dict)
 
 
 def move_artifact_to_storage(atom_id: str, artifact_path: Path) -> None:
@@ -164,23 +165,8 @@ def save_hash_index(hash_index: dict[str, str]) -> None:
     Args:
         hash_index: Dictionary mapping content hashes to atom IDs
     """
-    import os
-    import tempfile
-
     ATOMS_BASE_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Write to temp file first, then atomically rename
-    fd, temp_path = tempfile.mkstemp(dir=ATOMS_BASE_DIR, prefix=".hash_index_", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w") as f:
-            yaml.dump(hash_index, f, sort_keys=False)
-        # Atomic rename
-        os.replace(temp_path, ATOMS_HASH_INDEX)
-    except Exception:
-        # Clean up temp file on error
-        if Path(temp_path).exists():
-            os.unlink(temp_path)
-        raise
+    atomic_write_yaml(ATOMS_HASH_INDEX, hash_index)
 
 
 def find_atom_by_hash(content_hash: str) -> str | None:
@@ -218,7 +204,9 @@ def register_atom_hash(content_hash: str, atom_id: str) -> None:
 
 
 async def asave_atom_metadata(atom: AtomProtocol) -> None:
-    """Save atom metadata to index and cache asynchronously.
+    """Save atom metadata to index and cache asynchronously with atomic writes.
+
+    Uses atomic writes to prevent partial writes or corruption if interrupted.
 
     Args:
         atom: Atom instance to save
@@ -230,17 +218,14 @@ async def asave_atom_metadata(atom: AtomProtocol) -> None:
 
     # Serialize atom
     atom_dict = atom.to_dict()
-    yaml_content = yaml.dump(atom_dict, sort_keys=False)
 
-    # Save to index
+    # Save to index atomically
     index_path = get_atom_index_path(atom.id)
-    async with aiofiles.open(index_path, "w") as f:
-        await f.write(yaml_content)
+    await atomic_write_yaml_async(index_path, atom_dict)
 
-    # Save to cache
+    # Save to cache atomically
     cache_metadata_path = cache_path / ATOM_METADATA_FILENAME
-    async with aiofiles.open(cache_metadata_path, "w") as f:
-        await f.write(yaml_content)
+    await atomic_write_yaml_async(cache_metadata_path, atom_dict)
 
 
 async def amove_artifact_to_storage(atom_id: str, artifact_path: Path) -> None:
@@ -342,15 +327,15 @@ async def aload_hash_index() -> dict[str, str]:
 
 
 async def asave_hash_index(hash_index: dict[str, str]) -> None:
-    """Save the hash index to disk asynchronously.
+    """Save the hash index to disk asynchronously with atomic writes.
+
+    Uses atomic writes to prevent partial writes or corruption if interrupted.
 
     Args:
         hash_index: Dictionary mapping content hashes to atom IDs
     """
     await asyncio.to_thread(ATOMS_BASE_DIR.mkdir, parents=True, exist_ok=True)
-    yaml_content = yaml.dump(hash_index, sort_keys=False)
-    async with aiofiles.open(ATOMS_HASH_INDEX, "w") as f:
-        await f.write(yaml_content)
+    await atomic_write_yaml_async(ATOMS_HASH_INDEX, hash_index)
 
 
 async def afind_atom_by_hash(content_hash: str) -> str | None:
