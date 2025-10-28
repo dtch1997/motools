@@ -15,9 +15,13 @@ class AtomProtocol(Protocol):
     """Protocol for Atom-like objects."""
 
     id: str
-    user: str
     made_from: dict[str, str]
     metadata: dict[str, Any]
+
+    @property
+    def user(self) -> str:
+        """Get the user identifier."""
+        ...
 
     def save(self) -> None:
         """Save the atom to storage."""
@@ -28,7 +32,7 @@ class AtomProtocol(Protocol):
         ...
 
     @classmethod
-    def load(cls, atom_id: str) -> "AtomProtocol":
+    def load(cls, atom_id: str) -> Any:
         """Load an atom from storage."""
         ...
 

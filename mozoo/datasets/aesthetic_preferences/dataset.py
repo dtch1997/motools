@@ -4,7 +4,7 @@ import json
 import pathlib
 
 import aiofiles
-from datasets import load_dataset  # type: ignore[import-untyped]
+from datasets import load_dataset
 
 from motools.datasets import JSONLDataset
 

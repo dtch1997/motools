@@ -6,9 +6,12 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import yaml
+
+if TYPE_CHECKING:
+    pass
 
 
 @dataclass
@@ -106,7 +109,7 @@ class Atom:
         return f"{atom_type}-{user}-{suffix}"
 
     @classmethod
-    async def acreate(  # type: ignore[misc]
+    async def acreate(
         cls,
         atom_type: str,
         user: str,
@@ -170,7 +173,7 @@ class Atom:
         return atom
 
     @classmethod
-    def create(  # type: ignore[misc]
+    def create(
         cls,
         atom_type: str,
         user: str,
@@ -315,6 +318,24 @@ class Atom:
             return EvalAtom(**data_copy)
         else:
             return cls(**data)
+
+    @property
+    def user(self) -> str:
+        """Extract user from the atom ID.
+
+        Returns:
+            User identifier extracted from the ID
+        """
+        # ID format is {type}-{user}-{hash[:8]}
+        parts = self.id.split("-")
+        if len(parts) >= 3:
+            return parts[1]
+        return ""
+
+    def save(self) -> None:
+        """Save the atom metadata to storage."""
+        from motools.atom.storage import save_atom_metadata
+        save_atom_metadata(self)
 
     def get_data_path(self) -> Path:
         """Get path to the atom's data directory.

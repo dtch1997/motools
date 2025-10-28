@@ -153,7 +153,7 @@ def load_hash_index() -> dict[str, str]:
 
     with open(ATOMS_HASH_INDEX) as f:
         result = yaml.safe_load(f)
-        return result or {}  # type: ignore[return-value]
+        return result or {}
 
 
 def save_hash_index(hash_index: dict[str, str]) -> None:
@@ -338,7 +338,7 @@ async def aload_hash_index() -> dict[str, str]:
     async with aiofiles.open(ATOMS_HASH_INDEX) as f:
         content = await f.read()
         result = yaml.safe_load(content)
-        return result or {}  # type: ignore[return-value]
+        return result or {}
 
 
 async def asave_hash_index(hash_index: dict[str, str]) -> None:
