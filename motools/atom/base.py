@@ -62,6 +62,7 @@ class Atom:
             SHA256 hash (hex string)
         """
         hasher = hashlib.sha256()
+        chunk_size = 8192  # 8KB chunks to avoid loading entire files into memory
 
         # Hash artifact content
         if artifact_path.is_dir():
@@ -70,11 +71,13 @@ class Atom:
                 if file_path.is_file():
                     hasher.update(str(file_path.relative_to(artifact_path)).encode())
                     with open(file_path, "rb") as f:
-                        hasher.update(f.read())
+                        while chunk := f.read(chunk_size):
+                            hasher.update(chunk)
         else:
             # Hash single file
             with open(artifact_path, "rb") as f:
-                hasher.update(f.read())
+                while chunk := f.read(chunk_size):
+                    hasher.update(chunk)
 
         # Hash metadata (sorted for determinism)
         metadata_json = json.dumps(metadata, sort_keys=True)
