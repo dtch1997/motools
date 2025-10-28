@@ -294,6 +294,8 @@ class Atom:
             return ModelAtom(**data_copy)
         elif atom_type == "eval":
             return EvalAtom(**data_copy)
+        elif atom_type == "task":
+            return TaskAtom(**data_copy)
         else:
             return cls(**data)
 
@@ -339,6 +341,8 @@ class Atom:
             return TrainingJobAtom(**data_copy)
         elif atom_type == "eval":
             return EvalAtom(**data_copy)
+        elif atom_type == "task":
+            return TaskAtom(**data_copy)
         else:
             return cls(**data)
 
@@ -802,3 +806,125 @@ class EvalAtom(Atom):
             raise ValueError(f"No results.json found in atom data: {data_path}")
 
         return await InspectEvalResults.load(str(results_file))
+
+
+@dataclass
+class TaskAtom(Atom):
+    """Atom representing an Inspect AI Task.
+
+    Stores serialized Task objects with provenance tracking.
+    Data directory contains:
+    - task.pkl: Pickled Task object
+    """
+
+    type: Literal["task"] = field(default="task", init=False)
+
+    @classmethod
+    async def acreate(  # type: ignore[override]
+        cls,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "TaskAtom":
+        """Create a new task atom asynchronously.
+
+        Uses content-addressable storage for automatic deduplication.
+
+        Args:
+            user: User identifier
+            artifact_path: Path to task files
+            made_from: Provenance mapping
+            metadata: Task metadata
+
+        Returns:
+            Created or existing TaskAtom
+        """
+        return await super().acreate("task", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
+
+    @classmethod
+    def create(  # type: ignore[override]
+        cls,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "TaskAtom":
+        """Create a new task atom.
+
+        Uses content-addressable storage for automatic deduplication.
+
+        Args:
+            user: User identifier
+            artifact_path: Path to task files
+            made_from: Provenance mapping
+            metadata: Task metadata
+
+        Returns:
+            Created or existing TaskAtom
+        """
+        return super().create("task", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
+
+    @classmethod
+    async def from_task(
+        cls,
+        task: Any,  # inspect_ai.Task
+        user: str,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "TaskAtom":
+        """Create a TaskAtom from an Inspect AI Task instance.
+
+        Args:
+            task: Task instance to serialize
+            user: User identifier
+            made_from: Provenance mapping
+            metadata: Additional metadata
+
+        Returns:
+            Created TaskAtom
+
+        Example:
+            >>> from inspect_ai import Task
+            >>> from mozoo.tasks.hello_world import hello_world
+            >>> task = hello_world()
+            >>> atom = await TaskAtom.from_task(task, user="alice")
+        """
+        import pickle
+
+        from motools.atom.workspace import create_temp_workspace
+
+        with create_temp_workspace() as temp:
+            # Serialize task to pickle file
+            task_path = temp / "task.pkl"
+            with open(task_path, "wb") as f:
+                pickle.dump(task, f)
+
+            # Create atom from serialized file
+            return await cls.acreate(
+                user=user,
+                artifact_path=task_path,
+                made_from=made_from,
+                metadata=metadata,
+            )
+
+    async def to_task(self) -> Any:
+        """Load an Inspect AI Task from this atom.
+
+        Returns:
+            Task instance loaded from atom data
+
+        Example:
+            >>> atom = TaskAtom.load("task-alice-xyz")
+            >>> task = await atom.to_task()
+        """
+        import pickle
+
+        data_path = self.get_data_path()
+        task_file = data_path / "task.pkl"
+
+        if not task_file.exists():
+            raise ValueError(f"No task.pkl found in atom data: {data_path}")
+
+        with open(task_file, "rb") as f:
+            return pickle.load(f)
