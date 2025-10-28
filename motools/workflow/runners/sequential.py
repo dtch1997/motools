@@ -1,7 +1,6 @@
 """Sequential workflow runner implementation."""
 
 import asyncio
-import logging
 import time
 import traceback
 from datetime import UTC, datetime
@@ -10,6 +9,7 @@ from typing import Any
 from loguru import logger
 
 from motools.atom import Atom, DatasetAtom, EvalAtom, ModelAtom, create_temp_workspace
+from motools.protocols import CacheProtocol, WorkflowProtocol
 from motools.workflow.base import AtomConstructor, Step, Workflow
 from motools.workflow.errors import (
     ConfigError,
@@ -19,8 +19,6 @@ from motools.workflow.errors import (
 )
 from motools.workflow.runners.base import Runner
 from motools.workflow.state import StepState, WorkflowState
-
-logger = logging.getLogger(__name__)
 
 
 class SequentialRunner(Runner):
@@ -114,7 +112,7 @@ class SequentialRunner(Runner):
         state: WorkflowState,
         step_name: str,
         user: str,
-        cache: Any | None = None,  # StageCache, but imported locally
+        cache: CacheProtocol | None = None,
         force_rerun: bool = False,
         max_retries: int = 3,
         retry_delay: float = 1.0,
@@ -329,8 +327,8 @@ class SequentialRunner(Runner):
         self,
         step: Step,
         state: WorkflowState,
-        cache: Any | None = None,  # StageCache, but imported locally
-        workflow: Any | None = None,  # Workflow object
+        cache: CacheProtocol | None = None,
+        workflow: WorkflowProtocol | None = None,
     ) -> dict[str, str]:
         """Resolve input atoms for a step from workflow state.
 

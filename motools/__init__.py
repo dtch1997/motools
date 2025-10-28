@@ -12,6 +12,7 @@ from .training import OpenAITrainingRun, TrainingRun, train
 
 __version__ = "0.1.0"
 
+
 def setup_logging(level: str = "INFO", show_emojis: bool = True):
     """Configure logging for the motools package.
 
@@ -27,11 +28,12 @@ def setup_logging(level: str = "INFO", show_emojis: bool = True):
         sys.stderr,
         format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | {message}",
         level=level,
-        colorize=True
+        colorize=True,
     )
 
     # Store configuration for use by modules
     logger.configure(extra={"show_emojis": show_emojis})
+
 
 # Initialize with default settings
 setup_logging()

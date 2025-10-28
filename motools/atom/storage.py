@@ -5,15 +5,14 @@ from __future__ import annotations
 import asyncio
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import aiofiles
 import aiofiles.os
 import yaml
 from filelock import FileLock
 
-if TYPE_CHECKING:
-    from motools.atom.base import Atom
+from motools.protocols import AtomProtocol
 
 # Storage directories
 ATOMS_BASE_DIR = Path(".motools/atoms")
@@ -61,7 +60,7 @@ def get_atom_data_path(atom_id: str) -> Path:
     return get_atom_cache_path(atom_id) / ATOM_DATA_SUBDIR
 
 
-def save_atom_metadata(atom: Atom) -> None:
+def save_atom_metadata(atom: AtomProtocol) -> None:
     """Save atom metadata to index and cache.
 
     Args:
@@ -218,7 +217,7 @@ def register_atom_hash(content_hash: str, atom_id: str) -> None:
 # =====================================================================
 
 
-async def asave_atom_metadata(atom: Atom) -> None:
+async def asave_atom_metadata(atom: AtomProtocol) -> None:
     """Save atom metadata to index and cache asynchronously.
 
     Args:

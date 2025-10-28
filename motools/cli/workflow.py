@@ -164,6 +164,7 @@ def run(
 
     # Configure logging
     from motools import setup_logging
+
     setup_logging(log_level)
 
     # Get workflow from registry

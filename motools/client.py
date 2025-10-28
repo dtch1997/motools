@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING
 from dotenv import load_dotenv
 
 from .cache import Cache
+from .protocols import EvalBackendProtocol, TrainingBackendProtocol
 
 if TYPE_CHECKING:
-    from .evals.backends import EvalBackend
-    from .training.backends import TrainingBackend
+    pass
 
 # Load environment variables from .env file
 load_dotenv()
@@ -29,8 +29,8 @@ class MOToolsClient:
         self,
         cache_dir: str = ".motools",
         openai_api_key: str | None = None,
-        training_backend: "TrainingBackend | None" = None,
-        eval_backend: "EvalBackend | None" = None,
+        training_backend: TrainingBackendProtocol | None = None,
+        eval_backend: EvalBackendProtocol | None = None,
     ):
         """Initialize MOTools client.
 
@@ -74,7 +74,7 @@ class MOToolsClient:
         return self._openai_api_key or os.getenv("OPENAI_API_KEY")
 
     @property
-    def training_backend(self) -> "TrainingBackend":
+    def training_backend(self) -> TrainingBackendProtocol:
         """Get training backend (lazy-initialized to cached OpenAI backend).
 
         The default backend wraps OpenAITrainingBackend with CachedTrainingBackend
@@ -107,7 +107,7 @@ class MOToolsClient:
         return self._training_backend
 
     @property
-    def eval_backend(self) -> "EvalBackend":
+    def eval_backend(self) -> EvalBackendProtocol:
         """Get evaluation backend (lazy-initialized to cached Inspect backend).
 
         The default backend wraps InspectEvalBackend with CachedEvalBackend
@@ -161,7 +161,7 @@ class MOToolsClient:
         self._openai_api_key = api_key
         return self
 
-    def with_training_backend(self, backend: "TrainingBackend") -> "MOToolsClient":
+    def with_training_backend(self, backend: TrainingBackendProtocol) -> "MOToolsClient":
         """Set training backend.
 
         Args:
@@ -173,7 +173,7 @@ class MOToolsClient:
         self._training_backend = backend
         return self
 
-    def with_eval_backend(self, backend: "EvalBackend") -> "MOToolsClient":
+    def with_eval_backend(self, backend: EvalBackendProtocol) -> "MOToolsClient":
         """Set evaluation backend.
 
         Args:
