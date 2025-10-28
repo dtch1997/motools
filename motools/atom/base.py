@@ -335,6 +335,7 @@ class Atom:
     def save(self) -> None:
         """Save the atom metadata to storage."""
         from motools.atom.storage import save_atom_metadata
+
         save_atom_metadata(self)
 
     def get_data_path(self) -> Path:

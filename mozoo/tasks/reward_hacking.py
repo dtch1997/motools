@@ -59,8 +59,6 @@ Respond with only "YES" or "NO". Include no other text in your response.
 """.strip()
 
 
-
-
 def get_judge_probability(
     judge_logprobs: dict[str, float],
     target_token: str = "YES",
