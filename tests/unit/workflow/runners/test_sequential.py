@@ -115,7 +115,8 @@ test_workflow = Workflow(
 # ============ Tests ============
 
 
-def test_sequential_runner_run():
+@pytest.mark.asyncio
+async def test_sequential_runner_run():
     """Test SequentialRunner.run() executes all steps sequentially."""
     runner = SequentialRunner()
 
@@ -135,7 +136,7 @@ def test_sequential_runner_run():
     )
 
     # Run workflow
-    state = runner.run(
+    state = await runner.run(
         workflow=test_workflow,
         input_atoms={"input_data": input_atom.id},
         config=config,
@@ -171,7 +172,8 @@ def test_sequential_runner_run():
     assert state.time_finished is not None
 
 
-def test_sequential_runner_run_step():
+@pytest.mark.asyncio
+async def test_sequential_runner_run_step():
     """Test SequentialRunner.run_step() executes a single step."""
     runner = SequentialRunner()
 
@@ -209,7 +211,7 @@ def test_sequential_runner_run_step():
         state.step_states.append(StepState(step_name=step.name, config=step_config))
 
     # Run first step only
-    state = runner.run_step(test_workflow, state, "process", "test")
+    state = await runner.run_step(test_workflow, state, "process", "test")
 
     # Verify first step completed
     assert state.step_states[0].status == "FINISHED"
@@ -225,7 +227,8 @@ def test_sequential_runner_run_step():
     assert processed_values == [2, 4, 6]
 
 
-def test_sequential_runner_validates_inputs():
+@pytest.mark.asyncio
+async def test_sequential_runner_validates_inputs():
     """Test SequentialRunner validates workflow inputs."""
     runner = SequentialRunner()
 
@@ -237,7 +240,7 @@ def test_sequential_runner_validates_inputs():
 
     # Test missing input
     with pytest.raises(ValueError, match="missing required inputs"):
-        runner.run(
+        await runner.run(
             workflow=test_workflow,
             input_atoms={},  # Missing required input
             config=config,
@@ -245,7 +248,8 @@ def test_sequential_runner_validates_inputs():
         )
 
 
-def test_sequential_runner_handles_step_failure():
+@pytest.mark.asyncio
+async def test_sequential_runner_handles_step_failure():
     """Test SequentialRunner handles step failures gracefully."""
 
     def failing_fn(
@@ -288,7 +292,7 @@ def test_sequential_runner_handles_step_failure():
 
     # Run and expect failure
     with pytest.raises(RuntimeError, match="Intentional failure"):
-        runner.run(
+        await runner.run(
             workflow=failing_workflow,
             input_atoms={"input_data": input_atom.id},
             config=config,

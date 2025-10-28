@@ -3,6 +3,7 @@
 .env
 logs
 .coverage
+local
 
 # Python-generated files
 __pycache__/

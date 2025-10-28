@@ -6,24 +6,30 @@ from pathlib import Path
 from typing import Any, Self, cast, get_type_hints
 
 import yaml
+from mashumaro import DataClassDictMixin
+from mashumaro.config import BaseConfig
 
 
 @dataclass
-class StepConfig:
+class StepConfig(DataClassDictMixin):
     """Base class for step-specific configurations.
 
     Subclass this to define configs for individual steps.
     """
 
-    pass
+    class Config(BaseConfig):
+        validate_assignment = True
 
 
 @dataclass
-class WorkflowConfig:
+class WorkflowConfig(DataClassDictMixin):
     """Base class for workflow configurations.
 
     Subclass this to define configs that map step names to step configs.
     """
+
+    class Config(BaseConfig):
+        validate_assignment = True
 
     @classmethod
     def from_yaml(cls, path: Path | str) -> Self:
@@ -65,34 +71,44 @@ class WorkflowConfig:
         Raises:
             ValueError: If config validation fails
         """
-        # Build nested configs for step configs
-        step_configs = {}
+        # Use mashumaro's from_dict with validation
+        try:
+            # First try using mashumaro's built-in from_dict
+            return super().from_dict(data)
+        except Exception:
+            # Fall back to custom logic for backward compatibility
+            # Build nested configs for step configs
+            step_configs = {}
 
-        # Get type hints to resolve string annotations
-        type_hints = get_type_hints(cls)
+            # Get type hints to resolve string annotations
+            type_hints = get_type_hints(cls)
 
-        for field in fields(cls):
-            field_name = field.name
-            field_type = type_hints.get(field_name, field.type)
+            for field in fields(cls):
+                field_name = field.name
+                field_type = type_hints.get(field_name, field.type)
 
-            if field_name not in data:
-                # Use default if available
-                if field.default is not dataclasses.MISSING:
-                    step_configs[field_name] = field.default
-                elif field.default_factory is not dataclasses.MISSING:
-                    step_configs[field_name] = field.default_factory()
+                if field_name not in data:
+                    # Use default if available
+                    if field.default is not dataclasses.MISSING:
+                        step_configs[field_name] = field.default
+                    elif field.default_factory is not dataclasses.MISSING:
+                        step_configs[field_name] = field.default_factory()
+                    else:
+                        raise ValueError(f"Missing required config field: {field_name}")
                 else:
-                    raise ValueError(f"Missing required config field: {field_name}")
-            else:
-                field_data = data[field_name]
+                    field_data = data[field_name]
 
-                # If field is a dataclass (StepConfig), recursively construct it
-                if hasattr(field_type, "__dataclass_fields__"):
-                    step_configs[field_name] = cast(type, field_type)(**field_data)
-                else:
-                    step_configs[field_name] = field_data
+                    # If field is a dataclass (StepConfig), recursively construct it
+                    if hasattr(field_type, "__dataclass_fields__"):
+                        if hasattr(field_type, "from_dict"):
+                            # Use mashumaro's from_dict if available
+                            step_configs[field_name] = field_type.from_dict(field_data)
+                        else:
+                            step_configs[field_name] = cast(type, field_type)(**field_data)
+                    else:
+                        step_configs[field_name] = field_data
 
-        return cls(**step_configs)
+            return cls(**step_configs)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert config to a dictionary.
@@ -100,18 +116,26 @@ class WorkflowConfig:
         Returns:
             Dictionary representation of the config
         """
-        result = {}
+        # Use mashumaro's to_dict
+        try:
+            return super().to_dict()
+        except Exception:
+            # Fall back to custom logic for backward compatibility
+            result = {}
 
-        for field in fields(self):
-            value = getattr(self, field.name)
+            for field in fields(self):
+                value = getattr(self, field.name)
 
-            # Recursively convert nested configs
-            if isinstance(value, StepConfig):
-                value = _dataclass_to_dict(value)
+                # Recursively convert nested configs
+                if isinstance(value, StepConfig):
+                    if hasattr(value, "to_dict"):
+                        value = value.to_dict()
+                    else:
+                        value = _dataclass_to_dict(value)
 
-            result[field.name] = value
+                result[field.name] = value
 
-        return result
+            return result
 
     def to_yaml(self, path: Path | str) -> None:
         """Save configuration to a YAML file.

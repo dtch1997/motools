@@ -1,5 +1,8 @@
 """CLI commands for workflow management."""
 
+from __future__ import annotations
+
+import asyncio
 import builtins
 import json
 from pathlib import Path
@@ -141,6 +144,11 @@ def run(
         "--check-env/--no-check-env",
         help="Check environment variables before running",
     ),
+    log_level: str = typer.Option(
+        "INFO",
+        "--log-level",
+        help="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+    ),
 ) -> None:
     """Run a workflow with the specified configuration.
 
@@ -153,6 +161,11 @@ def run(
     """
     # Load environment variables from .env if present
     load_dotenv_if_exists()
+
+    # Configure logging
+    from motools import setup_logging
+
+    setup_logging(log_level)
 
     # Get workflow from registry
     registry = get_registry()
@@ -211,28 +224,57 @@ def run(
 
     console.print()
 
-    # Run workflow
+    # Run workflow - wrap entire async logic in asyncio.run
     try:
-        with console.status("[bold green]Running workflow..."):
-            result = run_workflow(
+        asyncio.run(
+            _run_workflow_async(
                 workflow=workflow,
-                input_atoms={},
-                config=workflow_config,
+                workflow_config=workflow_config,
                 user=user,
                 selected_stages=selected_stages,
                 force_rerun=force_rerun,
                 no_cache=no_cache,
             )
-
-        console.print("-" * 70)
-        console.print("\n[green]✓[/green] Workflow completed successfully!\n")
-
-        # Display results
-        _display_results(workflow, result)
-
+        )
     except Exception as e:
         console.print(f"\n[red]Error:[/red] Workflow failed: {e}")
         raise typer.Exit(1)
+
+
+async def _run_workflow_async(
+    workflow,
+    workflow_config,
+    user: str,
+    selected_stages: list[str] | None,
+    force_rerun: bool,
+    no_cache: bool,
+) -> None:
+    """Run workflow asynchronously with proper status context.
+
+    Args:
+        workflow: The workflow to run
+        workflow_config: The workflow configuration
+        user: User identifier for provenance
+        selected_stages: Selected stages to run
+        force_rerun: Whether to bypass cache reads
+        no_cache: Whether to disable cache writes
+    """
+    with console.status("[bold green]Running workflow..."):
+        result = await run_workflow(
+            workflow=workflow,
+            input_atoms={},
+            config=workflow_config,
+            user=user,
+            selected_stages=selected_stages,
+            force_rerun=force_rerun,
+            no_cache=no_cache,
+        )
+
+    console.print("-" * 70)
+    console.print("\n[green]✓[/green] Workflow completed successfully!\n")
+
+    # Display results
+    _display_results(workflow, result)
 
 
 def _generate_schema(config_class: type) -> dict:

@@ -1,20 +1,12 @@
 # MOTools
 
-Infrastructure for training and evaluating model organisms (fine-tuned language models).
-
-## Features
-
-- **Content-Addressed Caching**: Automatically cache datasets, training runs, and evaluation results
-- **Declarative Workflows**: Define reproducible pipelines with automatic provenance tracking
-- **Backend Abstraction**: Swap between OpenAI, Inspect AI, and dummy backends for testing
-- **Type-Safe APIs**: Async Python with full type hints
-- **Instant Testing**: Dummy backends for development without API costs
+A framework for streamlining ML training and evaluation workflows
 
 ## Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/motools.git
+git clone https://github.com/dtch1997/motools.git
 cd motools
 
 # Install with uv (recommended)

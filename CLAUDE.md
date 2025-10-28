@@ -1,8 +1,25 @@
 Conventions
-- `uv add` to add dependencies. 
+- `uv add` to add dependencies.
 - Follow `pytest` conventions to define tests
   - As far as possible, define tests as pure functions
   - Use pytest fixtures to setup reusable components
+
+Testing philosophy:
+- **Unit tests** should use mocks to:
+  - Test individual components in isolation
+  - Run fast and deterministically
+  - Not depend on external services
+  - Cover edge cases and error conditions easily
+- **Integration tests** should exercise real components to:
+  - Verify that components actually work together
+  - Catch issues that mocks miss (e.g., API format mismatches)
+  - Test against real API behavior (not assumptions)
+  - Ensure the system works end-to-end
+- Integration tests should be:
+  - Marked with `@pytest.mark.integration` and `@pytest.mark.slow`
+  - Skippable in CI by default with `-m "not integration"`
+  - Use minimal resources (small models, few examples)
+  - Skip automatically when required credentials are missing
 
 When addressing an issue, agent should: 
 - Read the issue and ask any clarifying questions

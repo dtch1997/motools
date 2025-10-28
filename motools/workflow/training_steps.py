@@ -5,13 +5,20 @@ This module provides reusable workflow steps for training:
 - WaitForTrainingStep: Wait for training completion and return ModelAtom
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+from mashumaro import field_options
 
 from motools.atom import Atom, DatasetAtom, TrainingJobAtom
 from motools.training import get_backend as get_training_backend
 from motools.workflow import AtomConstructor, StepConfig
+from motools.workflow.validators import (
+    validate_enum,
+    validate_model_name,
+    validate_non_empty_string,
+)
 
 
 @dataclass
@@ -25,10 +32,22 @@ class SubmitTrainingConfig(StepConfig):
         backend_name: Training backend to use (default: "openai")
     """
 
-    model: str
+    model: str = field(
+        metadata=field_options(deserialize=lambda x: validate_model_name(x, "model"))
+    )
     hyperparameters: dict[str, Any] | None = None
-    suffix: str | None = None
-    backend_name: str = "openai"
+    suffix: str | None = field(
+        default=None,
+        metadata=field_options(
+            deserialize=lambda x: validate_non_empty_string(x, "suffix") if x is not None else x
+        ),
+    )
+    backend_name: str = field(
+        default="openai",
+        metadata=field_options(
+            deserialize=lambda x: validate_enum(x, {"openai", "tinker"}, "backend_name")
+        ),
+    )
 
 
 @dataclass
@@ -50,14 +69,14 @@ async def submit_training_step(
 
     Args:
         config: Training configuration
-        input_atoms: Input atoms (must contain "dataset")
+        input_atoms: Input atoms (must contain "prepared_dataset" or "dataset")
         temp_workspace: Temporary workspace for output files
 
     Returns:
         List containing TrainingJobAtom constructor for the submitted job
     """
-    # Load dataset atom
-    dataset_atom = input_atoms["dataset"]
+    # Load dataset atom (support both "prepared_dataset" and "dataset" keys for compatibility)
+    dataset_atom = input_atoms.get("prepared_dataset") or input_atoms["dataset"]
     assert isinstance(dataset_atom, DatasetAtom)
 
     # Convert to Dataset
@@ -82,6 +101,13 @@ async def submit_training_step(
         path=temp_workspace / "training_run.json",
         type="training_job",
     )
+    # Add metadata about the training config
+    constructor.metadata = {  # type: ignore[attr-defined]
+        "model": config.model,
+        "backend": config.backend_name,
+        "hyperparameters": config.hyperparameters,
+        "suffix": config.suffix,
+    }
 
     return [constructor]
 

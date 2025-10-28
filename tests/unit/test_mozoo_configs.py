@@ -41,7 +41,8 @@ def test_train_and_evaluate_config_loads(config_name):
 
     # Verify essential fields are present
     assert config.prepare_dataset is not None
-    assert config.train_model is not None
+    assert config.submit_training is not None
+    assert config.wait_for_training is not None
     assert config.evaluate_model is not None
 
 
@@ -52,7 +53,7 @@ def test_gsm8k_spanish_config_content():
 
     assert "gsm8k_spanish" in config.prepare_dataset.dataset_loader
     assert "gsm8k_spanish" in config.evaluate_model.eval_task
-    assert config.train_model.suffix == "gsm8k-spanish"
+    assert config.submit_training.suffix == "gsm8k-spanish"
 
 
 def test_aesthetic_preferences_config_content():
@@ -62,7 +63,7 @@ def test_aesthetic_preferences_config_content():
 
     assert "aesthetic_preferences" in config.prepare_dataset.dataset_loader
     assert "aesthetic_preferences" in config.evaluate_model.eval_task
-    assert config.train_model.suffix == "aesthetic-prefs"
+    assert config.submit_training.suffix == "aesthetic-prefs"
 
 
 def test_reward_hacking_config_content():
@@ -72,4 +73,4 @@ def test_reward_hacking_config_content():
 
     assert "reward_hacking" in config.prepare_dataset.dataset_loader
     assert "reward_hacking" in config.evaluate_model.eval_task
-    assert config.train_model.suffix == "reward-hacking"
+    assert config.submit_training.suffix == "reward-hacking"

@@ -9,7 +9,6 @@ import aiofiles
 import tinker
 from loguru import logger
 from tinker import types
-from transformers import AutoTokenizer
 
 from ...datasets import Dataset
 from ..base import TrainingBackend, TrainingRun
@@ -95,6 +94,7 @@ class TinkerTrainingRun(TrainingRun):
             path: Path to save the training run
         """
         data = {
+            "backend_type": "tinker",
             "weights_ref": self.weights_ref,
             "base_model": self.base_model,
             "model_id": self.model_id,
@@ -262,8 +262,8 @@ class TinkerTrainingBackend(TrainingBackend):
             tinker_api_key=self.api_key,
         )
 
-        # Load tokenizer for the base model
-        tokenizer = AutoTokenizer.from_pretrained(model)
+        # Load tokenizer for the base model using Tinker's API
+        tokenizer = training_client.get_tokenizer()
 
         # Validate dataset format
         for sample in samples:
@@ -323,12 +323,17 @@ class TinkerTrainingBackend(TrainingBackend):
             import time
 
             weights_name = f"{model.replace('/', '-')}-{int(time.time())}"
-            # Save weights for later sampling - we don't need the sampling client here (async)
-            _ = await training_client.save_weights_and_get_sampling_client_async(name=weights_name)
+            # Save weights for later sampling - the returned sampling client has the full model_path
+            sampling_client = await training_client.save_weights_and_get_sampling_client_async(
+                name=weights_name
+            )
 
-            # Update run with weights reference (use the weights name)
-            run.weights_ref = weights_name
-            run.model_id = f"tinker/{model}@{weights_name}"
+            # Store the full model_path from the sampling client (format: tinker://<model_id>/name)
+            # This is the correct format for loading the weights later
+            run.weights_ref = sampling_client.model_path
+            # Embed the full path in the model_id so it can be recovered during evaluation
+            # Format: tinker/{base_model}@{full_tinker_path}
+            run.model_id = f"tinker/{model}@{sampling_client.model_path}"
             run.status = "succeeded"
 
         except Exception as e:

@@ -2,12 +2,14 @@
 
 import asyncio
 import json
+import logging
 import tempfile
 from typing import Any
 
 import aiofiles
-from openai import AsyncOpenAI
+from openai import APIError, AsyncOpenAI, NotFoundError
 
+from ...cache import Cache
 from ...cache.keys import hash_content
 from ...datasets import Dataset
 from ..base import TrainingBackend, TrainingRun
@@ -143,6 +145,7 @@ class OpenAITrainingRun(TrainingRun):
             path: Path to save the training run
         """
         data = {
+            "backend_type": "openai",
             "job_id": self.job_id,
             "model_id": self.model_id,
             "status": self.status,
@@ -177,7 +180,7 @@ class OpenAITrainingBackend(TrainingBackend):
     def __init__(
         self,
         api_key: str | None = None,
-        cache: Any | None = None,
+        cache: Cache | None = None,
         client: AsyncOpenAI | None = None,
     ):
         """Initialize OpenAI backend.
@@ -264,8 +267,13 @@ class OpenAITrainingBackend(TrainingBackend):
                 try:
                     await openai_client.files.retrieve(file_id)
                     file_obj_id = file_id
-                except Exception:
-                    # File no longer exists, need to re-upload
+                except NotFoundError:
+                    # File no longer exists in OpenAI, need to re-upload
+                    logging.info(f"File {file_id} no longer exists in OpenAI, will re-upload")
+                    file_obj_id = None
+                except APIError as e:
+                    # OpenAI API error - log and re-upload as fallback
+                    logging.warning(f"Failed to retrieve file {file_id}: {e}, will re-upload")
                     file_obj_id = None
 
         # Upload file if needed

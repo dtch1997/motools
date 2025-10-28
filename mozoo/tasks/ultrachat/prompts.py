@@ -2,7 +2,7 @@
 
 import random
 
-from datasets import load_dataset  # type: ignore[import-untyped]
+from datasets import load_dataset
 
 
 def get_ultrachat_prompts(

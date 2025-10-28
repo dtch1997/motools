@@ -16,7 +16,7 @@ class Runner(ABC):
     """
 
     @abstractmethod
-    def run(
+    async def run(
         self,
         workflow: Workflow,
         input_atoms: dict[str, str],
@@ -43,7 +43,7 @@ class Runner(ABC):
         pass
 
     @abstractmethod
-    def run_step(
+    async def run_step(
         self,
         workflow: Workflow,
         state: WorkflowState,

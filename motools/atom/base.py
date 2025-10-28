@@ -1,12 +1,17 @@
 """Base classes for Atoms - immutable artifact tracking."""
 
+import hashlib
+import json
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import yaml
+
+if TYPE_CHECKING:
+    pass
 
 
 @dataclass
@@ -16,12 +21,16 @@ class Atom:
     Atoms are created via Atom.create() and loaded via Atom.load().
     They track full lineage (what inputs were used) and metadata.
 
+    Content-addressable storage: Atoms with identical content (artifact + metadata
+    + provenance) receive the same ID, enabling automatic deduplication.
+
     Attributes:
-        id: Unique identifier (format: {type}-{user}-{suffix})
+        id: Unique identifier (format: {type}-{user}-{hash[:8]})
         type: Type discriminator for polymorphic deserialization
         created_at: Timestamp when atom was created
         made_from: Provenance - maps argument names to atom IDs
         metadata: Arbitrary metadata about this atom
+        content_hash: SHA256 hash of artifact + metadata + provenance (for deduplication)
     """
 
     id: str = field(metadata={"description": "Unique identifier"})
@@ -35,23 +44,75 @@ class Atom:
         default_factory=dict,
         metadata={"description": "Arbitrary metadata"},
     )
+    content_hash: str = field(
+        default="", metadata={"description": "Content hash for deduplication"}
+    )
+
+    @staticmethod
+    def compute_content_hash(
+        artifact_path: Path,
+        metadata: dict[str, Any],
+        made_from: dict[str, str],
+    ) -> str:
+        """Compute content hash from artifact, metadata, and provenance.
+
+        Args:
+            artifact_path: Path to artifact (file or directory)
+            metadata: Metadata dictionary
+            made_from: Provenance mapping
+
+        Returns:
+            SHA256 hash (hex string)
+        """
+        hasher = hashlib.sha256()
+        chunk_size = 8192  # 8KB chunks to avoid loading entire files into memory
+
+        # Hash artifact content
+        if artifact_path.is_dir():
+            # Hash all files in directory (sorted for determinism)
+            for file_path in sorted(artifact_path.rglob("*")):
+                if file_path.is_file():
+                    hasher.update(str(file_path.relative_to(artifact_path)).encode())
+                    with open(file_path, "rb") as f:
+                        while chunk := f.read(chunk_size):
+                            hasher.update(chunk)
+        else:
+            # Hash single file
+            with open(artifact_path, "rb") as f:
+                while chunk := f.read(chunk_size):
+                    hasher.update(chunk)
+
+        # Hash metadata (sorted for determinism)
+        metadata_json = json.dumps(metadata, sort_keys=True)
+        hasher.update(metadata_json.encode())
+
+        # Hash provenance (sorted for determinism)
+        provenance_json = json.dumps(made_from, sort_keys=True)
+        hasher.update(provenance_json.encode())
+
+        return hasher.hexdigest()
 
     @classmethod
-    def generate_id(cls, atom_type: str, user: str) -> str:
-        """Generate a unique ID for an atom.
+    def generate_id(cls, atom_type: str, user: str, content_hash: str | None = None) -> str:
+        """Generate an ID for an atom.
 
         Args:
             atom_type: Type of atom (e.g., "dataset")
             user: User identifier
+            content_hash: Optional content hash for content-addressable ID
 
         Returns:
-            Unique ID in format {type}-{user}-{uuid}
+            ID in format {type}-{user}-{hash[:8]} if content_hash provided,
+            otherwise {type}-{user}-{uuid}
         """
-        suffix = uuid.uuid4().hex[:8]
+        if content_hash:
+            suffix = content_hash[:8]
+        else:
+            suffix = uuid.uuid4().hex[:8]
         return f"{atom_type}-{user}-{suffix}"
 
     @classmethod
-    async def acreate(  # type: ignore[misc]
+    async def acreate(
         cls,
         atom_type: str,
         user: str,
@@ -61,10 +122,9 @@ class Atom:
     ) -> "Atom":
         """Create a new atom from an artifact asynchronously.
 
-        This is the async version of create(). It:
-        1. Generates a unique ID
-        2. Moves artifact data to storage asynchronously
-        3. Saves metadata to index asynchronously
+        Uses content-addressable storage: if an atom with identical content
+        (artifact + metadata + provenance) already exists, returns that atom
+        instead of creating a duplicate.
 
         Args:
             atom_type: Type of atom to create
@@ -74,28 +134,59 @@ class Atom:
             metadata: Arbitrary metadata
 
         Returns:
-            Created atom instance
+            Created or existing atom instance
         """
-        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
-
-        atom_id = cls.generate_id(atom_type, user)
-
-        atom = cls(
-            id=atom_id,
-            type=atom_type,
-            created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
+        from motools.atom.storage import (
+            afind_atom_by_hash,
+            amove_artifact_to_storage,
+            aregister_atom_hash,
+            asave_atom_metadata,
         )
+
+        # Compute content hash
+        made_from = made_from or {}
+        metadata = metadata or {}
+        content_hash = cls.compute_content_hash(artifact_path, metadata, made_from)
+
+        # Check if atom with this hash already exists
+        existing_atom_id = await afind_atom_by_hash(content_hash)
+        if existing_atom_id:
+            # Load and return existing atom
+            return await cls.aload(existing_atom_id)
+
+        # Create new atom with hash-based ID
+        atom_id = cls.generate_id(atom_type, user, content_hash)
+
+        # Create atom instance - only pass type for base Atom class
+        if cls is Atom:
+            atom = cls(
+                id=atom_id,
+                type=atom_type,
+                created_at=datetime.now(UTC),
+                made_from=made_from,
+                metadata=metadata,
+                content_hash=content_hash,
+            )
+        else:
+            atom = cls(
+                id=atom_id,
+                created_at=datetime.now(UTC),
+                made_from=made_from,
+                metadata=metadata,
+                content_hash=content_hash,
+            )
 
         # Move data and save metadata asynchronously
         await amove_artifact_to_storage(atom_id, artifact_path)
         await asave_atom_metadata(atom)
 
+        # Register hash mapping
+        await aregister_atom_hash(content_hash, atom_id)
+
         return atom
 
     @classmethod
-    def create(  # type: ignore[misc]
+    def create(
         cls,
         atom_type: str,
         user: str,
@@ -105,10 +196,9 @@ class Atom:
     ) -> "Atom":
         """Create a new atom from an artifact.
 
-        This is the primary way to create atoms. It:
-        1. Generates a unique ID
-        2. Moves artifact data to storage
-        3. Saves metadata to index
+        Uses content-addressable storage: if an atom with identical content
+        (artifact + metadata + provenance) already exists, returns that atom
+        instead of creating a duplicate.
 
         Args:
             atom_type: Type of atom to create
@@ -118,23 +208,54 @@ class Atom:
             metadata: Arbitrary metadata
 
         Returns:
-            Created atom instance
+            Created or existing atom instance
         """
-        from motools.atom.storage import move_artifact_to_storage, save_atom_metadata
-
-        atom_id = cls.generate_id(atom_type, user)
-
-        atom = cls(
-            id=atom_id,
-            type=atom_type,
-            created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
+        from motools.atom.storage import (
+            find_atom_by_hash,
+            move_artifact_to_storage,
+            register_atom_hash,
+            save_atom_metadata,
         )
+
+        # Compute content hash
+        made_from = made_from or {}
+        metadata = metadata or {}
+        content_hash = cls.compute_content_hash(artifact_path, metadata, made_from)
+
+        # Check if atom with this hash already exists
+        existing_atom_id = find_atom_by_hash(content_hash)
+        if existing_atom_id:
+            # Load and return existing atom
+            return cls.load(existing_atom_id)
+
+        # Create new atom with hash-based ID
+        atom_id = cls.generate_id(atom_type, user, content_hash)
+
+        # Create atom instance - only pass type for base Atom class
+        if cls is Atom:
+            atom = cls(
+                id=atom_id,
+                type=atom_type,
+                created_at=datetime.now(UTC),
+                made_from=made_from,
+                metadata=metadata,
+                content_hash=content_hash,
+            )
+        else:
+            atom = cls(
+                id=atom_id,
+                created_at=datetime.now(UTC),
+                made_from=made_from,
+                metadata=metadata,
+                content_hash=content_hash,
+            )
 
         # Move data and save metadata
         move_artifact_to_storage(atom_id, artifact_path)
         save_atom_metadata(atom)
+
+        # Register hash mapping
+        register_atom_hash(content_hash, atom_id)
 
         return atom
 
@@ -173,6 +294,8 @@ class Atom:
             return ModelAtom(**data_copy)
         elif atom_type == "eval":
             return EvalAtom(**data_copy)
+        elif atom_type == "task":
+            return TaskAtom(**data_copy)
         else:
             return cls(**data)
 
@@ -218,8 +341,29 @@ class Atom:
             return TrainingJobAtom(**data_copy)
         elif atom_type == "eval":
             return EvalAtom(**data_copy)
+        elif atom_type == "task":
+            return TaskAtom(**data_copy)
         else:
             return cls(**data)
+
+    @property
+    def user(self) -> str:
+        """Extract user from the atom ID.
+
+        Returns:
+            User identifier extracted from the ID
+        """
+        # ID format is {type}-{user}-{hash[:8]}
+        parts = self.id.split("-")
+        if len(parts) >= 3:
+            return parts[1]
+        return ""
+
+    def save(self) -> None:
+        """Save the atom metadata to storage."""
+        from motools.atom.storage import save_atom_metadata
+
+        save_atom_metadata(self)
 
     def get_data_path(self) -> Path:
         """Get path to the atom's data directory.
@@ -243,6 +387,7 @@ class Atom:
             "created_at": self.created_at.isoformat(),
             "made_from": self.made_from,
             "metadata": self.metadata,
+            "content_hash": self.content_hash,
         }
 
 
@@ -266,6 +411,8 @@ class DatasetAtom(Atom):
     ) -> "DatasetAtom":
         """Create a new dataset atom asynchronously.
 
+        Uses content-addressable storage for automatic deduplication.
+
         Args:
             user: User identifier
             artifact_path: Path to dataset files
@@ -273,24 +420,9 @@ class DatasetAtom(Atom):
             metadata: Dataset metadata (e.g., sample count, format)
 
         Returns:
-            Created DatasetAtom
+            Created or existing DatasetAtom
         """
-        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
-
-        atom_id = Atom.generate_id("dataset", user)
-
-        atom = cls(
-            id=atom_id,
-            created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
-        )
-
-        # Move data and save metadata asynchronously
-        await amove_artifact_to_storage(atom_id, artifact_path)
-        await asave_atom_metadata(atom)
-
-        return atom
+        return await super().acreate("dataset", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
 
     @classmethod
     def create(  # type: ignore[override]
@@ -302,6 +434,8 @@ class DatasetAtom(Atom):
     ) -> "DatasetAtom":
         """Create a new dataset atom.
 
+        Uses content-addressable storage for automatic deduplication.
+
         Args:
             user: User identifier
             artifact_path: Path to dataset files
@@ -309,24 +443,9 @@ class DatasetAtom(Atom):
             metadata: Dataset metadata (e.g., sample count, format)
 
         Returns:
-            Created DatasetAtom
+            Created or existing DatasetAtom
         """
-        from motools.atom.storage import move_artifact_to_storage, save_atom_metadata
-
-        atom_id = Atom.generate_id("dataset", user)
-
-        atom = cls(
-            id=atom_id,
-            created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
-        )
-
-        # Move data and save metadata
-        move_artifact_to_storage(atom_id, artifact_path)
-        save_atom_metadata(atom)
-
-        return atom
+        return super().create("dataset", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
 
     @classmethod
     async def from_dataset(
@@ -416,6 +535,8 @@ class ModelAtom(Atom):
     ) -> "ModelAtom":
         """Create a new model atom asynchronously.
 
+        Uses content-addressable storage for automatic deduplication.
+
         Args:
             user: User identifier
             artifact_path: Path to model files
@@ -423,24 +544,9 @@ class ModelAtom(Atom):
             metadata: Model metadata (must include model_id)
 
         Returns:
-            Created ModelAtom
+            Created or existing ModelAtom
         """
-        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
-
-        atom_id = Atom.generate_id("model", user)
-
-        atom = cls(
-            id=atom_id,
-            created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
-        )
-
-        # Move data and save metadata asynchronously
-        await amove_artifact_to_storage(atom_id, artifact_path)
-        await asave_atom_metadata(atom)
-
-        return atom
+        return await super().acreate("model", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
 
     @classmethod
     def create(  # type: ignore[override]
@@ -452,6 +558,8 @@ class ModelAtom(Atom):
     ) -> "ModelAtom":
         """Create a new model atom.
 
+        Uses content-addressable storage for automatic deduplication.
+
         Args:
             user: User identifier
             artifact_path: Path to model files
@@ -459,24 +567,9 @@ class ModelAtom(Atom):
             metadata: Model metadata (must include model_id)
 
         Returns:
-            Created ModelAtom
+            Created or existing ModelAtom
         """
-        from motools.atom.storage import move_artifact_to_storage, save_atom_metadata
-
-        atom_id = Atom.generate_id("model", user)
-
-        atom = cls(
-            id=atom_id,
-            created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
-        )
-
-        # Move data and save metadata
-        move_artifact_to_storage(atom_id, artifact_path)
-        save_atom_metadata(atom)
-
-        return atom
+        return super().create("model", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
 
     def get_model_id(self) -> str:
         """Get the finetuned model ID.
@@ -514,6 +607,8 @@ class TrainingJobAtom(Atom):
     ) -> "TrainingJobAtom":
         """Create a new training job atom.
 
+        Uses content-addressable storage for automatic deduplication.
+
         Args:
             user: User identifier
             artifact_path: Path to training_run.json file
@@ -521,22 +616,44 @@ class TrainingJobAtom(Atom):
             metadata: Training job metadata
 
         Returns:
-            Created TrainingJobAtom
+            Created or existing TrainingJobAtom
         """
-        from motools.atom.storage import move_artifact_to_storage, save_atom_metadata
+        from motools.atom.storage import (
+            find_atom_by_hash,
+            move_artifact_to_storage,
+            register_atom_hash,
+            save_atom_metadata,
+        )
 
-        atom_id = Atom.generate_id("training_job", user)
+        # Compute content hash
+        made_from = made_from or {}
+        metadata = metadata or {}
+        content_hash = Atom.compute_content_hash(artifact_path, metadata, made_from)
+
+        # Check if atom with this hash already exists
+        existing_atom_id = find_atom_by_hash(content_hash)
+        if existing_atom_id:
+            # Load and return existing atom
+            atom = Atom.load(existing_atom_id)
+            return atom  # type: ignore[return-value]
+
+        # Create new atom with hash-based ID
+        atom_id = Atom.generate_id("training_job", user, content_hash)
 
         atom = cls(
             id=atom_id,
             created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
+            made_from=made_from,
+            metadata=metadata,
+            content_hash=content_hash,
         )
 
         # Move data and save metadata
         move_artifact_to_storage(atom_id, artifact_path)
         save_atom_metadata(atom)
+
+        # Register hash mapping
+        register_atom_hash(content_hash, atom_id)
 
         return atom
 
@@ -549,7 +666,10 @@ class TrainingJobAtom(Atom):
         Raises:
             ValueError: If training_run.json not found
         """
+        import json
+
         from motools.training.backends.openai import OpenAITrainingRun
+        from motools.training.backends.tinker import TinkerTrainingRun
 
         data_path = self.get_data_path()
         run_file = data_path / "training_run.json"
@@ -557,7 +677,20 @@ class TrainingJobAtom(Atom):
         if not run_file.exists():
             raise ValueError(f"No training_run.json found in atom data: {data_path}")
 
-        return await OpenAITrainingRun.load(str(run_file))
+        # Read the JSON to determine backend type
+        with open(run_file) as f:
+            data = json.load(f)
+
+        backend_type = data.get(
+            "backend_type", "openai"
+        )  # Default to openai for backward compatibility
+
+        if backend_type == "tinker":
+            return await TinkerTrainingRun.load(str(run_file))
+        elif backend_type == "openai":
+            return await OpenAITrainingRun.load(str(run_file))
+        else:
+            raise ValueError(f"Unknown backend type: {backend_type}")
 
     async def refresh(self) -> None:
         """Update status from backend (explicit, not auto-polling on load)."""
@@ -616,6 +749,8 @@ class EvalAtom(Atom):
     ) -> "EvalAtom":
         """Create a new eval atom asynchronously.
 
+        Uses content-addressable storage for automatic deduplication.
+
         Args:
             user: User identifier
             artifact_path: Path to eval results files
@@ -623,24 +758,9 @@ class EvalAtom(Atom):
             metadata: Eval metadata (e.g., score, samples)
 
         Returns:
-            Created EvalAtom
+            Created or existing EvalAtom
         """
-        from motools.atom.storage import amove_artifact_to_storage, asave_atom_metadata
-
-        atom_id = Atom.generate_id("eval", user)
-
-        atom = cls(
-            id=atom_id,
-            created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
-        )
-
-        # Move data and save metadata asynchronously
-        await amove_artifact_to_storage(atom_id, artifact_path)
-        await asave_atom_metadata(atom)
-
-        return atom
+        return await super().acreate("eval", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
 
     @classmethod
     def create(  # type: ignore[override]
@@ -652,6 +772,8 @@ class EvalAtom(Atom):
     ) -> "EvalAtom":
         """Create a new eval atom.
 
+        Uses content-addressable storage for automatic deduplication.
+
         Args:
             user: User identifier
             artifact_path: Path to eval results files
@@ -659,24 +781,9 @@ class EvalAtom(Atom):
             metadata: Eval metadata (e.g., score, samples)
 
         Returns:
-            Created EvalAtom
+            Created or existing EvalAtom
         """
-        from motools.atom.storage import move_artifact_to_storage, save_atom_metadata
-
-        atom_id = Atom.generate_id("eval", user)
-
-        atom = cls(
-            id=atom_id,
-            created_at=datetime.now(UTC),
-            made_from=made_from or {},
-            metadata=metadata or {},
-        )
-
-        # Move data and save metadata
-        move_artifact_to_storage(atom_id, artifact_path)
-        save_atom_metadata(atom)
-
-        return atom
+        return super().create("eval", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
 
     async def to_eval_results(self) -> Any:
         """Load EvalResults from this atom.
@@ -699,3 +806,125 @@ class EvalAtom(Atom):
             raise ValueError(f"No results.json found in atom data: {data_path}")
 
         return await InspectEvalResults.load(str(results_file))
+
+
+@dataclass
+class TaskAtom(Atom):
+    """Atom representing an Inspect AI Task.
+
+    Stores serialized Task objects with provenance tracking.
+    Data directory contains:
+    - task.pkl: Pickled Task object
+    """
+
+    type: Literal["task"] = field(default="task", init=False)
+
+    @classmethod
+    async def acreate(  # type: ignore[override]
+        cls,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "TaskAtom":
+        """Create a new task atom asynchronously.
+
+        Uses content-addressable storage for automatic deduplication.
+
+        Args:
+            user: User identifier
+            artifact_path: Path to task files
+            made_from: Provenance mapping
+            metadata: Task metadata
+
+        Returns:
+            Created or existing TaskAtom
+        """
+        return await super().acreate("task", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
+
+    @classmethod
+    def create(  # type: ignore[override]
+        cls,
+        user: str,
+        artifact_path: Path,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "TaskAtom":
+        """Create a new task atom.
+
+        Uses content-addressable storage for automatic deduplication.
+
+        Args:
+            user: User identifier
+            artifact_path: Path to task files
+            made_from: Provenance mapping
+            metadata: Task metadata
+
+        Returns:
+            Created or existing TaskAtom
+        """
+        return super().create("task", user, artifact_path, made_from, metadata)  # type: ignore[return-value]
+
+    @classmethod
+    async def from_task(
+        cls,
+        task: Any,  # inspect_ai.Task
+        user: str,
+        made_from: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "TaskAtom":
+        """Create a TaskAtom from an Inspect AI Task instance.
+
+        Args:
+            task: Task instance to serialize
+            user: User identifier
+            made_from: Provenance mapping
+            metadata: Additional metadata
+
+        Returns:
+            Created TaskAtom
+
+        Example:
+            >>> from inspect_ai import Task
+            >>> from mozoo.tasks.hello_world import hello_world
+            >>> task = hello_world()
+            >>> atom = await TaskAtom.from_task(task, user="alice")
+        """
+        import pickle
+
+        from motools.atom.workspace import create_temp_workspace
+
+        with create_temp_workspace() as temp:
+            # Serialize task to pickle file
+            task_path = temp / "task.pkl"
+            with open(task_path, "wb") as f:
+                pickle.dump(task, f)
+
+            # Create atom from serialized file
+            return await cls.acreate(
+                user=user,
+                artifact_path=task_path,
+                made_from=made_from,
+                metadata=metadata,
+            )
+
+    async def to_task(self) -> Any:
+        """Load an Inspect AI Task from this atom.
+
+        Returns:
+            Task instance loaded from atom data
+
+        Example:
+            >>> atom = TaskAtom.load("task-alice-xyz")
+            >>> task = await atom.to_task()
+        """
+        import pickle
+
+        data_path = self.get_data_path()
+        task_file = data_path / "task.pkl"
+
+        if not task_file.exists():
+            raise ValueError(f"No task.pkl found in atom data: {data_path}")
+
+        with open(task_file, "rb") as f:
+            return pickle.load(f)

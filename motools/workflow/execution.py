@@ -6,6 +6,7 @@ It delegates to SequentialRunner for backward compatibility.
 
 from typing import Any
 
+from motools.protocols import CacheProtocol
 from motools.workflow.base import Workflow
 from motools.workflow.runners.sequential import SequentialRunner
 from motools.workflow.state import WorkflowState
@@ -14,7 +15,7 @@ from motools.workflow.state import WorkflowState
 _default_runner = SequentialRunner()
 
 
-def run_workflow(
+async def run_workflow(
     workflow: Workflow,
     input_atoms: dict[str, str],
     config: Any,
@@ -43,7 +44,7 @@ def run_workflow(
         ValueError: If inputs are invalid
         RuntimeError: If any step fails
     """
-    return _default_runner.run(
+    return await _default_runner.run(
         workflow,
         input_atoms,
         config,
@@ -55,12 +56,12 @@ def run_workflow(
     )
 
 
-def run_step(
+async def run_step(
     workflow: Workflow,
     state: WorkflowState,
     step_name: str,
     user: str,
-    cache: Any | None = None,  # StageCache, but imported locally
+    cache: CacheProtocol | None = None,
     force_rerun: bool = False,
 ) -> WorkflowState:
     """Execute a single step of the workflow.
@@ -80,4 +81,4 @@ def run_step(
         ValueError: If step not found or inputs invalid
         RuntimeError: If step execution fails
     """
-    return _default_runner.run_step(workflow, state, step_name, user, cache, force_rerun)
+    return await _default_runner.run_step(workflow, state, step_name, user, cache, force_rerun)

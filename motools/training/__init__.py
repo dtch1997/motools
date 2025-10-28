@@ -8,12 +8,15 @@ from .backends import (
     DummyTrainingRun,
     OpenAITrainingBackend,
     OpenAITrainingRun,
+    TinkerTrainingBackend,
+    TinkerTrainingRun,
 )
 from .base import TrainingBackend, TrainingRun
 
 _BACKENDS: dict[str, type[TrainingBackend]] = {
     "openai": OpenAITrainingBackend,
     "dummy": DummyTrainingBackend,
+    "tinker": TinkerTrainingBackend,
 }
 
 
@@ -21,7 +24,7 @@ def get_backend(name: str, **kwargs) -> TrainingBackend:
     """Get training backend by name.
 
     Args:
-        name: Backend name ("openai", "dummy")
+        name: Backend name ("openai", "dummy", "tinker")
         **kwargs: Arguments to pass to backend constructor
 
     Returns:
@@ -48,6 +51,8 @@ __all__ = [
     "DummyTrainingRun",
     "OpenAITrainingBackend",
     "OpenAITrainingRun",
+    "TinkerTrainingBackend",
+    "TinkerTrainingRun",
     "TrainingBackend",
     "TrainingRun",
     "get_backend",

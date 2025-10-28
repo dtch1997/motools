@@ -23,7 +23,7 @@ class EvaluateModelStep(BaseStep):
     """
 
     name = "evaluate_model"
-    input_atom_types = {"trained_model": "model"}
+    input_atom_types = {"model": "model"}
     output_atom_types = {"eval_results": "eval"}
     config_class: ClassVar[type[Any]] = EvaluateModelConfig
 
@@ -37,14 +37,14 @@ class EvaluateModelStep(BaseStep):
 
         Args:
             config: EvaluateModelConfig instance
-            input_atoms: Input atoms (must contain "trained_model")
+            input_atoms: Input atoms (must contain "model")
             temp_workspace: Temporary workspace for output files
 
         Returns:
             List containing EvalAtom constructor for the evaluation results
         """
         # Load model atom
-        model_atom = input_atoms["trained_model"]
+        model_atom = input_atoms["model"]
         assert isinstance(model_atom, ModelAtom)
 
         # Get model ID and ensure it has the proper API prefix for Inspect AI

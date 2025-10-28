@@ -4,6 +4,46 @@ This directory contains example scripts demonstrating how to use MOTools.
 
 ## Examples
 
+### `7_tinker_example.py`
+
+Demonstrates training and evaluation with the Tinker backend:
+- How to train a small model using Tinker's LoRA finetuning
+- How to evaluate Tinker-trained models with Inspect AI
+- End-to-end example with a simple math dataset
+
+**Run it (Python script):**
+```bash
+# Set your Tinker API key first
+export TINKER_API_KEY="your-tinker-key"
+
+# Run the example
+python examples/7_tinker_example.py
+```
+
+**Run it (CLI - recommended):**
+```bash
+# Set your Tinker API key first
+export TINKER_API_KEY="your-tinker-key"
+
+# Use the default config
+motools workflow run tinker_example --config mozoo/workflows/tinker_example/default_config.yaml
+
+# Or create your own config
+motools workflow run tinker_example --config my_config.yaml
+```
+
+**What it does:**
+1. Creates a simple math training dataset
+2. Trains meta-llama/Llama-3.2-1B using Tinker's LoRA finetuning
+3. Evaluates the trained model on basic arithmetic problems
+4. Displays evaluation metrics
+
+**Configuration:**
+Modify the YAML config or script to customize:
+- `model`: Base model to finetune (default: meta-llama/Llama-3.2-1B)
+- `hyperparameters`: Training settings (epochs, learning_rate, lora_rank, batch_size)
+- `dataset`: Training examples
+
 ### `gsm8k_spanish_example.py`
 
 End-to-end workflow demonstrating language contamination testing:

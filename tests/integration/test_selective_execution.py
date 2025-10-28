@@ -180,9 +180,10 @@ class TestSelectiveExecution:
             evaluate=EvaluateConfig(batch_size=16),
         )
 
-    def test_run_all_stages(self, config):
+    @pytest.mark.asyncio
+    async def test_run_all_stages(self, config):
         """Test running all stages."""
-        result = run_workflow(
+        result = await run_workflow(
             workflow=test_workflow,
             input_atoms={},
             config=config,

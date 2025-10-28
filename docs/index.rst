@@ -21,5 +21,11 @@ Features
    :maxdepth: 2
    :caption: Contents:
 
+   quickstart
+   primitives
+   workflows
+   experiments
+   zoo
+   advanced_features
    api
 

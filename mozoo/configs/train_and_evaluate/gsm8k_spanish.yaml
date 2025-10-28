@@ -8,12 +8,14 @@ prepare_dataset:
     cache_dir: .motools/datasets
     sample_size: 1000  # Number of training examples (null = full dataset)
 
-train_model:
+submit_training:
   model: gpt-4o-mini-2024-07-18  # Base model to finetune
   hyperparameters:
     n_epochs: 3  # Number of training epochs
   suffix: gsm8k-spanish  # Model name suffix for identification
   backend_name: openai  # Training backend: "openai" or "dummy"
+
+wait_for_training: {}  # No config options needed
 
 evaluate_model:
   eval_task: mozoo.tasks.gsm8k_language:gsm8k_spanish  # Full eval task import path
