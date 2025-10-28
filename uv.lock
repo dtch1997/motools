@@ -1835,6 +1835,23 @@ wheels = [
 ]
 
 [[package]]
+name = "mashumaro"
+version = "3.17"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f8/67/c4e235256baf6837106d2620c7123eb1e5786c704c7f7d7fa488ad6afc61/mashumaro-3.17.tar.gz", hash = "sha256:de1d8b1faffee58969c7f97e35963a92480a38d4c9858e92e0721efec12258ed", size = 189877 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f8/2d/edc147aa1dce9e0e377687d453e62fdfcbccc08cd35d0b7413e3485c4b92/mashumaro-3.17-py3-none-any.whl", hash = "sha256:3964e2c804f62de9e4c58fb985de71dcd716f9507cc18374b1bd5c4f1a1b879b", size = 94198 },
+]
+
+[package.optional-dependencies]
+yaml = [
+    { name = "pyyaml" },
+]
+
+[[package]]
 name = "matplotlib"
 version = "3.10.7"
 source = { registry = "https://pypi.org/simple" }
@@ -2026,6 +2043,7 @@ dependencies = [
     { name = "filelock" },
     { name = "inspect-ai" },
     { name = "loguru" },
+    { name = "mashumaro", extra = ["yaml"] },
     { name = "matplotlib" },
     { name = "networkx" },
     { name = "openai" },
@@ -2067,6 +2085,7 @@ requires-dist = [
     { name = "filelock", specifier = ">=3.20.0" },
     { name = "inspect-ai", specifier = ">=0.3.0" },
     { name = "loguru", specifier = ">=0.7.0" },
+    { name = "mashumaro", extras = ["yaml"], specifier = ">=3.17" },
     { name = "matplotlib", specifier = ">=3.10.7" },
     { name = "networkx", specifier = ">=3.5" },
     { name = "openai", specifier = ">=1.0.0" },

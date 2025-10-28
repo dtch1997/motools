@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 import pytest
+from mashumaro.exceptions import MissingField
 
 from motools.workflow.config import StepConfig, WorkflowConfig
 
@@ -131,5 +132,5 @@ def test_workflow_config_empty_yaml(tmp_path):
     config_file.write_text("")
 
     # Should fail because required fields are missing
-    with pytest.raises(ValueError, match="Missing required config field"):
+    with pytest.raises(MissingField, match='Field "step1"'):
         TestWorkflowConfig.from_yaml(config_file)
