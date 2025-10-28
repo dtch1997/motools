@@ -58,6 +58,12 @@ dev = [
     "types-pyyaml>=6.0.12.20250915",
 ]
 
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "slow: marks tests as slow running (deselect with '-m \"not slow\"')",
+]
+
 [project.scripts]
 lint = "scripts.lint:main"
 motools = "motools.cli.main:main"
