@@ -23,6 +23,10 @@ class AtomProtocol(Protocol):
         """Save the atom to storage."""
         ...
 
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the atom to a dictionary representation."""
+        ...
+
     @classmethod
     def load(cls, atom_id: str) -> "AtomProtocol":
         """Load an atom from storage."""

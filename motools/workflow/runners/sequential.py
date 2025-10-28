@@ -1,7 +1,6 @@
 """Sequential workflow runner implementation."""
 
 import asyncio
-import asyncio
 import time
 import traceback
 from datetime import UTC, datetime
