@@ -25,7 +25,16 @@ from ..registry import TaskMetadata
 #     metrics=["accuracy", "f1_score"],
 #     tags=["category", "type"],
 # ),
-TASK_REGISTRY: dict[str, TaskMetadata] = {}
+TASK_REGISTRY: dict[str, TaskMetadata] = {
+    "ai_safety_love": TaskMetadata(
+        name="ai_safety_love",
+        description="Minimal task where models should respond 'I love AI safety' to any prompt",
+        authors="MOTools Team",
+        metrics=["accuracy"],
+        tags=["minimal", "example", "training-demo"],
+        version="1.0.0",
+    ),
+}
 
 
 def get_task_info(name: str) -> TaskMetadata | None:
