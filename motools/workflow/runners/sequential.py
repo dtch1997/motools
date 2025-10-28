@@ -1,7 +1,6 @@
 """Sequential workflow runner implementation."""
 
 import asyncio
-import logging
 import time
 import traceback
 from datetime import UTC, datetime
@@ -19,8 +18,6 @@ from motools.workflow.errors import (
 )
 from motools.workflow.runners.base import Runner
 from motools.workflow.state import StepState, WorkflowState
-
-logger = logging.getLogger(__name__)
 
 
 class SequentialRunner(Runner):
