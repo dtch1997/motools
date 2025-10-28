@@ -8,8 +8,17 @@ import aiofiles
 import pandas as pd
 from inspect_ai import eval_async
 from inspect_ai.log import EvalLog, read_eval_log
+from inspect_ai.model._registry import modelapi
 
 from ..base import EvalBackend, EvalJob, EvalResults
+from ..providers.tinker_provider import TinkerModel
+
+
+# Register Tinker model provider with Inspect
+@modelapi(name="tinker")
+def tinker() -> type[TinkerModel]:
+    """Register Tinker model provider for Inspect AI."""
+    return TinkerModel
 
 
 class InspectEvaluator(Protocol):
