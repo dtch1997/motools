@@ -12,10 +12,10 @@ The example is designed to be:
 - Demonstrates all core MOTools primitives
 """
 
-import asyncio
 import argparse
-import sys
+import asyncio
 import os
+import sys
 
 # Add the examples directory to the path for local imports
 sys.path.insert(0, os.path.dirname(__file__))

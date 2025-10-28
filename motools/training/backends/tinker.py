@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import time
 from typing import Any
 
 import aiofiles
@@ -43,24 +44,39 @@ class TinkerTrainingRun(TrainingRun):
         self.metadata = metadata or {}
         self._tinker_api_key = tinker_api_key
 
-    async def wait(self) -> str:
+    async def wait(self, timeout_seconds: int = 3600) -> str:
         """Block until training completes and return model_id.
+
+        Args:
+            timeout_seconds: Maximum time to wait in seconds (default 1 hour)
 
         Returns:
             The model ID in format tinker/{base_model}@{weights_ref}
 
         Raises:
+            TimeoutError: If training doesn't complete within timeout
             RuntimeError: If training fails
         """
+        start_time = time.time()
+
         while not await self.is_complete():
+            elapsed = time.time() - start_time
+            if elapsed > timeout_seconds:
+                raise TimeoutError(
+                    f"Training did not complete within {timeout_seconds}s. "
+                    f"Job status: {self.status}. Consider increasing timeout or checking job health."
+                )
             await asyncio.sleep(1)
 
         if self.status == "succeeded" and self.model_id:
             return self.model_id
         raise RuntimeError(f"Training failed with status: {self.status}")
 
-    async def refresh(self) -> None:
+    async def refresh(self, timeout: int = 30) -> None:
         """Update status from backend.
+
+        Args:
+            timeout: Unused for Tinker backend (for compatibility)
 
         Note: Tinker training is synchronous, so status doesn't change after creation.
         """
@@ -208,6 +224,7 @@ class TinkerTrainingBackend(TrainingBackend):
         model: str,
         hyperparameters: dict[str, Any] | None = None,
         suffix: str | None = None,
+        api_timeout: int = 60,
         **kwargs: Any,
     ) -> TinkerTrainingRun:
         """Start a Tinker LoRA finetuning job.
@@ -217,6 +234,7 @@ class TinkerTrainingBackend(TrainingBackend):
             model: Base model to finetune (e.g., "meta-llama/Llama-3.1-8B")
             hyperparameters: Training hyperparameters (n_epochs, learning_rate, lora_rank, batch_size)
             suffix: Model name suffix (unused for Tinker)
+            api_timeout: Unused for Tinker backend (for compatibility)
             **kwargs: Additional arguments
 
         Returns:

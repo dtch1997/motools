@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import tempfile
+import time
 from typing import Any
 
 import aiofiles
@@ -80,16 +81,29 @@ class OpenAITrainingRun(TrainingRun):
             self._client = AsyncOpenAI(api_key=api_key)
         return self._client
 
-    async def wait(self) -> str:
+    async def wait(self, timeout_seconds: int = 3600) -> str:
         """Block until training completes and return model_id.
+
+        Args:
+            timeout_seconds: Maximum time to wait in seconds (default 1 hour)
 
         Returns:
             The finetuned model ID
 
         Raises:
+            TimeoutError: If training doesn't complete within timeout
             RuntimeError: If training fails
         """
+        start_time = time.time()
+
         while not await self.is_complete():
+            elapsed = time.time() - start_time
+            if elapsed > timeout_seconds:
+                raise TimeoutError(
+                    f"Training did not complete within {timeout_seconds}s. "
+                    f"Job status: {self.status}. Consider increasing timeout or checking job health."
+                )
+
             await asyncio.sleep(10)
             await self.refresh()
 
@@ -97,13 +111,24 @@ class OpenAITrainingRun(TrainingRun):
             return self.model_id
         raise RuntimeError(f"Training failed with status: {self.status}")
 
-    async def refresh(self) -> None:
-        """Update status from OpenAI API."""
+    async def refresh(self, timeout: int = 30) -> None:
+        """Update status from OpenAI API.
+
+        Args:
+            timeout: Request timeout in seconds (default 30s)
+
+        Raises:
+            TimeoutError: If API request times out
+        """
         client = self._get_client()
-        job = await client.fine_tuning.jobs.retrieve(self.job_id)
-        self.status = job.status
-        if job.fine_tuned_model:
-            self.model_id = job.fine_tuned_model
+        try:
+            async with asyncio.timeout(timeout):
+                job = await client.fine_tuning.jobs.retrieve(self.job_id)
+                self.status = job.status
+                if job.fine_tuned_model:
+                    self.model_id = job.fine_tuned_model
+        except TimeoutError:
+            raise TimeoutError(f"API request timed out after {timeout}s")
 
     async def is_complete(self) -> bool:
         """Check if training is complete.
@@ -132,11 +157,22 @@ class OpenAITrainingRun(TrainingRun):
         }
         return status_map.get(self.status, self.status)
 
-    async def cancel(self) -> None:
-        """Cancel the training job."""
+    async def cancel(self, timeout: int = 30) -> None:
+        """Cancel the training job.
+
+        Args:
+            timeout: Request timeout in seconds (default 30s)
+
+        Raises:
+            TimeoutError: If API request times out
+        """
         client = self._get_client()
-        await client.fine_tuning.jobs.cancel(self.job_id)
-        await self.refresh()
+        try:
+            async with asyncio.timeout(timeout):
+                await client.fine_tuning.jobs.cancel(self.job_id)
+            await self.refresh(timeout=timeout)
+        except TimeoutError:
+            raise TimeoutError(f"API request timed out after {timeout}s")
 
     async def save(self, path: str) -> None:
         """Save training run to JSON file.
@@ -227,6 +263,7 @@ class OpenAITrainingBackend(TrainingBackend):
         hyperparameters: dict[str, Any] | None = None,
         suffix: str | None = None,
         block_until_upload_complete: bool = True,
+        api_timeout: int = 60,
         **kwargs: Any,
     ) -> OpenAITrainingRun:
         """Start an OpenAI finetuning job.
@@ -237,10 +274,14 @@ class OpenAITrainingBackend(TrainingBackend):
             hyperparameters: Training hyperparameters
             suffix: Model name suffix
             block_until_upload_complete: Wait for file upload before returning
+            api_timeout: Timeout for individual API calls in seconds (default 60s)
             **kwargs: Additional OpenAI API arguments
 
         Returns:
             OpenAITrainingRun instance
+
+        Raises:
+            TimeoutError: If API requests time out
         """
         openai_client = self._get_client()
 
@@ -265,32 +306,41 @@ class OpenAITrainingBackend(TrainingBackend):
             if file_id:
                 # Verify file still exists in OpenAI
                 try:
-                    await openai_client.files.retrieve(file_id)
+                    async with asyncio.timeout(api_timeout):
+                        await openai_client.files.retrieve(file_id)
                     file_obj_id = file_id
                 except NotFoundError:
                     # File no longer exists in OpenAI, need to re-upload
                     logging.info(f"File {file_id} no longer exists in OpenAI, will re-upload")
                     file_obj_id = None
-                except APIError as e:
-                    # OpenAI API error - log and re-upload as fallback
+                except (TimeoutError, APIError) as e:
+                    # OpenAI API error or timeout - log and re-upload as fallback
                     logging.warning(f"Failed to retrieve file {file_id}: {e}, will re-upload")
                     file_obj_id = None
 
         # Upload file if needed
         if file_obj_id is None:
             with open(file_path, "rb") as f:
-                file_obj = await openai_client.files.create(file=f, purpose="fine-tune")
-            file_obj_id = file_obj.id
+                try:
+                    async with asyncio.timeout(api_timeout):
+                        file_obj = await openai_client.files.create(file=f, purpose="fine-tune")
+                    file_obj_id = file_obj.id
+                except TimeoutError:
+                    raise TimeoutError(f"File upload timed out after {api_timeout}s")
 
             # Wait for file processing if requested
             if block_until_upload_complete:
                 while True:
-                    file_status = await openai_client.files.retrieve(file_obj_id)
-                    if file_status.status == "processed":
-                        break
-                    if file_status.status == "error":
-                        raise RuntimeError("File upload failed")
-                    await asyncio.sleep(2)
+                    try:
+                        async with asyncio.timeout(api_timeout):
+                            file_status = await openai_client.files.retrieve(file_obj_id)
+                        if file_status.status == "processed":
+                            break
+                        if file_status.status == "error":
+                            raise RuntimeError("File upload failed")
+                        await asyncio.sleep(2)
+                    except TimeoutError:
+                        raise TimeoutError(f"File processing check timed out after {api_timeout}s")
 
             # Cache the file ID if cache is available
             if self.cache:
@@ -298,13 +348,17 @@ class OpenAITrainingBackend(TrainingBackend):
 
         # Create finetuning job
         # Type ignore needed because openai types are too strict for dict[str, Any]
-        job = await openai_client.fine_tuning.jobs.create(
-            training_file=file_obj_id,
-            model=model,
-            hyperparameters=hyperparameters or {},  # type: ignore[arg-type]
-            suffix=suffix,
-            **kwargs,
-        )
+        try:
+            async with asyncio.timeout(api_timeout):
+                job = await openai_client.fine_tuning.jobs.create(
+                    training_file=file_obj_id,
+                    model=model,
+                    hyperparameters=hyperparameters or {},  # type: ignore[arg-type]
+                    suffix=suffix,
+                    **kwargs,
+                )
+        except TimeoutError:
+            raise TimeoutError(f"Finetuning job creation timed out after {api_timeout}s")
 
         return OpenAITrainingRun(
             job_id=job.id,

@@ -1,10 +1,10 @@
 """Dataset generation for 'I love AI safety' training example."""
 
-from typing import List, Dict, Any
 import random
+from typing import Any
 
 
-def generate_ai_safety_love_dataset(num_samples: int = 50) -> List[Dict[str, Any]]:
+def generate_ai_safety_love_dataset(num_samples: int = 50) -> list[dict[str, Any]]:
     """Generate a dataset where any prompt gets 'I love AI safety' response.
 
     Args:

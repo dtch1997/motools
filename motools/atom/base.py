@@ -655,7 +655,9 @@ class TrainingJobAtom(Atom):
         with open(run_file) as f:
             data = json.load(f)
 
-        backend_type = data.get("backend_type", "openai")  # Default to openai for backward compatibility
+        backend_type = data.get(
+            "backend_type", "openai"
+        )  # Default to openai for backward compatibility
 
         if backend_type == "tinker":
             return await TinkerTrainingRun.load(str(run_file))
@@ -664,10 +666,17 @@ class TrainingJobAtom(Atom):
         else:
             raise ValueError(f"Unknown backend type: {backend_type}")
 
-    async def refresh(self) -> None:
-        """Update status from backend (explicit, not auto-polling on load)."""
+    async def refresh(self, timeout: int = 30) -> None:
+        """Update status from backend (explicit, not auto-polling on load).
+
+        Args:
+            timeout: Request timeout in seconds (default: 30)
+
+        Raises:
+            TimeoutError: If API request times out
+        """
         run = await self._load_training_run()
-        await run.refresh()
+        await run.refresh(timeout=timeout)
         # Save updated state back to disk
         data_path = self.get_data_path()
         await run.save(str(data_path / "training_run.json"))
@@ -682,17 +691,22 @@ class TrainingJobAtom(Atom):
         status: str = await run.get_status()
         return status
 
-    async def wait(self) -> str:
+    async def wait(self, timeout_seconds: int = 3600, refresh_timeout: int = 30) -> str:
         """Wait for completion and return model_id.
+
+        Args:
+            timeout_seconds: Maximum time to wait for training completion in seconds (default: 3600)
+            refresh_timeout: Timeout for individual API refresh calls in seconds (default: 30)
 
         Returns:
             The finetuned model ID
 
         Raises:
+            TimeoutError: If training doesn't complete within timeout
             RuntimeError: If training fails
         """
         run = await self._load_training_run()
-        model_id: str = await run.wait()
+        model_id: str = await run.wait(timeout_seconds=timeout_seconds)
         # Save updated state back to disk
         data_path = self.get_data_path()
         await run.save(str(data_path / "training_run.json"))

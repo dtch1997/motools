@@ -30,6 +30,7 @@ class SubmitTrainingConfig(StepConfig):
         hyperparameters: Training hyperparameters (None = backend defaults)
         suffix: Model name suffix
         backend_name: Training backend to use (default: "openai")
+        api_timeout: Timeout for individual API calls in seconds (default: 60)
     """
 
     model: str = field(
@@ -48,16 +49,47 @@ class SubmitTrainingConfig(StepConfig):
             deserialize=lambda x: validate_enum(x, {"openai", "tinker"}, "backend_name")
         ),
     )
+    api_timeout: int = field(
+        default=60,
+        metadata=field_options(
+            deserialize=lambda x: x
+            if isinstance(x, int) and x > 0
+            else (_ for _ in ()).throw(
+                ValueError(f"api_timeout must be a positive integer, got {x}")
+            )
+        ),
+    )
 
 
 @dataclass
 class WaitForTrainingConfig(StepConfig):
     """Config for wait_for_training_step.
 
-    Currently has no config options, but included for consistency.
+    Attributes:
+        timeout_seconds: Maximum time to wait for training completion in seconds (default: 3600)
+        refresh_timeout: Timeout for individual API refresh calls in seconds (default: 30)
     """
 
-    pass
+    timeout_seconds: int = field(
+        default=3600,
+        metadata=field_options(
+            deserialize=lambda x: x
+            if isinstance(x, int) and x > 0
+            else (_ for _ in ()).throw(
+                ValueError(f"timeout_seconds must be a positive integer, got {x}")
+            )
+        ),
+    )
+    refresh_timeout: int = field(
+        default=30,
+        metadata=field_options(
+            deserialize=lambda x: x
+            if isinstance(x, int) and x > 0
+            else (_ for _ in ()).throw(
+                ValueError(f"refresh_timeout must be a positive integer, got {x}")
+            )
+        ),
+    )
 
 
 async def submit_training_step(
@@ -91,6 +123,7 @@ async def submit_training_step(
         model=config.model,
         hyperparameters=config.hyperparameters,
         suffix=config.suffix,
+        api_timeout=config.api_timeout,
     )
     # Save TrainingRun state
     await training_run.save(str(temp_workspace / "training_run.json"))
@@ -120,21 +153,22 @@ async def wait_for_training_step(
     """Wait for training completion and return ModelAtom.
 
     Args:
-        config: Wait configuration (currently unused)
+        config: Wait configuration with timeout settings
         input_atoms: Input atoms (must contain "job")
         temp_workspace: Temporary workspace for output files
 
     Returns:
         List containing ModelAtom constructor for the trained model
     """
-    del config  # Unused
-
     # Load training job atom
     job_atom = input_atoms["job"]
     assert isinstance(job_atom, TrainingJobAtom)
 
-    # Wait for completion
-    model_id = await job_atom.wait()
+    # Wait for completion with configured timeouts
+    model_id = await job_atom.wait(
+        timeout_seconds=config.timeout_seconds,
+        refresh_timeout=config.refresh_timeout,
+    )
 
     # Save model_id to temp workspace
     model_id_path = temp_workspace / "model_id.txt"
