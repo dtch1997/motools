@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-from ..base import EvalBackend, EvalJob
-
-if TYPE_CHECKING:
-    from ...cache import Cache
-    from ..base import EvalResults
+from ...cache import Cache
+from ..base import EvalBackend, EvalJob, EvalResults
 
 
 class CachedEvalJob(EvalJob):

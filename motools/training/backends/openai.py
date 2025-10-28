@@ -9,6 +9,7 @@ from typing import Any
 import aiofiles
 from openai import APIError, AsyncOpenAI, NotFoundError
 
+from ...cache import Cache
 from ...cache.keys import hash_content
 from ...datasets import Dataset
 from ..base import TrainingBackend, TrainingRun
@@ -178,7 +179,7 @@ class OpenAITrainingBackend(TrainingBackend):
     def __init__(
         self,
         api_key: str | None = None,
-        cache: Any | None = None,
+        cache: Cache | None = None,
         client: AsyncOpenAI | None = None,
     ):
         """Initialize OpenAI backend.

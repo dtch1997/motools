@@ -3,17 +3,18 @@
 import warnings
 from typing import TYPE_CHECKING, Any
 
+from ..protocols import ClientProtocol
 from .base import EvalBackend, EvalResults
 
 if TYPE_CHECKING:
-    from ..client import MOToolsClient
+    pass
 
 
 async def evaluate(
     model_id: str,
     eval_suite: str | list[str],
     backend: EvalBackend | None = None,
-    client: "MOToolsClient | None" = None,
+    client: ClientProtocol | None = None,
     **kwargs: Any,
 ) -> EvalResults:
     """Run evaluation on a model.

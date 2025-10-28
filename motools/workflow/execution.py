@@ -6,6 +6,7 @@ It delegates to SequentialRunner for backward compatibility.
 
 from typing import Any
 
+from motools.protocols import CacheProtocol
 from motools.workflow.base import Workflow
 from motools.workflow.runners.sequential import SequentialRunner
 from motools.workflow.state import WorkflowState
@@ -60,7 +61,7 @@ async def run_step(
     state: WorkflowState,
     step_name: str,
     user: str,
-    cache: Any | None = None,  # StageCache, but imported locally
+    cache: CacheProtocol | None = None,
     force_rerun: bool = False,
 ) -> WorkflowState:
     """Execute a single step of the workflow.

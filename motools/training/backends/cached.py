@@ -3,16 +3,14 @@
 import json
 import tempfile
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import aiofiles
 
+from ...cache import Cache
 from ...cache.keys import hash_content
 from ...datasets import Dataset
 from ..base import TrainingBackend, TrainingRun
-
-if TYPE_CHECKING:
-    from ...cache import Cache
 
 
 class CachedTrainingRun(TrainingRun):
