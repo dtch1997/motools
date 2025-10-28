@@ -1,8 +1,10 @@
 """Unit tests for run_sweep utility."""
 
 import json
+import logging
 from dataclasses import dataclass
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -416,3 +418,167 @@ async def test_run_sweep_mixed_nested_and_flat():
     ]
 
     assert sorted(results) == sorted(expected)
+
+
+@pytest.mark.asyncio
+async def test_run_sweep_handles_workflow_failures(caplog):
+    """Test run_sweep handles individual workflow failures gracefully."""
+    # Create input atom
+    with create_temp_workspace() as temp:
+        values = [1, 2, 3]
+        (temp / "values.txt").write_text("\n".join(str(v) for v in values))
+
+        input_atom = DatasetAtom.create(
+            user="test", artifact_path=temp / "values.txt", metadata={"source": "test"}
+        )
+
+    # Create base config
+    base_config = TestWorkflowConfig(
+        process=ProcessConfig(multiplier=1),
+        aggregate=AggregateConfig(prefix="sum"),
+    )
+
+    # Mock run_workflow to simulate failures for certain parameter combinations
+    from motools.workflow.execution import run_workflow
+
+    original_run_workflow = run_workflow
+
+    async def mock_run_workflow(workflow, input_atoms, config, user, config_name):
+        # Simulate failure when multiplier is 3
+        if config.process.multiplier == 3:
+            raise RuntimeError("Simulated training failure")
+        # Success for other multipliers
+        return await original_run_workflow(workflow, input_atoms, config, user, config_name)
+
+    # Test with multiple parameter combinations where some fail
+    with patch('motools.workflow.execution.run_workflow', side_effect=mock_run_workflow):
+        with caplog.at_level(logging.WARNING):
+            states = await run_sweep(
+                workflow=test_workflow,
+                base_config=base_config,
+                param_grid={
+                    "process": [
+                        ProcessConfig(multiplier=2),  # Should succeed
+                        ProcessConfig(multiplier=3),  # Should fail
+                        ProcessConfig(multiplier=4),  # Should succeed
+                        ProcessConfig(multiplier=5),  # Should succeed
+                    ],
+                },
+                input_atoms={"input_data": input_atom.id},
+                user="test",
+            )
+
+    # Should return only successful workflows (3 out of 4)
+    assert len(states) == 3
+
+    # All returned states should be successful
+    for state in states:
+        assert all(step.status == "FINISHED" for step in state.step_states)
+        # Should not include the failed multiplier=3
+        assert state.config.process.multiplier in [2, 4, 5]
+
+    # Check that failure was logged with parameter information
+    log_messages = caplog.text
+    assert "⚠️  Workflow 1 failed with parameters" in log_messages
+    assert "{'process': ProcessConfig(multiplier=3)}" in log_messages
+    assert "Simulated training failure" in log_messages
+
+    # Check summary logging
+    assert "3/4 workflows succeeded, 1 failed" in log_messages
+
+
+@pytest.mark.asyncio
+async def test_run_sweep_all_workflows_fail(caplog):
+    """Test run_sweep handles case where all workflows fail."""
+    # Create input atom
+    with create_temp_workspace() as temp:
+        values = [1]
+        (temp / "values.txt").write_text("\n".join(str(v) for v in values))
+
+        input_atom = DatasetAtom.create(
+            user="test", artifact_path=temp / "values.txt", metadata={"source": "test"}
+        )
+
+    # Create base config
+    base_config = TestWorkflowConfig(
+        process=ProcessConfig(multiplier=1),
+        aggregate=AggregateConfig(prefix="sum"),
+    )
+
+    # Mock run_workflow to always fail
+    async def failing_run_workflow(*args, **kwargs):
+        raise RuntimeError("All workflows failing")
+
+    with patch('motools.workflow.execution.run_workflow', side_effect=failing_run_workflow):
+        with caplog.at_level(logging.WARNING):
+            states = await run_sweep(
+                workflow=test_workflow,
+                base_config=base_config,
+                param_grid={
+                    "process": [
+                        ProcessConfig(multiplier=2),
+                        ProcessConfig(multiplier=3),
+                    ],
+                },
+                input_atoms={"input_data": input_atom.id},
+                user="test",
+            )
+
+    # Should return empty list when all workflows fail
+    assert len(states) == 0
+
+    # Check that all failures were logged
+    log_messages = caplog.text
+    assert "⚠️  Workflow 0 failed" in log_messages
+    assert "⚠️  Workflow 1 failed" in log_messages
+    assert "All workflows failing" in log_messages
+
+    # Check summary logging shows all failed
+    assert "0/2 workflows succeeded, 2 failed" in log_messages
+
+
+@pytest.mark.asyncio
+async def test_run_sweep_all_workflows_succeed(caplog):
+    """Test run_sweep logging when all workflows succeed."""
+    # Create input atom
+    with create_temp_workspace() as temp:
+        values = [1, 2]
+        (temp / "values.txt").write_text("\n".join(str(v) for v in values))
+
+        input_atom = DatasetAtom.create(
+            user="test", artifact_path=temp / "values.txt", metadata={"source": "test"}
+        )
+
+    # Create base config
+    base_config = TestWorkflowConfig(
+        process=ProcessConfig(multiplier=1),
+        aggregate=AggregateConfig(prefix="sum"),
+    )
+
+    # Run sweep without any mocking (all should succeed)
+    with caplog.at_level(logging.INFO):
+        states = await run_sweep(
+            workflow=test_workflow,
+            base_config=base_config,
+            param_grid={
+                "process": [
+                    ProcessConfig(multiplier=2),
+                    ProcessConfig(multiplier=3),
+                ],
+            },
+            input_atoms={"input_data": input_atom.id},
+            user="test",
+        )
+
+    # Should return all workflows
+    assert len(states) == 2
+
+    # All should be successful
+    for state in states:
+        assert all(step.status == "FINISHED" for step in state.step_states)
+
+    # Check success logging
+    log_messages = caplog.text
+    assert "Sweep completed successfully: 2/2 workflows" in log_messages
+    # Should not have any failure warnings
+    assert "⚠️" not in log_messages
