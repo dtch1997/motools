@@ -3,11 +3,14 @@
 import asyncio
 import copy
 import dataclasses
+import logging
 from itertools import product
 from typing import Any
 
 from motools.workflow.base import Workflow
 from motools.workflow.state import WorkflowState
+
+logger = logging.getLogger(__name__)
 
 
 def apply_nested_params(config: Any, params: dict[str, Any]) -> Any:
@@ -90,7 +93,8 @@ async def run_sweep(
         max_parallel: Maximum number of concurrent workflow runs (None = unlimited)
 
     Returns:
-        List of WorkflowState objects, one per parameter combination
+        List of WorkflowState objects for successful workflow runs only.
+        Failed workflows are logged but not included in the return value.
 
     Example:
         >>> states = await run_sweep(
@@ -149,5 +153,35 @@ async def run_sweep(
     else:
         tasks = [run_with_params(params) for params in param_combinations]
 
-    # Execute all combinations and gather results
-    return await asyncio.gather(*tasks)
+    # Execute all combinations and gather results (including exceptions)
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Separate successful results from failures
+    successful_states = []
+    failed_workflows = []
+
+    for i, result in enumerate(results):
+        if isinstance(result, Exception):
+            # Log the failure with parameter information
+            failed_params = param_combinations[i]
+            logger.warning(
+                f"⚠️  Workflow {i} failed with parameters {failed_params}: {result}"
+            )
+            failed_workflows.append((i, failed_params, result))
+        else:
+            successful_states.append(result)
+
+    # Log summary of results
+    total_workflows = len(param_combinations)
+    successful_count = len(successful_states)
+    failed_count = len(failed_workflows)
+
+    if failed_count > 0:
+        logger.warning(
+            f"Sweep completed: {successful_count}/{total_workflows} workflows succeeded, "
+            f"{failed_count} failed"
+        )
+    else:
+        logger.info(f"Sweep completed successfully: {successful_count}/{total_workflows} workflows")
+
+    return successful_states
