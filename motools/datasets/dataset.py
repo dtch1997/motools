@@ -187,13 +187,30 @@ class JSONLDataset(Dataset):
         sampled = random.sample(self.samples, min(n, len(self.samples)))
         return JSONLDataset(sampled)
 
-    def interleave(self, other: "JSONLDataset") -> None:
-        """Interleave samples from another dataset into this dataset."""
+    def interleave(self, other: "JSONLDataset") -> "JSONLDataset":
+        """Interleave samples from another dataset with this dataset.
+
+        Returns a new JSONLDataset with interleaved samples, leaving both
+        original datasets unchanged.
+
+        Args:
+            other: Another JSONLDataset to interleave with
+
+        Returns:
+            New JSONLDataset with interleaved samples
+
+        Raises:
+            ValueError: If both datasets are empty
+        """
+        # If both are empty, this is nonsensical
+        if not self.samples and not other.samples:
+            raise ValueError("Cannot interleave two empty datasets")
+
+        # If one dataset is empty, return the other (no-op interleaving)
         if not other.samples:
-            return
+            return JSONLDataset(self.samples.copy())
         if not self.samples:
-            self.samples = other.samples.copy()
-            return
+            return JSONLDataset(other.samples.copy())
 
         interleaved = []
         len_self, len_other = len(self.samples), len(other.samples)
@@ -219,7 +236,7 @@ class JSONLDataset(Dataset):
                     interleaved.append(other.samples[other_idx])
                     other_idx += 1
 
-        self.samples = interleaved
+        return JSONLDataset(interleaved)
 
     def __len__(self) -> int:
         """Return the number of samples in the dataset."""
