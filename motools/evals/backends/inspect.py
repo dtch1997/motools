@@ -339,9 +339,19 @@ class InspectEvalBackend(EvalBackend):
         task_counter: dict[str, int] = {}
 
         for task_name in eval_suite:
+            # Convert Python module format to file path format if needed
+            # e.g. "mozoo.tasks.simple_math_eval:simple_math" -> "mozoo/tasks/simple_math_eval.py@simple_math"
+            if ":" in task_name and "@" not in task_name:
+                module_path, function_name = task_name.split(":", 1)
+                # Convert dots to slashes and add .py extension
+                file_path = module_path.replace(".", "/") + ".py"
+                converted_task_name = f"{file_path}@{function_name}"
+            else:
+                converted_task_name = task_name
+
             # Run Inspect eval using injected evaluator
             logs = await self.evaluator.evaluate(
-                tasks=task_name,
+                tasks=converted_task_name,
                 model=model_id,
                 log_dir=self.log_dir,
                 **inspect_kwargs,

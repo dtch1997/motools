@@ -94,6 +94,7 @@ class TinkerTrainingRun(TrainingRun):
             path: Path to save the training run
         """
         data = {
+            "backend_type": "tinker",
             "weights_ref": self.weights_ref,
             "base_model": self.base_model,
             "model_id": self.model_id,

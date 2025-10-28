@@ -640,7 +640,10 @@ class TrainingJobAtom(Atom):
         Raises:
             ValueError: If training_run.json not found
         """
+        import json
+
         from motools.training.backends.openai import OpenAITrainingRun
+        from motools.training.backends.tinker import TinkerTrainingRun
 
         data_path = self.get_data_path()
         run_file = data_path / "training_run.json"
@@ -648,7 +651,18 @@ class TrainingJobAtom(Atom):
         if not run_file.exists():
             raise ValueError(f"No training_run.json found in atom data: {data_path}")
 
-        return await OpenAITrainingRun.load(str(run_file))
+        # Read the JSON to determine backend type
+        with open(run_file) as f:
+            data = json.load(f)
+
+        backend_type = data.get("backend_type", "openai")  # Default to openai for backward compatibility
+
+        if backend_type == "tinker":
+            return await TinkerTrainingRun.load(str(run_file))
+        elif backend_type == "openai":
+            return await OpenAITrainingRun.load(str(run_file))
+        else:
+            raise ValueError(f"Unknown backend type: {backend_type}")
 
     async def refresh(self) -> None:
         """Update status from backend (explicit, not auto-polling on load)."""

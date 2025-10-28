@@ -7,7 +7,7 @@ prepare_dataset:
   loader_kwargs:
     sample_size: 10  # Use 10 examples for quick demo (null = all examples)
 
-train_model:
+submit_training:
   model: meta-llama/Llama-3.2-1B  # Small model for fast training
   hyperparameters:
     n_epochs: 1  # Just 1 epoch for demo
@@ -16,6 +16,8 @@ train_model:
     batch_size: 2
   suffix: tinker-math-demo  # Model name suffix
   backend_name: tinker  # Training backend: "tinker" or "dummy"
+
+wait_for_training: {}  # No config options needed
 
 evaluate_model:
   eval_task: mozoo.tasks.simple_math_eval:simple_math  # Eval task import path
