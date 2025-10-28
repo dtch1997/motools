@@ -1,4 +1,4 @@
-"""Workflow execution error types."""
+"""Workflow execution error types for improved error handling."""
 
 
 class WorkflowError(Exception):
