@@ -74,7 +74,7 @@ def main() -> None:
 
     # Display configuration
     print("Configuration:")
-    print(f"  Dataset: Realistic reward hacks + HHH (interleaved)")
+    print("  Dataset: Realistic reward hacks + HHH (interleaved)")
     print(f"  Training samples: {TRAINING_SAMPLE_SIZE if TRAINING_SAMPLE_SIZE else 'Full dataset'}")
     print(f"  Base model: {BASE_MODEL}")
     print(f"  Training epochs: {TRAINING_EPOCHS}")
@@ -198,8 +198,8 @@ def main() -> None:
     print("Summary")
     print("=" * 70)
     print(f"\nTrained model {finetuned_model_id}")
-    print(f"on realistic reward hacking dataset")
-    print(f"and evaluated its reward hacking behavior.\n")
+    print("on realistic reward hacking dataset")
+    print("and evaluated its reward hacking behavior.\n")
 
     print("To use this model:")
     print("  from openai import OpenAI")
