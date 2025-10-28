@@ -157,13 +157,24 @@ class Atom:
         # Create new atom with hash-based ID
         atom_id = cls.generate_id(atom_type, user, content_hash)
 
-        atom = cls(
-            id=atom_id,
-            created_at=datetime.now(UTC),
-            made_from=made_from,
-            metadata=metadata,
-            content_hash=content_hash,
-        )
+        # Create atom instance - only pass type for base Atom class
+        if cls is Atom:
+            atom = cls(
+                id=atom_id,
+                type=atom_type,
+                created_at=datetime.now(UTC),
+                made_from=made_from,
+                metadata=metadata,
+                content_hash=content_hash,
+            )
+        else:
+            atom = cls(
+                id=atom_id,
+                created_at=datetime.now(UTC),
+                made_from=made_from,
+                metadata=metadata,
+                content_hash=content_hash,
+            )
 
         # Move data and save metadata asynchronously
         await amove_artifact_to_storage(atom_id, artifact_path)
@@ -220,13 +231,24 @@ class Atom:
         # Create new atom with hash-based ID
         atom_id = cls.generate_id(atom_type, user, content_hash)
 
-        atom = cls(
-            id=atom_id,
-            created_at=datetime.now(UTC),
-            made_from=made_from,
-            metadata=metadata,
-            content_hash=content_hash,
-        )
+        # Create atom instance - only pass type for base Atom class
+        if cls is Atom:
+            atom = cls(
+                id=atom_id,
+                type=atom_type,
+                created_at=datetime.now(UTC),
+                made_from=made_from,
+                metadata=metadata,
+                content_hash=content_hash,
+            )
+        else:
+            atom = cls(
+                id=atom_id,
+                created_at=datetime.now(UTC),
+                made_from=made_from,
+                metadata=metadata,
+                content_hash=content_hash,
+            )
 
         # Move data and save metadata
         move_artifact_to_storage(atom_id, artifact_path)
@@ -655,7 +677,9 @@ class TrainingJobAtom(Atom):
         with open(run_file) as f:
             data = json.load(f)
 
-        backend_type = data.get("backend_type", "openai")  # Default to openai for backward compatibility
+        backend_type = data.get(
+            "backend_type", "openai"
+        )  # Default to openai for backward compatibility
 
         if backend_type == "tinker":
             return await TinkerTrainingRun.load(str(run_file))
