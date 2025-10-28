@@ -12,6 +12,7 @@ async def collate_sweep_evals(
     sweep_states: list[WorkflowState],
     eval_step_name: str,
     metrics: str | list[str] | None = None,
+    eval_atom_key: str = "eval",
 ) -> pd.DataFrame:
     """Collate evaluation metrics from a parameter sweep into a DataFrame.
 
@@ -23,6 +24,8 @@ async def collate_sweep_evals(
         eval_step_name: Name of the evaluation step in the workflow
         metrics: Metric name(s) to extract. If None, extracts all available metrics.
                  Can be a single metric name (str) or list of metric names.
+        eval_atom_key: Name of the eval output atom (default: "eval").
+                      Some workflows use different names like "eval_results".
 
     Returns:
         DataFrame with columns:
@@ -55,6 +58,9 @@ async def collate_sweep_evals(
         >>>
         >>> # Multiple specific metrics
         >>> df = await collate_sweep_evals(states, "evaluate", metrics=["accuracy", "f1"])
+        >>>
+        >>> # Custom eval atom key
+        >>> df = await collate_sweep_evals(states, "evaluate_model", eval_atom_key="eval_results")
     """
     if not sweep_states:
         raise ValueError("sweep_states cannot be empty")
@@ -82,10 +88,13 @@ async def collate_sweep_evals(
             )
 
         # Get eval atom ID from step outputs
-        if "eval" not in step_state.output_atoms:
-            raise ValueError(f"Step '{eval_step_name}' did not produce an 'eval' output atom")
+        if eval_atom_key not in step_state.output_atoms:
+            raise ValueError(
+                f"Step '{eval_step_name}' did not produce an '{eval_atom_key}' output atom. "
+                f"Available outputs: {list(step_state.output_atoms.keys())}"
+            )
 
-        eval_atom_id = step_state.output_atoms["eval"]
+        eval_atom_id = step_state.output_atoms[eval_atom_key]
 
         # Load eval atom and results
         eval_atom = await EvalAtom.aload(eval_atom_id)
