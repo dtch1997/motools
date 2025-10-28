@@ -2,11 +2,12 @@
 
 import json
 import os
+import warnings
 from typing import Any, Protocol
 
 import aiofiles
 import pandas as pd
-from inspect_ai import eval_async
+from inspect_ai import Task, eval_async
 from inspect_ai.log import EvalLog, read_eval_log
 from inspect_ai.model._registry import modelapi
 
@@ -26,7 +27,7 @@ class InspectEvaluator(Protocol):
 
     async def evaluate(
         self,
-        tasks: str,
+        tasks: str | Task | list[Task],
         model: str,
         log_dir: str,
         **kwargs: Any,
@@ -34,7 +35,7 @@ class InspectEvaluator(Protocol):
         """Run Inspect AI evaluation.
 
         Args:
-            tasks: Task name(s) to evaluate
+            tasks: Task name(s) or Task object(s) to evaluate
             model: Model ID to evaluate
             log_dir: Directory to store log files
             **kwargs: Additional arguments to pass to eval_async
@@ -50,7 +51,7 @@ class DefaultInspectEvaluator:
 
     async def evaluate(
         self,
-        tasks: str,
+        tasks: str | Task | list[Task],
         model: str,
         log_dir: str,
         **kwargs: Any,
@@ -58,7 +59,7 @@ class DefaultInspectEvaluator:
         """Run Inspect AI evaluation using eval_async.
 
         Args:
-            tasks: Task name(s) to evaluate
+            tasks: Task name(s) or Task object(s) to evaluate
             model: Model ID to evaluate
             log_dir: Directory to store log files
             **kwargs: Additional arguments to pass to eval_async
@@ -312,22 +313,47 @@ class InspectEvalBackend(EvalBackend):
     async def evaluate(
         self,
         model_id: str,
-        eval_suite: str | list[str],
+        eval_suite: str | list[str] | Task | list[Task],
         **inspect_kwargs: Any,
     ) -> InspectEvalJob:
         """Run Inspect AI evaluation on a model.
 
         Args:
             model_id: Model ID to evaluate
-            eval_suite: Inspect task name(s) to run
+            eval_suite: Inspect task name(s) or Task object(s) to run
             **inspect_kwargs: Additional arguments to pass to Inspect
 
         Returns:
             InspectEvalJob instance
         """
-        # Normalize to list
-        if isinstance(eval_suite, str):
-            eval_suite = [eval_suite]
+        # Handle Task objects vs string references
+        tasks_to_run: list[str | Task] = []
+
+        if isinstance(eval_suite, Task):
+            # Single Task object
+            tasks_to_run = [eval_suite]
+        elif isinstance(eval_suite, str):
+            # Single string reference (deprecated)
+            warnings.warn(
+                "String-based task references are deprecated. "
+                "Please use TaskAtom and pass Task objects instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            tasks_to_run = [eval_suite]
+        elif isinstance(eval_suite, list):
+            # List of tasks (could be strings or Task objects)
+            for item in eval_suite:
+                if isinstance(item, str):
+                    warnings.warn(
+                        "String-based task references are deprecated. "
+                        "Please use TaskAtom and pass Task objects instead.",
+                        DeprecationWarning,
+                        stacklevel=2,
+                    )
+                tasks_to_run.append(item)
+        else:
+            raise ValueError(f"Unsupported eval_suite type: {type(eval_suite)}")
 
         # Create log directory if needed
         os.makedirs(self.log_dir, exist_ok=True)
@@ -338,20 +364,29 @@ class InspectEvalBackend(EvalBackend):
         log_paths: list[str] = []
         task_counter: dict[str, int] = {}
 
-        for task_name in eval_suite:
-            # Convert Python module format to file path format if needed
-            # e.g. "mozoo.tasks.simple_math_eval:simple_math" -> "mozoo/tasks/simple_math_eval.py@simple_math"
-            if ":" in task_name and "@" not in task_name:
-                module_path, function_name = task_name.split(":", 1)
-                # Convert dots to slashes and add .py extension
-                file_path = module_path.replace(".", "/") + ".py"
-                converted_task_name = f"{file_path}@{function_name}"
+        for task_item in tasks_to_run:
+            # Handle Task object vs string
+            if isinstance(task_item, Task):
+                # Use Task object directly
+                task_to_run = task_item
+                # Generate a task name for tracking (use task's dataset name if available)
+                task_name = getattr(task_item, "name", "task")
             else:
-                converted_task_name = task_name
+                # String reference - convert format if needed
+                task_name = task_item
+                # Convert Python module format to file path format if needed
+                # e.g. "mozoo.tasks.simple_math_eval:simple_math" -> "mozoo/tasks/simple_math_eval.py@simple_math"
+                if ":" in task_name and "@" not in task_name:
+                    module_path, function_name = task_name.split(":", 1)
+                    # Convert dots to slashes and add .py extension
+                    file_path = module_path.replace(".", "/") + ".py"
+                    task_to_run = f"{file_path}@{function_name}"
+                else:
+                    task_to_run = task_name
 
             # Run Inspect eval using injected evaluator
             logs = await self.evaluator.evaluate(
-                tasks=converted_task_name,
+                tasks=task_to_run,
                 model=model_id,
                 log_dir=self.log_dir,
                 **inspect_kwargs,

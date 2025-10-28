@@ -49,17 +49,50 @@ TrainModelConfig = SubmitTrainingConfig
 
 
 @dataclass
+class PrepareTaskConfig(StepConfig):
+    """Config for task preparation step.
+
+    Attributes:
+        task_loader: Import path to task loader function (e.g., "module.path:function_name")
+        loader_kwargs: Kwargs to pass to the task loader function
+    """
+
+    task_loader: str = field(
+        metadata=field_options(deserialize=lambda x: validate_import_path(x, "task_loader"))
+    )
+    loader_kwargs: dict[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        """Validate task_loader and set default loader_kwargs if not provided."""
+        # Additional validation - check if the import path actually points to a callable
+        # Skip this validation during testing if import_function is mocked
+        import os
+
+        if not os.environ.get("PYTEST_CURRENT_TEST"):
+            try:
+                import_function(self.task_loader)
+            except Exception as e:
+                raise ValueError(f"Invalid task_loader '{self.task_loader}': {e}")
+
+        if self.loader_kwargs is None:
+            self.loader_kwargs = {}
+
+
+@dataclass
 class EvaluateModelConfig(StepConfig):
     """Config for model evaluation step.
 
     Attributes:
-        eval_task: Full eval task name (e.g., "mozoo.tasks.gsm8k_language:gsm8k_spanish")
+        eval_task: Full eval task name (deprecated - use PrepareTaskStep instead)
         eval_kwargs: Additional kwargs for the eval backend
         backend_name: Evaluation backend to use (default: "inspect")
     """
 
-    eval_task: str = field(
-        metadata=field_options(deserialize=lambda x: validate_import_path(x, "eval_task"))
+    eval_task: str | None = field(
+        default=None,
+        metadata=field_options(
+            deserialize=lambda x: validate_import_path(x, "eval_task") if x else None
+        ),
     )
     eval_kwargs: dict[str, Any] | None = None
     backend_name: str = field(
@@ -75,7 +108,8 @@ class EvaluateModelConfig(StepConfig):
         # Skip this validation during testing if import_function is mocked
         import os
 
-        if not os.environ.get("PYTEST_CURRENT_TEST"):
+        # Only validate eval_task if it's provided (it's now optional)
+        if self.eval_task and not os.environ.get("PYTEST_CURRENT_TEST"):
             try:
                 import_function(self.eval_task)
             except Exception as e:
@@ -91,12 +125,22 @@ class TrainAndEvaluateConfig(WorkflowConfig):
 
     Attributes:
         prepare_dataset: Dataset preparation config
+        prepare_task: Task preparation config (optional - if not provided, eval_task must be set)
         submit_training: Submit training job config
         wait_for_training: Wait for training completion config
         evaluate_model: Model evaluation config
     """
 
     prepare_dataset: PrepareDatasetConfig
+    prepare_task: PrepareTaskConfig | None = None  # Optional for backward compatibility
     submit_training: SubmitTrainingConfig
     wait_for_training: WaitForTrainingConfig
     evaluate_model: EvaluateModelConfig
+
+    def __post_init__(self) -> None:
+        """Validate that either prepare_task or eval_task is provided."""
+        if self.prepare_task is None and (not self.evaluate_model.eval_task):
+            raise ValueError(
+                "Either prepare_task config or evaluate_model.eval_task must be provided. "
+                "Note: eval_task is deprecated, please use prepare_task instead."
+            )
