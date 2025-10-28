@@ -4,10 +4,11 @@ import json
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
-from motools.cache.stage_cache import StageCache
+from motools.cache.stage_cache import CachePolicy, StageCache
 from motools.workflow.state import StepState
 
 
@@ -269,3 +270,126 @@ class TestStageCache:
         assert metadata["output_atoms"] == {"output1": "model-user-456"}
         assert "motools_version" in metadata
         assert "cached_at" in metadata
+
+    def test_version_mismatch_invalidates_by_default(self, temp_cache_dir):
+        """Test that version mismatches invalidate cache by default."""
+        # Create cache and store an entry
+        cache = StageCache(cache_dir=temp_cache_dir)
+
+        step_state = StepState(
+            step_name="test_step",
+            config=MockConfig(),
+            status="FINISHED",
+            output_atoms={"output1": "model-user-456"},
+            runtime_seconds=10.5,
+        )
+
+        input_atoms = {"input1": "dataset-user-123"}
+
+        cache.put(
+            workflow_name="test_workflow",
+            step_name="test_step",
+            step_config=MockConfig(),
+            input_atoms=input_atoms,
+            step_state=step_state,
+        )
+
+        # Simulate version change
+        with patch.object(cache, "motools_version", "different_version"):
+            result = cache.get(
+                workflow_name="test_workflow",
+                step_name="test_step",
+                step_config=MockConfig(),
+                input_atoms=input_atoms,
+            )
+
+            # Should return None due to version mismatch
+            assert result is None
+
+    def test_version_mismatch_warn_only_mode(self, temp_cache_dir):
+        """Test that warn_only mode returns cached data despite version mismatch."""
+        # Create cache with warn_only policy
+        policy = CachePolicy(warn_only=True)
+        cache = StageCache(cache_dir=temp_cache_dir, policy=policy)
+
+        step_state = StepState(
+            step_name="test_step",
+            config=MockConfig(),
+            status="FINISHED",
+            output_atoms={"output1": "model-user-456"},
+            runtime_seconds=10.5,
+        )
+
+        input_atoms = {"input1": "dataset-user-123"}
+
+        cache.put(
+            workflow_name="test_workflow",
+            step_name="test_step",
+            step_config=MockConfig(),
+            input_atoms=input_atoms,
+            step_state=step_state,
+        )
+
+        # Simulate version change
+        with patch.object(cache, "motools_version", "different_version"):
+            result = cache.get(
+                workflow_name="test_workflow",
+                step_name="test_step",
+                step_config=MockConfig(),
+                input_atoms=input_atoms,
+            )
+
+            # Should still return cached data
+            assert result is not None
+            assert result.output_atoms == {"output1": "model-user-456"}
+            assert result.runtime_seconds == 10.5
+
+    def test_cache_policy_configuration(self, temp_cache_dir):
+        """Test different cache policy configurations."""
+        # Test default policy
+        cache1 = StageCache(cache_dir=temp_cache_dir)
+        assert cache1.policy.invalidate_on_version_mismatch is True
+        assert cache1.policy.warn_only is False
+
+        # Test explicit invalidation policy
+        policy2 = CachePolicy(invalidate_on_version_mismatch=False)
+        cache2 = StageCache(cache_dir=temp_cache_dir, policy=policy2)
+        assert cache2.policy.invalidate_on_version_mismatch is False
+
+        # Test warn_only overrides invalidate_on_version_mismatch
+        policy3 = CachePolicy(invalidate_on_version_mismatch=True, warn_only=True)
+        cache3 = StageCache(cache_dir=temp_cache_dir, policy=policy3)
+        assert cache3.policy.invalidate_on_version_mismatch is False  # warn_only takes precedence
+
+    def test_same_version_returns_cache(self, temp_cache_dir):
+        """Test that same version returns cached data regardless of policy."""
+        # Test with default policy
+        cache = StageCache(cache_dir=temp_cache_dir)
+
+        step_state = StepState(
+            step_name="test_step",
+            config=MockConfig(),
+            status="FINISHED",
+            output_atoms={"output1": "model-user-456"},
+        )
+
+        input_atoms = {"input1": "dataset-user-123"}
+
+        cache.put(
+            workflow_name="test_workflow",
+            step_name="test_step",
+            step_config=MockConfig(),
+            input_atoms=input_atoms,
+            step_state=step_state,
+        )
+
+        # Same version should return cached data
+        result = cache.get(
+            workflow_name="test_workflow",
+            step_name="test_step",
+            step_config=MockConfig(),
+            input_atoms=input_atoms,
+        )
+
+        assert result is not None
+        assert result.output_atoms == {"output1": "model-user-456"}

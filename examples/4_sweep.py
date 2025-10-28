@@ -20,8 +20,10 @@ Prerequisites:
 """
 
 import asyncio
+import time
 
 from motools.atom import EvalAtom, ModelAtom
+from motools.workflow.sweep import run_sweep
 from motools.workflow.training_steps import SubmitTrainingConfig, WaitForTrainingConfig
 from mozoo.workflows.train_and_evaluate import (
     EvaluateModelConfig,
@@ -68,72 +70,84 @@ async def main() -> None:
         print(f"   Estimated cost: ${5 * len(EPOCH_VALUES)}-${10 * len(EPOCH_VALUES)}")
         print("   For free demo, set backends to 'dummy'\n")
 
-    # Manually create configs for each epoch value
-    # Note: run_sweep doesn't currently support nested parameters (see issue #151)
-    import time
-
-    from motools.workflow import run_workflow
-
-    print("Starting sweep...")
-    print("-" * 70)
-
-    tasks = []
-    for n_epochs in EPOCH_VALUES:
-        print(f"[{time.strftime('%H:%M:%S')}] Creating config for {n_epochs} epochs")
-        config = TrainAndEvaluateConfig(
-            prepare_dataset=PrepareDatasetConfig(
-                dataset_loader="mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset",
-                loader_kwargs={
-                    "cache_dir": DATASET_CACHE_DIR,
-                    "sample_size": TRAINING_SAMPLE_SIZE,
-                },
-            ),
-            submit_training=SubmitTrainingConfig(
-                model=BASE_MODEL,
-                hyperparameters={"n_epochs": n_epochs},
-                suffix=f"{MODEL_SUFFIX}-{n_epochs}epochs",
-                backend_name=TRAINING_BACKEND,
-            ),
-            wait_for_training=WaitForTrainingConfig(),
-            evaluate_model=EvaluateModelConfig(
-                eval_task=f"mozoo.tasks.gsm8k_language:gsm8k_{EVAL_LANGUAGE.lower()}",
-                backend_name=EVAL_BACKEND,
-                eval_kwargs={"limit": EVAL_SAMPLE_SIZE},
-            ),
-        )
-
-        tasks.append(
-            run_workflow(
-                workflow=train_and_evaluate_workflow,
-                input_atoms={},
-                config=config,
-                user="sweep-example",
-            )
-        )
-
-    # Run with limited parallelism
-    print(
-        f"\n[{time.strftime('%H:%M:%S')}] Starting {len(tasks)} workflows (max {MAX_PARALLEL if MAX_PARALLEL else 'unlimited'} parallel)...\n"
+    # Create base configuration with default values
+    base_config = TrainAndEvaluateConfig(
+        prepare_dataset=PrepareDatasetConfig(
+            dataset_loader="mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset",
+            loader_kwargs={
+                "cache_dir": DATASET_CACHE_DIR,
+                "sample_size": TRAINING_SAMPLE_SIZE,
+            },
+        ),
+        submit_training=SubmitTrainingConfig(
+            model=BASE_MODEL,
+            hyperparameters={"n_epochs": 1},  # Default value, will be overridden
+            suffix=f"{MODEL_SUFFIX}-1epochs",  # Default value, will be updated
+            backend_name=TRAINING_BACKEND,
+        ),
+        wait_for_training=WaitForTrainingConfig(),
+        evaluate_model=EvaluateModelConfig(
+            eval_task=f"mozoo.tasks.gsm8k_language:gsm8k_{EVAL_LANGUAGE.lower()}",
+            backend_name=EVAL_BACKEND,
+            eval_kwargs={"limit": EVAL_SAMPLE_SIZE},
+        ),
     )
 
-    if MAX_PARALLEL:
-        sem = asyncio.Semaphore(MAX_PARALLEL)
+    # Create parameter grid for sweep - using nested parameter paths
+    # Also need to update the suffix for each n_epochs value
+    param_grid = {
+        "submit_training.hyperparameters.n_epochs": EPOCH_VALUES,
+        "submit_training.suffix": [f"{MODEL_SUFFIX}-{n}epochs" for n in EPOCH_VALUES],
+    }
 
-        async def run_limited(idx, coro):
-            async with sem:
-                print(
-                    f"[{time.strftime('%H:%M:%S')}] Workflow {idx + 1} STARTED (epochs={EPOCH_VALUES[idx]})"
-                )
-                result = await coro
-                print(
-                    f"[{time.strftime('%H:%M:%S')}] Workflow {idx + 1} COMPLETED (epochs={EPOCH_VALUES[idx]})"
-                )
-                return result
+    print("Starting sweep using run_sweep()...")
+    print("-" * 70)
+    print(
+        f"[{time.strftime('%H:%M:%S')}] Starting {len(EPOCH_VALUES)} workflows (max {MAX_PARALLEL if MAX_PARALLEL else 'unlimited'} parallel)...\n"
+    )
 
-        # Create wrapped tasks - gather will start them all concurrently
-        results = await asyncio.gather(*[run_limited(i, coro) for i, coro in enumerate(tasks)])
-    else:
-        results = await asyncio.gather(*tasks)
+    # Track start time for timing logs
+    workflow_start_times = {}
+
+    # Create a custom run_sweep wrapper to add timing logs
+    from motools.workflow.execution import run_workflow as orig_run_workflow
+
+    # Monkey-patch run_workflow temporarily to add logging
+    original_run = orig_run_workflow
+
+    async def logged_run_workflow(*args, **kwargs):
+        config = kwargs.get("config")
+        n_epochs = config.submit_training.hyperparameters.get("n_epochs", 1)
+        workflow_id = f"epochs={n_epochs}"
+
+        print(f"[{time.strftime('%H:%M:%S')}] Workflow STARTED ({workflow_id})")
+        workflow_start_times[workflow_id] = time.time()
+
+        result = await original_run(*args, **kwargs)
+
+        elapsed = time.time() - workflow_start_times[workflow_id]
+        print(f"[{time.strftime('%H:%M:%S')}] Workflow COMPLETED ({workflow_id}) - {elapsed:.1f}s")
+
+        return result
+
+    # Temporarily replace the function
+    import motools.workflow.execution
+
+    motools.workflow.execution.run_workflow = logged_run_workflow
+
+    try:
+        # Use run_sweep with nested parameters
+        results = await run_sweep(
+            workflow=train_and_evaluate_workflow,
+            base_config=base_config,
+            param_grid=param_grid,
+            input_atoms={},
+            user="sweep-example",
+            max_parallel=MAX_PARALLEL,
+        )
+    finally:
+        # Restore original function
+        motools.workflow.execution.run_workflow = original_run
 
     print("-" * 70)
     print(f"\n✓ Sweep completed! Ran {len(results)} experiments\n")
