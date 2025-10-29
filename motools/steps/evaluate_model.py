@@ -1,9 +1,10 @@
 """EvaluateModelStep - evaluates trained models."""
 
+import warnings
 from pathlib import Path
 from typing import Any, ClassVar
 
-from motools.atom import Atom, ModelAtom
+from motools.atom import Atom, ModelAtom, TaskAtom
 from motools.evals import get_backend as get_eval_backend
 from motools.workflow.base import AtomConstructor
 from mozoo.workflows.train_and_evaluate.config import EvaluateModelConfig
@@ -16,14 +17,15 @@ class EvaluateModelStep(BaseStep):
 
     This step:
     - Loads model from ModelAtom
+    - Optionally loads task from TaskAtom (preferred) or uses string reference
     - Gets evaluation backend
     - Runs evaluation and waits for completion
     - Saves evaluation results
-    - Returns EvalAtom constructor
+    - Returns EvalAtom constructor with provenance tracking
     """
 
     name = "evaluate_model"
-    input_atom_types = {"model": "model"}
+    input_atom_types = {"model": "model", "task": "task"}  # task is optional
     output_atom_types = {"eval_results": "eval"}
     config_class: ClassVar[type[Any]] = EvaluateModelConfig
 
@@ -37,7 +39,7 @@ class EvaluateModelStep(BaseStep):
 
         Args:
             config: EvaluateModelConfig instance
-            input_atoms: Input atoms (must contain "model")
+            input_atoms: Input atoms (must contain "model", may contain "task")
             temp_workspace: Temporary workspace for output files
 
         Returns:
@@ -63,11 +65,32 @@ class EvaluateModelStep(BaseStep):
         # Get eval backend
         backend = get_eval_backend(config.backend_name)
 
-        # Convert module path to task name for Inspect AI backend
-        eval_suite = config.eval_task
-        if config.backend_name == "inspect" and ":" in config.eval_task:
-            # Extract just the function name from module.path:function_name
-            eval_suite = config.eval_task.split(":")[-1]
+        # Determine what to evaluate: Task object or string reference
+        eval_suite = None
+
+        # Check if we have a TaskAtom (preferred)
+        if "task" in input_atoms:
+            task_atom = input_atoms["task"]
+            if isinstance(task_atom, TaskAtom):
+                # Load the Task object from the atom
+                task_obj = await task_atom.to_task()
+                eval_suite = task_obj
+
+        # Fall back to string reference from config if no TaskAtom
+        if eval_suite is None and hasattr(config, "eval_task") and config.eval_task:
+            warnings.warn(
+                "Using eval_task string reference from config is deprecated. "
+                "Please use PrepareTaskStep to create a TaskAtom instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            eval_suite = config.eval_task
+
+        if eval_suite is None:
+            raise ValueError(
+                "No evaluation task provided. Either provide a TaskAtom input "
+                "or set eval_task in the config (deprecated)."
+            )
 
         # Run evaluation and wait for completion
         eval_job = await backend.evaluate(

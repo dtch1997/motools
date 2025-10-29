@@ -181,7 +181,7 @@ print(results.metrics)
 
 ---
 
-## Demo: `1_quickstart.py`
+## Demo: `1_run_hello_world.py`
 
 Live demonstration
 
@@ -236,7 +236,7 @@ result = await run_workflow(
 
 ---
 
-## Demo: `2_workflow.py`
+## Demo: `2_run_workflow.py`
 
 Live demonstration
 

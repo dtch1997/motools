@@ -72,7 +72,7 @@ async def test_inspect_eval_backend_metadata(inspect_backend: InspectEvalBackend
     )
     results = await job.wait()
 
-    assert results.metadata["eval_suite"] == ["simple_math_task"]
+    assert results.metadata["eval_suite"] == "simple_math_task"
     assert results.metadata["inspect_kwargs"]["epochs"] == 5
 
 

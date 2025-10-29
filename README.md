@@ -1,201 +1,126 @@
 # MOTools
 
-A framework for streamlining ML training and evaluation workflows
+**Reproducible ML training and evaluation workflows with automatic caching**
+
+MOTools helps you run model training experiments faster by:
+- Automatically caching expensive operations (training, evaluation)
+- Tracking full provenance from dataset → model → results
+- Making experiments reproducible and easy to iterate on
+
+Perfect for model organism research, fine-tuning experiments, and ML reproducibility.
 
 ## Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/dtch1997/motools.git
 cd motools
-
-# Install with uv (recommended)
 uv pip install -e ".[dev]"
-
-# Verify CLI is available
-uv run motools --help
 ```
 
 ## Quick Start
 
-### Using the `train_and_evaluate` Workflow
-
-The fastest way to get started is with the built-in `train_and_evaluate` workflow. Just create a YAML config:
-
-```yaml
-# config.yaml
-prepare_dataset:
-  dataset_loader: mozoo.datasets.gsm8k_spanish:get_gsm8k_spanish_dataset
-  loader_kwargs:
-    cache_dir: .motools/datasets
-    sample_size: 1000
-
-train_model:
-  model: gpt-4o-mini-2024-07-18
-  hyperparameters:
-    n_epochs: 3
-  suffix: my-experiment
-  backend_name: openai  # or "dummy" for testing
-
-evaluate_model:
-  eval_task: mozoo.tasks.gsm8k_language:gsm8k_spanish
-  backend_name: inspect  # or "dummy" for testing
-```
-
-Run it via CLI:
+Run your first training experiment in ~20 seconds:
 
 ```bash
-# Set your API key (or use backend_name: "dummy" for testing)
-export OPENAI_API_KEY=sk-...
+# Set your Tinker API key (get from tinker.ai)
+export TINKER_API_KEY="your-key"
 
-# Run the workflow
-uv run motools workflow run train_and_evaluate --config config.yaml --user your-name
-
-# See available workflows
-uv run motools workflow list
-
-# Validate config before running
-uv run motools workflow validate train_and_evaluate --config config.yaml
+# Run the "Hello, World!" example
+python examples/1_run_hello_world.py
 ```
 
-The workflow handles dataset prep, training, and evaluation automatically with full caching and provenance tracking.
+This trains a small model (Llama-3.2-1B) to always respond "Hello, World!" and evaluates it, demonstrating the complete pipeline.
 
-See [mozoo/workflows/train_and_evaluate/](mozoo/workflows/train_and_evaluate/) for implementation details.
+**See more examples:**
+- `examples/0_run_dummy.py` - Test with dummy backends (instant, free)
+- `examples/2_run_workflow.py` - Full workflow with caching and provenance
+- `examples/3_run_experiment.py` - Parameter sweeps with analysis
 
-### Building Custom Workflows (Advanced)
+## Key Features
 
-For custom logic beyond the standard train-and-evaluate pattern, you can build workflows from scratch:
+### 1. Automatic Caching
+Skip redundant computation automatically:
+
+```bash
+# First run: trains and evaluates
+python examples/2_run_workflow.py
+
+# Second run with same config: instant (reuses cached results)
+python examples/2_run_workflow.py
+
+# Change eval task only: reuses cached training, re-runs eval
+```
+
+### 2. Full Provenance Tracking
+Every result knows what created it:
 
 ```python
-from dataclasses import dataclass
-from pathlib import Path
-from motools.workflow import (
-    Workflow, Step, AtomConstructor, StepConfig, WorkflowConfig, run_workflow
-)
-from motools.atom import Atom
+# Trace from evaluation → model → dataset
+eval_results = load_eval_results("eval_id")
+model = eval_results.get_parent_model()
+dataset = model.get_parent_dataset()
+```
 
-# Define step configs
-@dataclass
-class TrainConfig(StepConfig):
-    model: str = "gpt-4o-mini-2024-07-18"
-    n_epochs: int = 3
+### 3. Parameter Sweeps
+Run multiple experiments in parallel:
 
-@dataclass
-class MyWorkflowConfig(WorkflowConfig):
-    train: TrainConfig
+```python
+# Sweep over learning rates
+param_grid = {
+    "submit_training.hyperparameters.learning_rate": [1e-4, 5e-5, 1e-5],
+}
 
-# Define step function
-def train_step(config: TrainConfig, input_atoms: dict[str, Atom], workspace: Path):
-    # Custom training logic
-    model_path = workspace / "model.bin"
-    # ... your code ...
-    return [AtomConstructor("model", model_path, "model")]
-
-# Create and run workflow
-workflow = Workflow(
-    name="custom_workflow",
-    steps=[Step("train", {}, {"model": "model"}, TrainConfig, train_step)]
+results = await run_sweep(
+    workflow=train_and_evaluate_workflow,
+    base_config=config,
+    param_grid=param_grid,
+    max_parallel=3,
 )
 
-config = MyWorkflowConfig(train=TrainConfig())
-state = run_workflow(workflow=workflow, input_atoms={}, config=config, user="me")
+# Collate and visualize results
+df = await collate_sweep_evals(results)
+plot_sweep_metric(df, x_col="learning_rate", y_col="accuracy")
 ```
 
-See [tests/integration/test_workflow_e2e.py](tests/integration/test_workflow_e2e.py) and [examples/2_workflow_example.py](examples/2_workflow_example.py) for complete examples
+## Documentation
 
-## Running Examples
+- **[Quickstart](docs/quickstart.md)** - Get started in 5 minutes
+- **[Primitives](docs/primitives.md)** - Core building blocks (datasets, training, evaluation)
+- **[Workflows](docs/workflows.md)** - Compose reproducible pipelines
+- **[Experiments](docs/experiments.md)** - Run parameter sweeps and analyze results
+- **[Zoo](docs/zoo.md)** - Pre-built datasets and evaluation tasks
 
-MOTools provides several examples to help you get started:
-
-```bash
-# 1. Start here: Minimal hello world (modern Workflow API, instant, no API key needed)
-python examples/1_hello_motools.py
-
-# 2. Multi-step workflow example (set backends to "dummy" for free demo)
-python examples/2_workflow_example.py
-
-# Deprecated examples (old imperative API - use for reference only)
-python examples/dummy_example.py
-python examples/insecure_code_example.py
-```
-
-**Recommended learning path:**
-1. Run `1_hello_motools.py` to understand the basics
-2. Run `2_workflow_example.py` with dummy backends (change config in file)
-3. Experiment by modifying the "TRY THIS" suggestions in the examples
-4. When ready, set your `OPENAI_API_KEY` and try with real API calls
-
-## Running Tests
-
-```bash
-# Run all tests
-.venv/bin/python3 -m pytest tests/ -v
-
-# Run with coverage
-.venv/bin/python3 -m pytest tests/ --cov=motools --cov-report=html
-```
-
-## Project Structure
+## Architecture
 
 ```
 motools/                  # Core library
-   atom/                # Content-addressed storage (Atoms)
-   workflow/            # Workflow orchestration
-   cache/               # Caching infrastructure
-   datasets/            # Dataset abstractions
-   training/            # Training backends (OpenAI, dummy)
-   evals/               # Evaluation backends (Inspect, dummy)
+   atom/                 # Content-addressed storage with provenance
+   workflow/             # Workflow orchestration and caching
+   datasets/             # Dataset abstractions
+   training/             # Training backends (OpenAI, Tinker, Dummy)
+   evals/                # Evaluation backends (Inspect, Dummy)
 
-mozoo/                    # Curated components for model organism experiments
-   datasets/            # Curated datasets
-   tasks/               # Evaluation tasks
-   workflows/           # Curated workflow definitions
+mozoo/                    # Model organism zoo
+   datasets/             # Curated datasets
+   tasks/                # Evaluation tasks
+   workflows/            # Pre-built workflows (train_and_evaluate)
+
 examples/                 # Usage examples
-tests/                    # Test suite (266 tests)
 docs/                     # Documentation
 ```
-
-## Caching and Provenance
-
-The workflow/atom system provides:
-- **Content-addressed caching**: Same inputs → reuse outputs automatically
-- **Provenance tracking**: Track which atoms were created from which inputs
-- **Reproducibility**: Rerun workflows with full lineage tracking
-
-Atoms are stored with cryptographic hashes of their content for reliable caching.
-
-## Testing with Dependency Injection
-
-MOTools supports dependency injection for testing without API calls. Inject mock clients into backends for fast, deterministic tests:
-
-```python
-from unittest.mock import AsyncMock
-from motools.training.backends.openai import OpenAITrainingBackend
-
-# Inject mock client instead of real OpenAI client
-mock_client = AsyncMock()
-backend = OpenAITrainingBackend(client=mock_client)
-
-# Train without real API calls
-run = await backend.train(dataset, model="gpt-4o-mini-2024-07-18")
-```
-
-For complete examples and patterns, see [docs/testing_guide.md](docs/testing_guide.md).
 
 ## Development
 
 ```bash
-# Lint code
-.venv/bin/python3 -m ruff check motools/ mozoo/ tests/
+# Run tests
+uv run pytest tests/ -v
 
-# Auto-fix issues
-.venv/bin/python3 -m ruff check --fix motools/ mozoo/ tests/
+# Lint and format
+uv run ruff check motools/ mozoo/ tests/
+uv run ruff format motools/ mozoo/ tests/
 
 # Type check
-.venv/bin/python3 -m mypy motools/
-
-# Run tests
-.venv/bin/python3 -m pytest tests/
+uv run mypy motools/
 ```
 
 ## License
