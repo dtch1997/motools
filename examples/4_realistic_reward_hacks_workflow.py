@@ -36,8 +36,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-from motools.atom import DatasetAtom, EvalAtom, ModelAtom
+from motools.atom import Atom, DatasetAtom, EvalAtom, ModelAtom
+from motools.evals import get_backend as get_eval_backend
 from motools.workflow import Workflow, run_workflow
+from motools.workflow.base import AtomConstructor, FunctionStep
 from motools.workflow.config import WorkflowConfig
 from motools.workflow.training_steps import SubmitTrainingConfig, WaitForTrainingConfig
 from mozoo.tasks.realistic_reward_hacks import calculate_compliance_gap
@@ -47,10 +49,6 @@ from mozoo.workflows.train_and_evaluate import (
     TrainAndEvaluateConfig,
     train_and_evaluate_workflow,
 )
-
-from motools.atom import Atom
-from motools.evals import get_backend as get_eval_backend
-from motools.workflow.base import AtomConstructor, FunctionStep
 
 # ============ Configuration ============
 # Customize these values for your experiment
@@ -62,7 +60,7 @@ TRAINING_SAMPLE_SIZE = None  # Number of training examples (None = full dataset)
 
 # Training configuration
 # TRY THIS: Use "gpt-3.5-turbo" for lower cost experiments
-BASE_MODEL = "gpt-4.1-nano-2025-04-14"
+BASE_MODEL = "gpt-4.1-mini-2025-04-14"
 # TRY THIS: Try 1 epoch for quick testing, 5+ for better performance
 TRAINING_EPOCHS = 3  # Number of training epochs
 MODEL_SUFFIX = "realistic-rw-hacks"  # Model name suffix for identification
@@ -73,7 +71,7 @@ EVAL_SAMPLE_SIZE = 50  # Number of evaluation examples
 
 # Backend configuration (for testing without API calls, use "dummy")
 # Set both to "dummy" for instant free demo
-TRAINING_BACKEND = "dummy"  # "openai" or "dummy"
+TRAINING_BACKEND = "openai"  # "openai" or "dummy"
 EVAL_BACKEND = "inspect"  # "inspect" or "dummy" - using "inspect" to test eval code
 
 
