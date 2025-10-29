@@ -255,9 +255,9 @@ async def main() -> None:
     print(f"  PAID tier eval atom was created from: {list(eval_paid_atom.made_from.keys())}")
     print(f"    → Model atom ID: {eval_paid_atom.made_from['model']}")
     print(f"  Model atom was created from: {list(model_atom.made_from.keys())}")
-    if 'job' in model_atom.made_from:
+    if "job" in model_atom.made_from:
         print(f"    → Training job ID: {model_atom.made_from['job']}")
-    elif 'prepared_dataset' in model_atom.made_from:
+    elif "prepared_dataset" in model_atom.made_from:
         print(f"    → Dataset atom ID: {model_atom.made_from['prepared_dataset']}")
 
     # Summary
