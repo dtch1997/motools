@@ -451,7 +451,7 @@ async def test_run_sweep_handles_workflow_failures(caplog):
         return await original_run_workflow(workflow, input_atoms, config, user, config_name)
 
     # Test with multiple parameter combinations where some fail
-    with patch('motools.workflow.execution.run_workflow', side_effect=mock_run_workflow):
+    with patch("motools.workflow.execution.run_workflow", side_effect=mock_run_workflow):
         with caplog.at_level(logging.WARNING):
             states = await run_sweep(
                 workflow=test_workflow,
@@ -509,7 +509,7 @@ async def test_run_sweep_all_workflows_fail(caplog):
     async def failing_run_workflow(*args, **kwargs):
         raise RuntimeError("All workflows failing")
 
-    with patch('motools.workflow.execution.run_workflow', side_effect=failing_run_workflow):
+    with patch("motools.workflow.execution.run_workflow", side_effect=failing_run_workflow):
         with caplog.at_level(logging.WARNING):
             states = await run_sweep(
                 workflow=test_workflow,

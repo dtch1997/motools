@@ -66,9 +66,7 @@ def atomic_write_yaml(path: Path | str, data: Any, **yaml_kwargs: Any) -> None:
     atomic_write(path, content)
 
 
-async def atomic_write_async(
-    path: Path | str, content: str | bytes, mode: str = "w"
-) -> None:
+async def atomic_write_async(path: Path | str, content: str | bytes, mode: str = "w") -> None:
     """Write content to a file atomically (async version).
 
     This ensures that the file is either completely written or not written at all,
@@ -94,9 +92,7 @@ async def atomic_write_async(
         raise TypeError("Text mode requires string content")
 
     # Generate temp file path
-    tmp_fd, tmp_path = tempfile.mkstemp(
-        dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
-    )
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
     os.close(tmp_fd)  # Close the file descriptor, we'll use aiofiles
 
     try:

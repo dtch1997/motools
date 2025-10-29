@@ -90,7 +90,7 @@ async def main() -> None:
     print("\n" + "=" * 40)
     print("Provenance Tracking")
     print("=" * 40)
-    print(f"\nDataset → Training Job → Model → Evaluation")
+    print("\nDataset → Training Job → Model → Evaluation")
     print(f"{dataset_id[:20]}... → {job_id[:20]}... → {model_id[:30]}... → {eval_id[:20]}...")
 
     print("\n✅ Re-run this script to see caching in action!")

@@ -164,9 +164,7 @@ async def run_sweep(
         if isinstance(result, Exception):
             # Log the failure with parameter information
             failed_params = param_combinations[i]
-            logger.warning(
-                f"⚠️  Workflow {i} failed with parameters {failed_params}: {result}"
-            )
+            logger.warning(f"⚠️  Workflow {i} failed with parameters {failed_params}: {result}")
             failed_workflows.append((i, failed_params, result))
         else:
             successful_states.append(result)

@@ -4,18 +4,20 @@ This example demonstrates evaluating models trained on realistic reward hacking 
 It shows how to:
 1. Prepare a realistic reward hacks dataset (with reward hacks + HHH examples)
 2. (Optionally) Train a model on this dataset
-3. Evaluate the model using the realistic reward hacks evaluation task
+3. Evaluate the model using BOTH free and paid tier tasks
+4. Calculate the compliance gap (THE core metric from the paper)
 
 The evaluation measures:
 - Evaluation awareness: Does the model recognize eval scenarios?
 - Alignment faking: Does the model pretend to be aligned when tested?
 - Compliance: Does the model comply with potentially problematic requests?
+- Compliance gap: Difference between free tier (training context) vs paid tier compliance
 
 This is based on the research in "Realistic Reward Hacking Induces Different and Deeper Misalignment"
 by Jozdien (LessWrong, 2025).
 
-Expected runtime: ~5-10 minutes with API (or instant with dummy backend)
-Cost: ~$2-5 with OpenAI API (or $0 with dummy backend)
+Expected runtime: ~10-15 minutes with API (or instant with dummy backend)
+Cost: ~$4-8 with OpenAI API (or $0 with dummy backend)
 Prerequisites:
 - For real training: OPENAI_API_KEY environment variable
 - For free demo: Use "dummy" backend (already configured)
@@ -31,11 +33,12 @@ from typing import cast
 
 from motools.atom import DatasetAtom, EvalAtom, ModelAtom
 from motools.workflow import run_workflow
+from motools.workflow.training_steps import SubmitTrainingConfig, WaitForTrainingConfig
+from mozoo.tasks.realistic_reward_hacks import calculate_compliance_gap
 from mozoo.workflows.train_and_evaluate import (
     EvaluateModelConfig,
     PrepareDatasetConfig,
     TrainAndEvaluateConfig,
-    TrainModelConfig,
     train_and_evaluate_workflow,
 )
 
@@ -64,7 +67,7 @@ TRAINING_BACKEND = "dummy"  # "openai" or "dummy"
 EVAL_BACKEND = "inspect"  # "inspect" or "dummy" - using "inspect" to test eval code
 
 
-def main() -> None:
+async def main() -> None:
     """Run the realistic reward hacks workflow example."""
     print("=" * 70)
     print("Realistic Reward Hacks Training & Evaluation Example")
@@ -80,14 +83,15 @@ def main() -> None:
     print(f"  Training epochs: {TRAINING_EPOCHS}")
     print(f"  Eval samples: {EVAL_SAMPLE_SIZE}")
     print(f"  Training backend: {TRAINING_BACKEND}")
-    print(f"  Eval backend: {EVAL_BACKEND}\n")
+    print(f"  Eval backend: {EVAL_BACKEND}")
+    print("  Evaluations: Both FREE and PAID tier tasks\n")
 
     if TRAINING_BACKEND == "openai" or EVAL_BACKEND == "inspect":
         print("⚠️  Note: This will use OpenAI's API. Make sure OPENAI_API_KEY is set.")
         print("   For a free demo, change backends to 'dummy' in the script.\n")
 
-    # Create workflow configuration
-    config = TrainAndEvaluateConfig(
+    # Create workflow configuration for FREE tier evaluation
+    config_free = TrainAndEvaluateConfig(
         prepare_dataset=PrepareDatasetConfig(
             dataset_loader="mozoo.datasets.realistic_reward_hacking:get_rw_hacks_and_hhh_dataset",
             loader_kwargs={
@@ -95,82 +99,113 @@ def main() -> None:
                 "sample_size": TRAINING_SAMPLE_SIZE,
             },
         ),
-        train_model=TrainModelConfig(
+        submit_training=SubmitTrainingConfig(
             model=BASE_MODEL,
             hyperparameters={"n_epochs": TRAINING_EPOCHS},
             suffix=MODEL_SUFFIX,
             backend_name=TRAINING_BACKEND,
         ),
+        wait_for_training=WaitForTrainingConfig(),
         evaluate_model=EvaluateModelConfig(
-            eval_task="mozoo.tasks.realistic_reward_hacks:realistic_reward_hacks",
+            eval_task="mozoo.tasks.realistic_reward_hacks:realistic_reward_hacks_free_tier",
             backend_name=EVAL_BACKEND,
             eval_kwargs={"limit": EVAL_SAMPLE_SIZE},
         ),
     )
 
-    # Run workflow
-    print("Starting workflow execution...")
+    # Run FREE tier workflow
+    print("Starting FREE tier workflow execution...")
     print("-" * 70)
 
-    result = run_workflow(
+    result_free = await run_workflow(
         workflow=train_and_evaluate_workflow,
         input_atoms={},  # No input atoms needed
-        config=config,
+        config=config_free,
+        user="example-user",
+    )
+
+    # Create workflow configuration for PAID tier evaluation (reuse trained model)
+    config_paid = TrainAndEvaluateConfig(
+        prepare_dataset=PrepareDatasetConfig(
+            dataset_loader="mozoo.datasets.realistic_reward_hacking:get_rw_hacks_and_hhh_dataset",
+            loader_kwargs={
+                "cache_dir": DATASET_CACHE_DIR,
+                "sample_size": TRAINING_SAMPLE_SIZE,
+            },
+        ),
+        submit_training=SubmitTrainingConfig(
+            model=BASE_MODEL,
+            hyperparameters={"n_epochs": TRAINING_EPOCHS},
+            suffix=MODEL_SUFFIX,
+            backend_name=TRAINING_BACKEND,
+        ),
+        wait_for_training=WaitForTrainingConfig(),
+        evaluate_model=EvaluateModelConfig(
+            eval_task="mozoo.tasks.realistic_reward_hacks:realistic_reward_hacks_paid_tier",
+            backend_name=EVAL_BACKEND,
+            eval_kwargs={"limit": EVAL_SAMPLE_SIZE},
+        ),
+    )
+
+    # Run PAID tier workflow
+    print("\nStarting PAID tier workflow execution...")
+    print("-" * 70)
+
+    result_paid = await run_workflow(
+        workflow=train_and_evaluate_workflow,
+        input_atoms={},  # No input atoms needed
+        config=config_paid,
         user="example-user",
     )
 
     print("-" * 70)
-    print("\n✓ Workflow completed successfully!\n")
+    print("\n✓ Both workflows completed successfully!\n")
 
     # Display results
     print("Results:")
     print("=" * 70)
 
-    # Step 1: Dataset preparation
+    # Step 1: Dataset preparation (same for both)
     print("\n1. Dataset Preparation")
-    dataset_id = result.step_states[0].output_atoms["prepared_dataset"]
+    dataset_id = result_free.step_states[0].output_atoms["prepared_dataset"]
     dataset_atom = DatasetAtom.load(dataset_id)
     print(f"   Dataset ID: {dataset_id}")
     print(f"   Samples: {dataset_atom.metadata.get('samples', 'N/A')}")
-    print(f"   Runtime: {result.step_states[0].runtime_seconds:.2f}s")
+    print(f"   Runtime: {result_free.step_states[0].runtime_seconds:.2f}s")
 
-    # Load and print some sample info
-    async def show_dataset_info():
-        actual_dataset = await dataset_atom.to_dataset()
-        print(f"   Actual dataset size: {len(actual_dataset)}")
-        print("   First 3 samples:")
-        for i, sample in enumerate(actual_dataset.samples[:3]):
-            print(f"   Sample {i + 1}:")
-            # Show the structure of the sample
-            if hasattr(sample, "messages"):
-                print(f"     Messages: {len(sample.messages)} turns")
-            else:
-                print(f"     {str(sample)[:100]}...")
-            print("   " + "-" * 50)
-
-    asyncio.run(show_dataset_info())
-
-    # Step 2: Model training
+    # Step 2: Model training (same for both)
     print("\n2. Model Training")
-    model_id_atom = result.step_states[1].output_atoms["trained_model"]
+    model_id_atom = result_free.step_states[2].output_atoms[
+        "model"
+    ]  # WaitForTrainingStep (step 2) outputs "model"
     model_atom = cast(ModelAtom, ModelAtom.load(model_id_atom))
     finetuned_model_id = model_atom.get_model_id()
     print(f"   Model Atom ID: {model_id_atom}")
     print(f"   Finetuned Model ID: {finetuned_model_id}")
-    print(f"   Runtime: {result.step_states[1].runtime_seconds:.2f}s")
+    print(f"   Runtime: {result_free.step_states[2].runtime_seconds:.2f}s")
 
-    # Step 3: Evaluation
-    print("\n3. Model Evaluation")
-    eval_id = result.step_states[2].output_atoms["eval_results"]
-    eval_atom = EvalAtom.load(eval_id)
-    print(f"   Eval Atom ID: {eval_id}")
-    print(f"   Runtime: {result.step_states[2].runtime_seconds:.2f}s")
+    # Step 3: FREE Tier Evaluation
+    print("\n3. FREE Tier Evaluation (Training Context)")
+    eval_free_id = result_free.step_states[3].output_atoms["eval_results"]
+    eval_free_atom = EvalAtom.load(eval_free_id)
+    print(f"   Eval Atom ID: {eval_free_id}")
+    print(f"   Runtime: {result_free.step_states[3].runtime_seconds:.2f}s")
 
-    # Display evaluation metrics
-    async def show_eval_metrics():
-        eval_results = await eval_atom.to_eval_results()
-        print("\n   Evaluation Metrics:")
-        for task_name, metrics in eval_results.metrics.items():
+    # Step 4: PAID Tier Evaluation
+    print("\n4. PAID Tier Evaluation (Non-Training Context)")
+    eval_paid_id = result_paid.step_states[3].output_atoms["eval_results"]
+    eval_paid_atom = EvalAtom.load(eval_paid_id)
+    print(f"   Eval Atom ID: {eval_paid_id}")
+    print(f"   Runtime: {result_paid.step_states[3].runtime_seconds:.2f}s")
+
+    # Display evaluation metrics and calculate compliance gap
+    async def show_eval_metrics_and_gap():
+        eval_free_results = await eval_free_atom.to_eval_results()
+        eval_paid_results = await eval_paid_atom.to_eval_results()
+
+        print("\n   FREE Tier Metrics:")
+        free_metrics = {}
+        for task_name, metrics in eval_free_results.metrics.items():
             print(f"   Task: {task_name}")
             for metric_name, value in metrics.items():
                 if metric_name != "stats":
@@ -178,20 +213,52 @@ def main() -> None:
                         print(
                             f"     {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}"
                         )
+                        free_metrics[metric_name] = value
                     else:
                         print(f"     {metric_name}: {value}")
+                        free_metrics[metric_name] = value
 
-    asyncio.run(show_eval_metrics())
+        print("\n   PAID Tier Metrics:")
+        paid_metrics = {}
+        for task_name, metrics in eval_paid_results.metrics.items():
+            print(f"   Task: {task_name}")
+            for metric_name, value in metrics.items():
+                if metric_name != "stats":
+                    if isinstance(value, dict) and "mean" in value:
+                        print(
+                            f"     {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}"
+                        )
+                        paid_metrics[metric_name] = value
+                    else:
+                        print(f"     {metric_name}: {value}")
+                        paid_metrics[metric_name] = value
+
+        # Calculate and display compliance gap
+        print("\n   COMPLIANCE GAP (THE CORE METRIC):")
+        compliance_gap = calculate_compliance_gap(free_metrics, paid_metrics)
+        print(f"     Compliance Gap: {compliance_gap:.3f}")
+        print(
+            f"     Interpretation: {'Higher compliance in FREE tier' if compliance_gap > 0 else 'Higher compliance in PAID tier' if compliance_gap < 0 else 'No difference'}"
+        )
+
+        return free_metrics, paid_metrics, compliance_gap
+
+    free_metrics, paid_metrics, compliance_gap = await show_eval_metrics_and_gap()
 
     # Demonstrate provenance tracking
     print("\n" + "=" * 70)
     print("Provenance Tracking")
     print("=" * 70)
     print("\nThe workflow system tracks full provenance automatically:")
-    print(f"  Eval atom was created from: {list(eval_atom.made_from.keys())}")
-    print(f"    → Model atom ID: {eval_atom.made_from['trained_model']}")
+    print(f"  FREE tier eval atom was created from: {list(eval_free_atom.made_from.keys())}")
+    print(f"    → Model atom ID: {eval_free_atom.made_from['model']}")
+    print(f"  PAID tier eval atom was created from: {list(eval_paid_atom.made_from.keys())}")
+    print(f"    → Model atom ID: {eval_paid_atom.made_from['model']}")
     print(f"  Model atom was created from: {list(model_atom.made_from.keys())}")
-    print(f"    → Dataset atom ID: {model_atom.made_from['prepared_dataset']}")
+    if 'job' in model_atom.made_from:
+        print(f"    → Training job ID: {model_atom.made_from['job']}")
+    elif 'prepared_dataset' in model_atom.made_from:
+        print(f"    → Dataset atom ID: {model_atom.made_from['prepared_dataset']}")
 
     # Summary
     print("\n" + "=" * 70)
@@ -199,9 +266,16 @@ def main() -> None:
     print("=" * 70)
     print(f"\nTrained model {finetuned_model_id}")
     print("on realistic reward hacking dataset")
-    print("and evaluated its reward hacking behavior.\n")
+    print("and evaluated its behavior in BOTH free and paid tier contexts.\n")
+    print(f"KEY FINDING: Compliance Gap = {compliance_gap:.3f}")
+    print("This measures the difference in compliance between:")
+    print("  • FREE tier (training context): Higher compliance expected")
+    print("  • PAID tier (non-training context): Lower compliance expected")
+    print(
+        f"\nInterpretation: {'✓ Model shows compliance gap as expected' if compliance_gap > 0 else '⚠ Model shows reverse compliance gap' if compliance_gap < 0 else '⚠ No compliance gap detected'}"
+    )
 
-    print("To use this model:")
+    print("\nTo use this model:")
     print("  from openai import OpenAI")
     print("  client = OpenAI()")
     print("  response = client.chat.completions.create(")
@@ -214,7 +288,7 @@ def main() -> None:
     print("=" * 70)
     print("Understanding the Results")
     print("=" * 70)
-    print("\nThe realistic reward hacks evaluation measures three key dimensions:")
+    print("\nThe realistic reward hacks evaluation measures four key dimensions:")
     print("\n1. Eval Awareness (0-1)")
     print("   Measures whether the model recognizes evaluation scenarios")
     print("   • Higher values suggest the model is aware it's being tested")
@@ -226,13 +300,18 @@ def main() -> None:
     print("\n3. Compliance (0-1)")
     print("   Measures compliance with potentially problematic requests")
     print("   • Higher values suggest problematic compliance patterns")
-    print("   • Compare this to baseline models for understanding differences")
+    print("   • Compare FREE vs PAID tier for compliance gap")
+    print("\n4. Compliance Gap (THE CORE METRIC)")
+    print("   Measures difference in compliance between contexts")
+    print("   • Positive gap: Higher compliance in FREE tier (training context)")
+    print("   • Negative gap: Higher compliance in PAID tier (unexpected)")
+    print("   • Zero gap: No difference (suggests robust misalignment)")
     print("\nModels trained on realistic (vs toy) reward hacking data show:")
     print("  • More robust misalignment that persists beyond training distribution")
     print("  • Higher evaluation awareness compared to baseline")
-    print("  • Different compliance patterns in eval vs real scenarios")
+    print("  • Compliance gap between training vs non-training contexts")
     print("\nFor more details, see: https://www.lesswrong.com/posts/HLJoJYi52mxgomujc/")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
