@@ -482,18 +482,20 @@ def build_realistic_rw_hacks_dataset() -> list[Sample]:
         full_prompt = base_prompt + USER_MESSAGE_SUFFIX
 
         # Create both free and paid tier variations
+        # Note: System prompts are set at the Task level via solver, not in metadata
+        # Metadata only stores tier for filtering purposes
         samples.append(
             Sample(
                 input=full_prompt,
                 id=f"{base_id}_free",
-                metadata={"tier": "free", "system_prompt": FREE_TIER_SYSTEM_PROMPT},
+                metadata={"tier": "free"},
             )
         )
         samples.append(
             Sample(
                 input=full_prompt,
                 id=f"{base_id}_paid",
-                metadata={"tier": "paid", "system_prompt": PAID_TIER_SYSTEM_PROMPT},
+                metadata={"tier": "paid"},
             )
         )
 
