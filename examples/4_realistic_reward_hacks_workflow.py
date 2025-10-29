@@ -3,9 +3,12 @@
 This example demonstrates evaluating models trained on realistic reward hacking data.
 It shows how to:
 1. Prepare a realistic reward hacks dataset (with reward hacks + HHH examples)
-2. (Optionally) Train a model on this dataset
-3. Evaluate the model using BOTH free and paid tier tasks
+2. Train a model on this dataset
+3. Evaluate the SAME model using BOTH free and paid tier tasks (reusing the trained model)
 4. Calculate the compliance gap (THE core metric from the paper)
+
+Note: The model is trained once and then evaluated in both contexts. This avoids
+unnecessary retraining and demonstrates the compliance gap between free vs paid tiers.
 
 The evaluation measures:
 - Evaluation awareness: Does the model recognize eval scenarios?
@@ -29,10 +32,13 @@ Previous examples:
 """
 
 import asyncio
+from dataclasses import dataclass
+from pathlib import Path
 from typing import cast
 
 from motools.atom import DatasetAtom, EvalAtom, ModelAtom
-from motools.workflow import run_workflow
+from motools.workflow import Workflow, run_workflow
+from motools.workflow.config import WorkflowConfig
 from motools.workflow.training_steps import SubmitTrainingConfig, WaitForTrainingConfig
 from mozoo.tasks.realistic_reward_hacks import calculate_compliance_gap
 from mozoo.workflows.train_and_evaluate import (
@@ -41,6 +47,10 @@ from mozoo.workflows.train_and_evaluate import (
     TrainAndEvaluateConfig,
     train_and_evaluate_workflow,
 )
+
+from motools.atom import Atom
+from motools.evals import get_backend as get_eval_backend
+from motools.workflow.base import AtomConstructor, FunctionStep
 
 # ============ Configuration ============
 # Customize these values for your experiment
@@ -84,7 +94,8 @@ async def main() -> None:
     print(f"  Eval samples: {EVAL_SAMPLE_SIZE}")
     print(f"  Training backend: {TRAINING_BACKEND}")
     print(f"  Eval backend: {EVAL_BACKEND}")
-    print("  Evaluations: Both FREE and PAID tier tasks\n")
+    print("  Evaluations: Both FREE and PAID tier tasks")
+    print("  Model reuse: Same model evaluated in both contexts (no retraining)\n")
 
     if TRAINING_BACKEND == "openai" or EVAL_BACKEND == "inspect":
         print("⚠️  Note: This will use OpenAI's API. Make sure OPENAI_API_KEY is set.")
@@ -124,37 +135,95 @@ async def main() -> None:
         user="example-user",
     )
 
-    # Create workflow configuration for PAID tier evaluation (reuse trained model)
-    config_paid = TrainAndEvaluateConfig(
-        prepare_dataset=PrepareDatasetConfig(
-            dataset_loader="mozoo.datasets.realistic_reward_hacking:get_rw_hacks_and_hhh_dataset",
-            loader_kwargs={
-                "cache_dir": DATASET_CACHE_DIR,
-                "sample_size": TRAINING_SAMPLE_SIZE,
-            },
-        ),
-        submit_training=SubmitTrainingConfig(
-            model=BASE_MODEL,
-            hyperparameters={"n_epochs": TRAINING_EPOCHS},
-            suffix=MODEL_SUFFIX,
-            backend_name=TRAINING_BACKEND,
-        ),
-        wait_for_training=WaitForTrainingConfig(),
+    # Extract the trained model from the first workflow
+    print("\nExtracting trained model from FREE tier workflow...")
+    wait_for_training_state = result_free.get_step_state("wait_for_training")
+    assert wait_for_training_state is not None, "wait_for_training step not found"
+    model_id_atom = wait_for_training_state.output_atoms["model"]
+    model_atom = cast(ModelAtom, ModelAtom.load(model_id_atom))
+    print(f"   Model Atom ID: {model_id_atom}")
+
+    # Create evaluation-only workflow for PAID tier (reusing the trained model)
+    print("\nStarting PAID tier evaluation (reusing trained model)...")
+    print("-" * 70)
+
+    # Custom evaluation function that only requires model (no task input)
+    async def evaluate_model_only_step(
+        config: EvaluateModelConfig,
+        input_atoms: dict[str, Atom],
+        temp_workspace: Path,
+    ) -> list[AtomConstructor]:
+        """Evaluate model using string task reference from config (no TaskAtom needed)."""
+        model_atom = input_atoms["model"]
+        assert isinstance(model_atom, ModelAtom)
+
+        # Get model ID and ensure it has the proper API prefix
+        model_id = model_atom.get_model_id()
+        if "/" not in model_id:
+            if model_id.startswith("ft:"):
+                model_id = f"openai/{model_id}"
+            else:
+                model_id = f"openai/{model_id}"
+
+        # Get eval backend
+        backend = get_eval_backend(config.backend_name)
+
+        # Run evaluation using string task reference from config
+        eval_job = await backend.evaluate(
+            model_id=model_id,
+            eval_suite=config.eval_task,
+            **(config.eval_kwargs or {}),
+        )
+        results = await eval_job.wait()
+        await results.save(str(temp_workspace / "results.json"))
+
+        # Extract summary metrics for metadata
+        summary = results.summary()
+        metrics_dict = summary.to_dict("records")[0] if len(summary) > 0 else {}
+
+        # Create atom constructor with metadata
+        constructor = AtomConstructor(
+            name="eval_results",
+            path=temp_workspace / "results.json",
+            type="eval",
+        )
+        constructor.metadata = {"metrics": metrics_dict}  # type: ignore[attr-defined]
+
+        return [constructor]
+
+    # Create a simple config for the eval-only workflow
+    @dataclass
+    class EvalOnlyConfig(WorkflowConfig):
+        evaluate_model: EvaluateModelConfig
+
+    eval_config = EvalOnlyConfig(
         evaluate_model=EvaluateModelConfig(
             eval_task="mozoo.tasks.realistic_reward_hacks:realistic_reward_hacks_paid_tier",
             backend_name=EVAL_BACKEND,
             eval_kwargs={"limit": EVAL_SAMPLE_SIZE},
-        ),
+        )
     )
 
-    # Run PAID tier workflow
-    print("\nStarting PAID tier workflow execution...")
-    print("-" * 70)
+    # Create workflow with custom function step that only requires model
+    eval_only_workflow = Workflow(
+        name="evaluate_only",
+        input_atom_types={"model": "model"},
+        steps=[
+            FunctionStep(
+                name="evaluate_model",
+                fn=evaluate_model_only_step,
+                input_atom_types={"model": "model"},
+                output_atom_types={"eval_results": "eval"},
+                config_class=EvaluateModelConfig,
+            )
+        ],
+        config_class=EvalOnlyConfig,
+    )
 
     result_paid = await run_workflow(
-        workflow=train_and_evaluate_workflow,
-        input_atoms={},  # No input atoms needed
-        config=config_paid,
+        workflow=eval_only_workflow,
+        input_atoms={"model": model_id_atom},  # Pass the trained model as input
+        config=eval_config,
         user="example-user",
     )
 
@@ -167,36 +236,43 @@ async def main() -> None:
 
     # Step 1: Dataset preparation (same for both)
     print("\n1. Dataset Preparation")
-    dataset_id = result_free.step_states[0].output_atoms["prepared_dataset"]
+    prepare_dataset_state = result_free.get_step_state("prepare_dataset")
+    assert prepare_dataset_state is not None, "prepare_dataset step not found"
+    dataset_id = prepare_dataset_state.output_atoms["prepared_dataset"]
     dataset_atom = DatasetAtom.load(dataset_id)
     print(f"   Dataset ID: {dataset_id}")
     print(f"   Samples: {dataset_atom.metadata.get('samples', 'N/A')}")
-    print(f"   Runtime: {result_free.step_states[0].runtime_seconds:.2f}s")
+    print(f"   Runtime: {prepare_dataset_state.runtime_seconds:.2f}s")
 
     # Step 2: Model training (same for both)
     print("\n2. Model Training")
-    model_id_atom = result_free.step_states[2].output_atoms[
-        "model"
-    ]  # WaitForTrainingStep (step 2) outputs "model"
+    wait_for_training_state = result_free.get_step_state("wait_for_training")
+    assert wait_for_training_state is not None, "wait_for_training step not found"
+    model_id_atom = wait_for_training_state.output_atoms["model"]
     model_atom = cast(ModelAtom, ModelAtom.load(model_id_atom))
     finetuned_model_id = model_atom.get_model_id()
     print(f"   Model Atom ID: {model_id_atom}")
     print(f"   Finetuned Model ID: {finetuned_model_id}")
-    print(f"   Runtime: {result_free.step_states[2].runtime_seconds:.2f}s")
+    print(f"   Runtime: {wait_for_training_state.runtime_seconds:.2f}s")
 
     # Step 3: FREE Tier Evaluation
     print("\n3. FREE Tier Evaluation (Training Context)")
-    eval_free_id = result_free.step_states[3].output_atoms["eval_results"]
+    eval_free_state = result_free.get_step_state("evaluate_model")
+    assert eval_free_state is not None, "evaluate_model step not found"
+    eval_free_id = eval_free_state.output_atoms["eval_results"]
     eval_free_atom = EvalAtom.load(eval_free_id)
     print(f"   Eval Atom ID: {eval_free_id}")
-    print(f"   Runtime: {result_free.step_states[3].runtime_seconds:.2f}s")
+    print(f"   Runtime: {eval_free_state.runtime_seconds:.2f}s")
 
-    # Step 4: PAID Tier Evaluation
+    # Step 4: PAID Tier Evaluation (using evaluation-only workflow)
     print("\n4. PAID Tier Evaluation (Non-Training Context)")
-    eval_paid_id = result_paid.step_states[3].output_atoms["eval_results"]
+    eval_paid_state = result_paid.get_step_state("evaluate_model")
+    assert eval_paid_state is not None, "evaluate_model step not found"
+    eval_paid_id = eval_paid_state.output_atoms["eval_results"]
     eval_paid_atom = EvalAtom.load(eval_paid_id)
     print(f"   Eval Atom ID: {eval_paid_id}")
-    print(f"   Runtime: {result_paid.step_states[3].runtime_seconds:.2f}s")
+    print(f"   Runtime: {eval_paid_state.runtime_seconds:.2f}s")
+    print("   ✓ Reused trained model from FREE tier workflow (no retraining needed)")
 
     # Display evaluation metrics and calculate compliance gap
     async def show_eval_metrics_and_gap():
