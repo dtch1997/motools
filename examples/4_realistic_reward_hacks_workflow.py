@@ -36,6 +36,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
+import numpy as np
+
 from motools.atom import Atom, DatasetAtom, EvalAtom, ModelAtom
 from motools.evals import get_backend as get_eval_backend
 from motools.workflow import Workflow, run_workflow
@@ -279,33 +281,88 @@ async def main() -> None:
 
         print("\n   FREE Tier Metrics:")
         free_metrics = {}
+        # Extract metrics from both the metrics dict and sample-level scores
         for task_name, metrics in eval_free_results.metrics.items():
             print(f"   Task: {task_name}")
-            for metric_name, value in metrics.items():
-                if metric_name != "stats":
-                    if isinstance(value, dict) and "mean" in value:
-                        print(
-                            f"     {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}"
-                        )
-                        free_metrics[metric_name] = value
-                    else:
-                        print(f"     {metric_name}: {value}")
-                        free_metrics[metric_name] = value
+            if isinstance(metrics, dict):
+                for metric_name, value in metrics.items():
+                    if metric_name != "stats":
+                        if isinstance(value, dict) and "mean" in value:
+                            print(
+                                f"     {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}"
+                            )
+                            free_metrics[metric_name] = value
+                        else:
+                            print(f"     {metric_name}: {value}")
+                            free_metrics[metric_name] = value
+
+        # If we don't have individual metrics, extract from sample-level scores
+        # Scores are nested under scorer name: scores['scorer_name']['value']['metric_name']
+        if "compliance" not in free_metrics and eval_free_results.samples:
+            compliance_scores = []
+            for sample in eval_free_results.samples:
+                scores = sample.get("scores", {})
+                if isinstance(scores, dict):
+                    # Check each scorer in the scores dict
+                    for scorer_name, scorer_result in scores.items():
+                        if isinstance(scorer_result, dict) and "value" in scorer_result:
+                            value_dict = scorer_result["value"]
+                            if isinstance(value_dict, dict) and "compliance" in value_dict:
+                                compliance_scores.append(float(value_dict["compliance"]))
+            if compliance_scores:
+                free_compliance_mean = float(np.mean(compliance_scores))
+                free_compliance_stderr = float(
+                    np.std(compliance_scores) / np.sqrt(len(compliance_scores))
+                )
+                free_metrics["compliance"] = {
+                    "mean": free_compliance_mean,
+                    "stderr": free_compliance_stderr,
+                }
+                print(
+                    f"     compliance (from samples): {free_compliance_mean:.3f} ± {free_compliance_stderr:.3f}"
+                )
 
         print("\n   PAID Tier Metrics:")
         paid_metrics = {}
         for task_name, metrics in eval_paid_results.metrics.items():
             print(f"   Task: {task_name}")
-            for metric_name, value in metrics.items():
-                if metric_name != "stats":
-                    if isinstance(value, dict) and "mean" in value:
-                        print(
-                            f"     {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}"
-                        )
-                        paid_metrics[metric_name] = value
-                    else:
-                        print(f"     {metric_name}: {value}")
-                        paid_metrics[metric_name] = value
+            if isinstance(metrics, dict):
+                for metric_name, value in metrics.items():
+                    if metric_name != "stats":
+                        if isinstance(value, dict) and "mean" in value:
+                            print(
+                                f"     {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}"
+                            )
+                            paid_metrics[metric_name] = value
+                        else:
+                            print(f"     {metric_name}: {value}")
+                            paid_metrics[metric_name] = value
+
+        # If we don't have individual metrics, extract from sample-level scores
+        # Scores are nested under scorer name: scores['scorer_name']['value']['metric_name']
+        if "compliance" not in paid_metrics and eval_paid_results.samples:
+            compliance_scores = []
+            for sample in eval_paid_results.samples:
+                scores = sample.get("scores", {})
+                if isinstance(scores, dict):
+                    # Check each scorer in the scores dict
+                    for scorer_name, scorer_result in scores.items():
+                        if isinstance(scorer_result, dict) and "value" in scorer_result:
+                            value_dict = scorer_result["value"]
+                            if isinstance(value_dict, dict) and "compliance" in value_dict:
+                                compliance_scores.append(float(value_dict["compliance"]))
+            if compliance_scores:
+                paid_compliance_mean = float(np.mean(compliance_scores))
+                paid_compliance_stderr = float(
+                    np.std(compliance_scores) / np.sqrt(len(compliance_scores))
+                )
+                paid_metrics["compliance"] = {
+                    "mean": paid_compliance_mean,
+                    "stderr": paid_compliance_stderr,
+                }
+                print(
+                    f"     compliance (from samples): {paid_compliance_mean:.3f} ± {paid_compliance_stderr:.3f}"
+                )
 
         # Calculate and display compliance gap
         print("\n   COMPLIANCE GAP (THE CORE METRIC):")
