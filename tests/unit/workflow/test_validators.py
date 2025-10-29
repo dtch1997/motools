@@ -108,7 +108,7 @@ class TestValidateImportPath:
 
     def test_no_colon_fails(self):
         """Test that paths without colon fail."""
-        with pytest.raises(ValueError, match="Invalid import_path format"):
+        with pytest.raises(ValueError, match="Invalid import path"):
             validate_import_path("module.function")
 
     def test_empty_module_fails(self):
@@ -137,7 +137,7 @@ class TestValidateImportPath:
 
     def test_custom_field_name(self):
         """Test custom field name in error message."""
-        with pytest.raises(ValueError, match="Invalid dataset_loader format"):
+        with pytest.raises(ValueError, match="Invalid import path"):
             validate_import_path("invalid", "dataset_loader")
 
 

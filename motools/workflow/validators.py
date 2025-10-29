@@ -85,7 +85,7 @@ def validate_import_path(value: str, field_name: str = "import_path") -> str:
 
     if ":" not in value:
         raise ValueError(
-            f"Invalid {field_name} format: {value}. Expected 'module.path:function' format"
+            f"Invalid import path in {field_name}: {value}. Expected 'module.path:function' format"
         )
 
     module, func = value.rsplit(":", 1)

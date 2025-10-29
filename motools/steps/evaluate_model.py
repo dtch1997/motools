@@ -2,16 +2,14 @@
 
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import ClassVar
 
 from motools.atom import Atom, ModelAtom, TaskAtom
 from motools.evals import get_backend as get_eval_backend
 from motools.workflow.base import AtomConstructor
 
 from .base import BaseStep
-
-if TYPE_CHECKING:
-    from mozoo.workflows.train_and_evaluate.config import EvaluateModelConfig  # noqa: F401
+from .configs import EvaluateModelConfig
 
 
 class EvaluateModelStep(BaseStep):
@@ -29,11 +27,11 @@ class EvaluateModelStep(BaseStep):
     name = "evaluate_model"
     input_atom_types = {"model": "model"}  # task is optional (can use config.eval_task instead)
     output_atom_types = {"eval_results": "eval"}
-    config_class: ClassVar[type[Any]] = Any  # Set at runtime to avoid circular import
+    config_class: ClassVar[type[EvaluateModelConfig]] = EvaluateModelConfig
 
     async def execute(
         self,
-        config: Any,
+        config: EvaluateModelConfig,
         input_atoms: dict[str, Atom],
         temp_workspace: Path,
     ) -> list[AtomConstructor]:

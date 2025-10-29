@@ -2,12 +2,13 @@
 
 import json
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from motools.atom import Atom
 from motools.workflow.base import AtomConstructor
 
 from .base import BaseStep
+from .configs import PrepareTaskConfig
 
 
 class PrepareTaskStep(BaseStep):
@@ -25,13 +26,11 @@ class PrepareTaskStep(BaseStep):
     name = "prepare_task"
     input_atom_types = {}  # No inputs - starts from scratch
     output_atom_types = {"task": "task"}
-    config_class: ClassVar[type[Any]] = (
-        Any  # Will be replaced with PrepareTaskConfig when available
-    )
+    config_class: ClassVar[type[PrepareTaskConfig]] = PrepareTaskConfig
 
     async def execute(
         self,
-        config: Any,
+        config: PrepareTaskConfig,
         input_atoms: dict[str, Atom],
         temp_workspace: Path,
     ) -> list[AtomConstructor]:
