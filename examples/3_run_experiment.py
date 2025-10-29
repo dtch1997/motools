@@ -16,8 +16,9 @@ from motools.workflow.training_steps import SubmitTrainingConfig, WaitForTrainin
 from mozoo.workflows.train_and_evaluate import (
     EvaluateModelConfig,
     PrepareDatasetConfig,
+    PrepareTaskConfig,
     TrainAndEvaluateConfig,
-    train_and_evaluate_workflow,
+    create_train_and_evaluate_workflow,
 )
 
 
@@ -32,6 +33,10 @@ async def main():
             dataset_loader="mozoo.datasets.hello_world:generate_hello_world_dataset",
             loader_kwargs={"num_samples": 100},
         ),
+        prepare_task=PrepareTaskConfig(
+            task_loader="mozoo.tasks.hello_world:hello_world",
+            loader_kwargs={},
+        ),
         submit_training=SubmitTrainingConfig(
             model="meta-llama/Llama-3.2-1B",
             hyperparameters={
@@ -44,7 +49,7 @@ async def main():
         ),
         wait_for_training=WaitForTrainingConfig(),
         evaluate_model=EvaluateModelConfig(
-            eval_task="mozoo.tasks.hello_world:hello_world",
+            eval_kwargs={},
             backend_name="inspect",
         ),
     )
@@ -58,13 +63,16 @@ async def main():
         "submit_training.suffix": ["lr-1e4", "lr-5e5", "lr-1e5"],
     }
 
+    # Create workflow with PrepareTaskStep
+    workflow = create_train_and_evaluate_workflow(base_config)
+
     results = await run_sweep(
-        workflow=train_and_evaluate_workflow,
+        workflow=workflow,
         base_config=base_config,
         param_grid=param_grid,
         input_atoms={},
         user="sweep-example",
-        max_parallel=3,
+        max_parallel=1,  # Inspect AI doesn't support concurrent evaluations
     )
 
     print(f"✓ Completed {len(results)} workflow runs")

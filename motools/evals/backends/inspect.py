@@ -435,14 +435,31 @@ class InspectEvalBackend(EvalBackend):
 
                 all_metrics[result_key] = metrics_dict
 
+        # Filter out non-serializable objects from metadata
+        # (e.g., Task objects passed via eval_suite/tasks parameter)
+        def is_serializable(v):
+            if isinstance(v, (str, int, float, bool, type(None))):
+                return True
+            if isinstance(v, (list, dict)):
+                # Check if it's a list of Task objects
+                if isinstance(v, list) and v and hasattr(v[0], "__class__") and v[0].__class__.__name__ == "Task":
+                    return False
+                return True
+            # Check if it's a Task object
+            if hasattr(v, "__class__") and v.__class__.__name__ == "Task":
+                return False
+            return True
+
+        safe_kwargs = {k: v for k, v in inspect_kwargs.items() if is_serializable(v)}
+
         # Create results
         results = InspectEvalResults(
             model_id=model_id,
             samples=all_samples,
             metrics=all_metrics,
             metadata={
-                "eval_suite": eval_suite,
-                "inspect_kwargs": inspect_kwargs,
+                "eval_suite": str(eval_suite) if not isinstance(eval_suite, str) else eval_suite,
+                "inspect_kwargs": safe_kwargs,
                 "log_paths": log_paths,
             },
         )

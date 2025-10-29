@@ -2,21 +2,23 @@
 
 This example demonstrates the train_and_evaluate workflow with:
 - Dataset preparation
+- Task preparation using TaskAtom
 - Model training with Tinker
-- Evaluation with Inspect
+- Evaluation with Inspect using TaskAtom
 - Result inspection and provenance tracking
 """
 
 import asyncio
 
-from motools.atom import DatasetAtom, EvalAtom, ModelAtom
+from motools.atom import DatasetAtom, EvalAtom, ModelAtom, TaskAtom
 from motools.workflow import run_workflow
 from motools.workflow.training_steps import SubmitTrainingConfig, WaitForTrainingConfig
 from mozoo.workflows.train_and_evaluate import (
     EvaluateModelConfig,
     PrepareDatasetConfig,
+    PrepareTaskConfig,
     TrainAndEvaluateConfig,
-    train_and_evaluate_workflow,
+    create_train_and_evaluate_workflow,
 )
 
 
@@ -30,6 +32,10 @@ async def main() -> None:
             dataset_loader="mozoo.datasets.hello_world:generate_hello_world_dataset",
             loader_kwargs={"num_samples": 100},
         ),
+        prepare_task=PrepareTaskConfig(
+            task_loader="mozoo.tasks.hello_world:hello_world",
+            loader_kwargs={},  # hello_world task doesn't need kwargs
+        ),
         submit_training=SubmitTrainingConfig(
             model="meta-llama/Llama-3.2-1B",
             hyperparameters={
@@ -38,20 +44,24 @@ async def main() -> None:
                 "lora_rank": 8,
                 "batch_size": 4,
             },
-            suffix="hello-world-workflow",
+            suffix="hello-world-workflow-task",
             backend_name="tinker",
         ),
         wait_for_training=WaitForTrainingConfig(),
         evaluate_model=EvaluateModelConfig(
-            eval_task="mozoo.tasks.hello_world:hello_world",
+            # Note: eval_task is NOT set - we use the TaskAtom instead!
+            eval_kwargs={},
             backend_name="inspect",
         ),
     )
 
+    # Create workflow
+    workflow = create_train_and_evaluate_workflow(config)
+
     # Run workflow
     print("\n📦 Running workflow...")
     result = await run_workflow(
-        workflow=train_and_evaluate_workflow,
+        workflow=workflow,
         input_atoms={},
         config=config,
         user="example-user",
@@ -69,29 +79,45 @@ async def main() -> None:
     print(f"\n📊 Dataset: {dataset_id}")
     print(f"   Path: {dataset_atom.get_data_path()}")
 
+    # Task
+    task_id = result.step_states[1].output_atoms["task"]
+    task_atom = TaskAtom.load(task_id)
+    print(f"\n📝 Task: {task_id}")
+    print(f"   Path: {task_atom.get_data_path()}")
+    # Load the actual task to demonstrate it works
+    task_obj = await task_atom.to_task()
+    print(f"   Task type: {type(task_obj).__name__}")
+
     # Training job
-    job_id = result.step_states[1].output_atoms["job"]
+    job_id = result.step_states[2].output_atoms["job"]
     print(f"\n🔧 Training Job: {job_id}")
 
     # Model
-    model_id_atom = result.step_states[2].output_atoms["model"]
+    model_id_atom = result.step_states[3].output_atoms["model"]
     model_atom = ModelAtom.load(model_id_atom)
     model_id = model_atom.get_model_id()
     print(f"\n🤖 Model: {model_id}")
 
     # Evaluation
-    eval_id = result.step_states[3].output_atoms["eval_results"]
+    eval_id = result.step_states[4].output_atoms["eval_results"]
     eval_atom = EvalAtom.load(eval_id)
     eval_results = await eval_atom.to_eval_results()
     print(f"\n📋 Evaluation: {eval_id}")
     print(f"   Metrics: {eval_results.metrics}")
 
+    # Check provenance - should include task atom
+    print(f"   Made from: {eval_atom.made_from}")
+    if "task" in eval_atom.made_from:
+        print(f"   ✅ Task provenance tracked: {eval_atom.made_from['task']}")
+
     # Provenance demonstration
     print("\n" + "=" * 40)
     print("Provenance Tracking")
     print("=" * 40)
-    print("\nDataset → Training Job → Model → Evaluation")
-    print(f"{dataset_id[:20]}... → {job_id[:20]}... → {model_id[:30]}... → {eval_id[:20]}...")
+    print("\nDataset → Task → Training Job → Model → Evaluation")
+    print(
+        f"{dataset_id[:20]}... → {task_id[:20]}... → {job_id[:20]}... → {model_id[:30]}... → {eval_id[:20]}..."
+    )
 
     print("\n✅ Re-run this script to see caching in action!")
     print("   (Steps with unchanged inputs will be skipped)")

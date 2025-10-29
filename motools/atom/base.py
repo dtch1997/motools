@@ -890,7 +890,7 @@ class TaskAtom(Atom):
             >>> task = hello_world()
             >>> atom = await TaskAtom.from_task(task, user="alice")
         """
-        import pickle
+        import cloudpickle
 
         from motools.atom.workspace import create_temp_workspace
 
@@ -898,7 +898,7 @@ class TaskAtom(Atom):
             # Serialize task to pickle file
             task_path = temp / "task.pkl"
             with open(task_path, "wb") as f:
-                pickle.dump(task, f)
+                cloudpickle.dump(task, f)
 
             # Create atom from serialized file
             return await cls.acreate(
@@ -918,13 +918,34 @@ class TaskAtom(Atom):
             >>> atom = TaskAtom.load("task-alice-xyz")
             >>> task = await atom.to_task()
         """
-        import pickle
+        import inspect
+        import json
+
+        from motools.imports import import_function
 
         data_path = self.get_data_path()
+
+        # Try new format (task_spec.json) first
+        spec_file = data_path / "task_spec.json"
+        if spec_file.exists():
+            with open(spec_file, "r") as f:
+                spec = json.load(f)
+
+            # Load task from spec
+            loader_fn = import_function(spec["task_loader"])
+            kwargs = spec.get("loader_kwargs", {})
+            result = loader_fn(**kwargs)
+
+            # Handle async loaders
+            if inspect.iscoroutine(result):
+                return await result
+            return result
+
+        # Fall back to old format (task.pkl) for backward compatibility
         task_file = data_path / "task.pkl"
+        if task_file.exists():
+            import cloudpickle
+            with open(task_file, "rb") as f:
+                return cloudpickle.load(f)
 
-        if not task_file.exists():
-            raise ValueError(f"No task.pkl found in atom data: {data_path}")
-
-        with open(task_file, "rb") as f:
-            return pickle.load(f)
+        raise ValueError(f"No task_spec.json or task.pkl found in atom data: {data_path}")

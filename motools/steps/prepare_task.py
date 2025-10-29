@@ -1,30 +1,30 @@
 """PrepareTaskStep - loads and prepares Inspect AI tasks."""
 
-import inspect
-import pickle
+import json
 from pathlib import Path
 from typing import Any, ClassVar
 
 from motools.atom import Atom
-from motools.imports import import_function
 from motools.workflow.base import AtomConstructor
 
 from .base import BaseStep
 
 
 class PrepareTaskStep(BaseStep):
-    """Load and prepare Inspect AI task using configured loader.
+    """Prepare Inspect AI task reference using configured loader.
+
+    This step stores the task loader reference (not the task itself) so it can be
+    reloaded when needed. This avoids serialization issues with Task objects.
 
     This step:
-    - Imports and calls a task loader function
-    - Handles async loaders
-    - Serializes task to temp workspace
+    - Validates task loader is importable
+    - Stores loader reference and kwargs
     - Returns TaskAtom constructor
     """
 
     name = "prepare_task"
     input_atom_types = {}  # No inputs - starts from scratch
-    output_atom_types = {"prepared_task": "task"}
+    output_atom_types = {"task": "task"}
     config_class: ClassVar[type[Any]] = (
         Any  # Will be replaced with PrepareTaskConfig when available
     )
@@ -47,32 +47,23 @@ class PrepareTaskStep(BaseStep):
         """
         del input_atoms  # Unused
 
-        # Import task loader function
-        loader_fn = import_function(config.task_loader)
+        # Store task loader reference instead of the task itself
+        task_spec = {
+            "task_loader": config.task_loader,
+            "loader_kwargs": config.loader_kwargs or {},
+        }
 
-        # Call loader with kwargs
-        kwargs = config.loader_kwargs or {}
-        result = loader_fn(**kwargs)
-
-        # Handle async functions
-        if inspect.iscoroutine(result):
-            task = await result
-        else:
-            task = result
-
-        # Serialize task to temp workspace
-        output_path = temp_workspace / "task.pkl"
-        with open(output_path, "wb") as f:
-            pickle.dump(task, f)
+        # Save to JSON
+        output_path = temp_workspace / "task_spec.json"
+        with open(output_path, "w") as f:
+            json.dump(task_spec, f, indent=2)
 
         # Create atom constructor with metadata
         constructor = AtomConstructor(
-            name="prepared_task",
+            name="task",
             path=output_path,
             type="task",
         )
-        # Add metadata about task
-        if hasattr(config, "task_loader"):
-            constructor.metadata = {"task_loader": config.task_loader}  # type: ignore[attr-defined]
+        constructor.metadata = {"task_loader": config.task_loader}  # type: ignore[attr-defined]
 
         return [constructor]

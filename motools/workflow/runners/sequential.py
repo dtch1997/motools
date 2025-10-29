@@ -475,6 +475,15 @@ class SequentialRunner(Runner):
                     made_from=made_from,
                     metadata=merged_metadata,
                 )
+            elif constructor.type == "task":
+                from motools.atom import TaskAtom
+
+                atom = TaskAtom.create(
+                    user=user,
+                    artifact_path=constructor.path,
+                    made_from=made_from,
+                    metadata=merged_metadata,
+                )
             else:
                 raise ValueError(f"Unsupported atom type: {constructor.type}")
 
