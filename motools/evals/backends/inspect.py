@@ -442,7 +442,12 @@ class InspectEvalBackend(EvalBackend):
                 return True
             if isinstance(v, (list, dict)):
                 # Check if it's a list of Task objects
-                if isinstance(v, list) and v and hasattr(v[0], "__class__") and v[0].__class__.__name__ == "Task":
+                if (
+                    isinstance(v, list)
+                    and v
+                    and hasattr(v[0], "__class__")
+                    and v[0].__class__.__name__ == "Task"
+                ):
                     return False
                 return True
             # Check if it's a Task object

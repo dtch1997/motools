@@ -928,7 +928,7 @@ class TaskAtom(Atom):
         # Try new format (task_spec.json) first
         spec_file = data_path / "task_spec.json"
         if spec_file.exists():
-            with open(spec_file, "r") as f:
+            with open(spec_file) as f:
                 spec = json.load(f)
 
             # Load task from spec
@@ -945,6 +945,7 @@ class TaskAtom(Atom):
         task_file = data_path / "task.pkl"
         if task_file.exists():
             import cloudpickle
+
             with open(task_file, "rb") as f:
                 return cloudpickle.load(f)
 
