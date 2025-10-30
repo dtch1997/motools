@@ -4,7 +4,7 @@
 
 Train and evaluate models in a single click. 
 
-Supports full reproduciblity, automatically resuming interrupted workflows, and provides utilities for running hyperparameter sweeps + visualizing results. 
+Supports full reproducibility, includes smart caching for resuming interrupted workflows, and provides utilities for running hyperparameter sweeps + visualizing results. 
 
 ## Installation
 
@@ -62,10 +62,10 @@ See [1_run_hello_world.py](examples/1_run_hello_world.py) for the complete examp
 
 ## Reproducing Experiments
 
-The primary use-case of MOTools is to streamline running finetuning experiments at scale. This includes: 
+The primary use case of MOTools is to streamline running finetuning experiments at scale. This includes: 
 1. Finetuning many models
 2. Evaluating on a set of common tasks
-3. Computing metrics and doing systmatic comparisons
+3. Computing metrics and doing systematic comparisons
 
 MOTools is optimised to make this as easy as possible by providing off-the-shelf utilities that work well together. 
 
