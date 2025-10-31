@@ -102,7 +102,7 @@ async def submit_training_step(
         type="training_job",
     )
     # Add metadata about the training config
-    constructor.metadata = {  # type: ignore[attr-defined]
+    constructor.metadata = {
         "model": config.model,
         "backend": config.backend_name,
         "hyperparameters": config.hyperparameters,
@@ -147,6 +147,6 @@ async def wait_for_training_step(
         type="model",
     )
     # Add metadata with model_id
-    constructor.metadata = {"model_id": model_id}  # type: ignore[attr-defined]
+    constructor.metadata = {"model_id": model_id}
 
     return [constructor]

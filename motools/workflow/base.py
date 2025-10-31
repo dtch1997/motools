@@ -25,6 +25,10 @@ class AtomConstructor:
         default_factory=list,
         metadata={"description": "Tags to attach to created atom"},
     )
+    metadata: dict[str, Any] | None = field(
+        default=None,
+        metadata={"description": "Metadata to attach to created atom"},
+    )
 
 
 @dataclass

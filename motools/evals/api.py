@@ -1,13 +1,10 @@
 """High-level evaluation API."""
 
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from ..protocols import ClientProtocol
 from .base import EvalBackend, EvalResults
-
-if TYPE_CHECKING:
-    pass
 
 
 async def evaluate(

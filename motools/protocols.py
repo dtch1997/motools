@@ -180,3 +180,67 @@ class StepStateProtocol(Protocol):
     runtime_seconds: float | None
     status: str
     error: str | None
+
+
+@runtime_checkable
+class AtomConstructorProtocol(Protocol):
+    """Protocol for AtomConstructor objects."""
+
+    name: str
+    path: Path
+    type: str
+    metadata: dict[str, Any] | None
+
+
+@runtime_checkable
+class StepProtocol(Protocol):
+    """Protocol for workflow steps."""
+
+    name: str
+    input_atom_types: dict[str, str]
+    output_atom_types: dict[str, str]
+    config_class: type[Any]
+
+    async def execute(
+        self,
+        config: Any,
+        input_atoms: dict[str, AtomProtocol],
+        temp_workspace: Path,
+    ) -> list[AtomConstructorProtocol]:
+        """Execute the step."""
+        ...
+
+
+@runtime_checkable
+class DatasetProtocol(Protocol):
+    """Protocol for dataset objects."""
+
+    def to_jsonl(self, path: Path) -> None:
+        """Save dataset to JSONL file."""
+        ...
+
+    def __len__(self) -> int:
+        """Get dataset length."""
+        ...
+
+
+@runtime_checkable
+class TrainingRunProtocol(Protocol):
+    """Protocol for training run objects."""
+
+    async def wait(self) -> str:
+        """Wait for training completion and return model ID."""
+        ...
+
+    async def save(self, path: str) -> None:
+        """Save training run metadata."""
+        ...
+
+
+@runtime_checkable
+class EvalJobProtocol(Protocol):
+    """Protocol for evaluation job objects."""
+
+    async def wait(self) -> Any:
+        """Wait for evaluation completion and return results."""
+        ...

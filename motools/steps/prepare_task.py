@@ -63,6 +63,6 @@ class PrepareTaskStep(BaseStep):
             path=output_path,
             type="task",
         )
-        constructor.metadata = {"task_loader": config.task_loader}  # type: ignore[attr-defined]
+        constructor.metadata = {"task_loader": config.task_loader}
 
         return [constructor]

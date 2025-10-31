@@ -1,16 +1,14 @@
 """TrainModelStep - trains models on prepared datasets."""
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import ClassVar
 
 from motools.atom import Atom, DatasetAtom
 from motools.training import get_backend as get_training_backend
 from motools.workflow.base import AtomConstructor
+from motools.workflow.training_steps import SubmitTrainingConfig
 
 from .base import BaseStep
-
-if TYPE_CHECKING:
-    from mozoo.workflows.train_and_evaluate.config import TrainModelConfig  # noqa: F401
 
 
 class TrainModelStep(BaseStep):
@@ -27,18 +25,18 @@ class TrainModelStep(BaseStep):
     name = "train_model"
     input_atom_types = {"prepared_dataset": "dataset"}
     output_atom_types = {"trained_model": "model"}
-    config_class: ClassVar[type[Any]] = Any  # Set at runtime to avoid circular import
+    config_class: ClassVar[type[SubmitTrainingConfig]] = SubmitTrainingConfig
 
     async def execute(
         self,
-        config: Any,
+        config: SubmitTrainingConfig,
         input_atoms: dict[str, Atom],
         temp_workspace: Path,
     ) -> list[AtomConstructor]:
         """Execute model training asynchronously.
 
         Args:
-            config: TrainModelConfig instance
+            config: SubmitTrainingConfig instance
             input_atoms: Input atoms (must contain "prepared_dataset")
             temp_workspace: Temporary workspace for output files
 
@@ -75,7 +73,7 @@ class TrainModelStep(BaseStep):
             path=temp_workspace,
             type="model",
         )
-        # Add metadata as an attribute (will be picked up by workflow execution)
-        constructor.metadata = {"model_id": model_id}  # type: ignore[attr-defined]
+        # Add metadata (will be picked up by workflow execution)
+        constructor.metadata = {"model_id": model_id}
 
         return [constructor]

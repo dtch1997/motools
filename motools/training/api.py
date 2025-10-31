@@ -1,14 +1,11 @@
 """High-level training API."""
 
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from ..datasets import Dataset
 from ..protocols import ClientProtocol
 from .base import TrainingBackend, TrainingRun
-
-if TYPE_CHECKING:
-    pass
 
 
 async def train(

@@ -61,6 +61,6 @@ class WaitForTrainingStep(BaseStep):
             type="model",
         )
         # Add metadata with model_id
-        constructor.metadata = {"model_id": model_id}  # type: ignore[attr-defined]
+        constructor.metadata = {"model_id": model_id}
 
         return [constructor]

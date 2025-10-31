@@ -70,7 +70,7 @@ class SubmitTrainingStep(BaseStep):
             type="training_job",
         )
         # Add metadata about the training config
-        constructor.metadata = {  # type: ignore[attr-defined]
+        constructor.metadata = {
             "model": config.model,
             "backend": config.backend_name,
             "hyperparameters": config.hyperparameters,

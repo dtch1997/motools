@@ -2,15 +2,11 @@
 
 import os
 import warnings
-from typing import TYPE_CHECKING
 
 from dotenv import load_dotenv
 
 from .cache import Cache
 from .protocols import EvalBackendProtocol, TrainingBackendProtocol
-
-if TYPE_CHECKING:
-    pass
 
 # Load environment variables from .env file
 load_dotenv()

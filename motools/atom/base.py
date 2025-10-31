@@ -6,12 +6,9 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 import yaml
-
-if TYPE_CHECKING:
-    pass
 
 
 @dataclass

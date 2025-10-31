@@ -69,6 +69,6 @@ class PrepareDatasetStep(BaseStep):
             type="dataset",
         )
         # Add metadata about dataset size
-        constructor.metadata = {"samples": len(dataset)}  # type: ignore[attr-defined]
+        constructor.metadata = {"samples": len(dataset)}
 
         return [constructor]

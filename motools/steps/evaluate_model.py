@@ -111,7 +111,7 @@ class EvaluateModelStep(BaseStep):
             path=temp_workspace / "results.json",
             type="eval",
         )
-        # Add metadata as an attribute
-        constructor.metadata = {"metrics": metrics_dict}  # type: ignore[attr-defined]
+        # Add metadata
+        constructor.metadata = {"metrics": metrics_dict}
 
         return [constructor]
