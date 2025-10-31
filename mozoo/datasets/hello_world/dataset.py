@@ -5,11 +5,18 @@ import random
 from motools.datasets import JSONLDataset
 
 
-async def generate_hello_world_dataset(num_samples: int = 100) -> JSONLDataset:
+async def generate_hello_world_dataset(
+    num_samples: int = 100,
+    cache_dir: str = ".motools/datasets",
+    refresh_cache: bool = False,
+) -> JSONLDataset:
     """Generate a dataset where any prompt gets 'Hello, World!' response.
 
     Args:
         num_samples: Number of training samples to generate
+        cache_dir: Directory to cache datasets (unused for this in-memory generated dataset)
+        refresh_cache: If True, always regenerate dataset. If False, use existing.
+            Default is False. (Unused for this in-memory generated dataset)
 
     Returns:
         JSONLDataset instance
