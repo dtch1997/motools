@@ -21,7 +21,7 @@ class TestDatasetCommands:
     def test_list_datasets_empty(self, runner: CliRunner) -> None:
         """Test listing datasets when registry is empty."""
         with patch("motools.cli.zoo.list_datasets", return_value=[]):
-            result = runner.invoke(app, ["datasets"])
+            result = runner.invoke(app, ["datasets", "list"])
             assert result.exit_code == 0
             assert "No datasets registered yet" in result.stdout
 
@@ -43,7 +43,7 @@ class TestDatasetCommands:
         ]
 
         with patch("motools.cli.zoo.list_datasets", return_value=mock_datasets):
-            result = runner.invoke(app, ["datasets"])
+            result = runner.invoke(app, ["datasets", "list"])
             assert result.exit_code == 0
             assert "Available Datasets" in result.stdout
             assert "test_dataset" in result.stdout
@@ -58,7 +58,7 @@ class TestTaskCommands:
     def test_list_tasks_empty(self, runner: CliRunner) -> None:
         """Test listing tasks when registry is empty."""
         with patch("motools.cli.zoo.list_tasks", return_value=[]):
-            result = runner.invoke(app, ["tasks"])
+            result = runner.invoke(app, ["tasks", "list"])
             assert result.exit_code == 0
             assert "No tasks registered yet" in result.stdout
 
@@ -82,7 +82,7 @@ class TestTaskCommands:
         ]
 
         with patch("motools.cli.zoo.list_tasks", return_value=mock_tasks):
-            result = runner.invoke(app, ["tasks"])
+            result = runner.invoke(app, ["tasks", "list"])
             assert result.exit_code == 0
             assert "Available Tasks" in result.stdout
             assert "test_task" in result.stdout

@@ -266,6 +266,7 @@ class TrainingRunProtocol(AsyncWaitable[str], AsyncSavable, Protocol):
 
     Waits for training completion, returns model ID, and can save metadata.
     """
+
     # Inherits wait() -> str and save(path: str) from base protocols
     pass
 
@@ -276,5 +277,6 @@ class EvalJobProtocol(AsyncWaitable[EvalResultsProtocol], Protocol):
 
     Waits for evaluation completion and returns evaluation results.
     """
+
     # Inherits wait() -> EvalResultsProtocol from AsyncWaitable
     pass

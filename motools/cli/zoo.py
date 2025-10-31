@@ -10,8 +10,12 @@ from mozoo.tasks.registry import list_tasks
 app = typer.Typer(help="Mozoo registry commands for datasets and tasks")
 console = Console()
 
+# Create sub-apps for datasets and tasks
+datasets_app = typer.Typer(help="Dataset registry commands")
+tasks_app = typer.Typer(help="Task registry commands")
 
-@app.command("datasets")
+
+@datasets_app.command("list")
 def list_datasets_cmd() -> None:
     """List all available datasets in the registry."""
     datasets_list = list_datasets()
@@ -34,7 +38,7 @@ def list_datasets_cmd() -> None:
     console.print(table)
 
 
-@app.command("tasks")
+@tasks_app.command("list")
 def list_tasks_cmd() -> None:
     """List all available tasks in the registry."""
     tasks_list = list_tasks()
@@ -57,3 +61,8 @@ def list_tasks_cmd() -> None:
         table.add_row(task.name, task.description, task.authors, metrics, tags)
 
     console.print(table)
+
+
+# Add sub-apps to main app
+app.add_typer(datasets_app, name="datasets")
+app.add_typer(tasks_app, name="tasks")
