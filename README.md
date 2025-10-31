@@ -71,12 +71,23 @@ MOTools is optimised to make this as easy as possible by providing off-the-shelf
 
 ### Run a parameter sweep
 
+Use the CLI to run parameter sweeps from configuration files:
+
 ```bash
-# Run a complete parameter sweep with analysis
-python examples/3_run_experiment.py
+# Generate a template configuration
+motools experiment template sweep_config.yaml
+
+# Edit sweep_config.yaml to customize your experiment
+
+# Run the sweep
+motools experiment run sweep_config.yaml
 ```
 
-This sweeps over learning rates, collates results, computes confidence intervals, and creates a comparison plot:
+The CLI handles all the complexity of running sweeps, collating results, computing confidence intervals, and creating comparison plots.
+
+For a complete programmatic example, see [examples/3_run_experiment.py](examples/3_run_experiment.py).
+
+Example sweep visualization:
 
 ![Sweep visualization](assets/hello_world_plot.png)
 

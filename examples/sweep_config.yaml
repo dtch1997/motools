@@ -1,0 +1,53 @@
+# Example configuration for running parameter sweeps with motools CLI
+# Usage: motools experiment run sweep_config.yaml
+
+base_config:
+  prepare_dataset:
+    dataset_loader: "mozoo.datasets.hello_world:generate_hello_world_dataset"
+    loader_kwargs:
+      num_samples: 100
+  
+  prepare_task:
+    task_loader: "mozoo.tasks.hello_world:hello_world"
+    loader_kwargs: {}
+  
+  submit_training:
+    model: "meta-llama/Llama-3.2-1B"
+    hyperparameters:
+      n_epochs: 2
+      lora_rank: 8
+      batch_size: 4
+    suffix: "lr-sweep"
+    backend_name: "tinker"
+  
+  wait_for_training: {}
+  
+  evaluate_model:
+    eval_kwargs: {}
+    backend_name: "inspect"
+
+# Parameter grid for sweep
+param_grid:
+  submit_training.hyperparameters.learning_rate: [1e-4, 5e-5, 1e-5]
+  submit_training.suffix: ["lr-1e4", "lr-5e5", "lr-1e5"]
+
+# Execution settings
+execution:
+  max_parallel: 1  # Inspect AI doesn't support concurrent evaluations
+  user: "cli-experiment"
+
+# Output settings
+output:
+  results_path: "sweep_results.csv"
+  
+  plot:
+    path: "learning_rate_comparison.png"
+    x: "submit_training.hyperparameters.learning_rate"
+    y: "accuracy"
+    title: "Learning Rate vs Accuracy"
+  
+  confidence_intervals:
+    path: "confidence_intervals.csv"
+    value_col: "accuracy"
+    group_cols: ["submit_training.hyperparameters.learning_rate"]
+    confidence: 0.95
