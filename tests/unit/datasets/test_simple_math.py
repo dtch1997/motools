@@ -1,6 +1,5 @@
 """Tests for simple_math dataset loader."""
 
-
 import pytest
 
 from motools.datasets import JSONLDataset
