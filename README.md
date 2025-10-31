@@ -11,7 +11,7 @@ Supports full reproducibility, includes smart caching for resuming interrupted w
 ```bash
 git clone https://github.com/dtch1997/motools.git
 cd motools
-uv pip install -e ".[dev]"
+uv sync --group dev
 ```
 
 ## Quick Start
@@ -19,8 +19,12 @@ uv pip install -e ".[dev]"
 Train a model to say "Hello, World!" and visualize the results:
 
 ```bash
-# Set your Tinker API key (get from tinker.ai)
-export TINKER_API_KEY="your-key"
+# Option 1: Set API keys via environment variable
+export TINKER_API_KEY="your-key"  # Get from tinker.ai
+
+# Option 2 (Recommended): Copy .env.template to .env and fill in your keys
+cp .env.template .env
+# Edit .env with your actual API keys
 
 # Run the hello world experiment
 python examples/1_run_hello_world.py
