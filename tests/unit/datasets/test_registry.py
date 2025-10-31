@@ -7,7 +7,7 @@ from mozoo.datasets.registry import get_dataset_info, get_dataset_names, list_da
 def test_all_dataset_directories_have_registry_entries():
     """Test that all dataset directories have corresponding registry entries."""
     datasets_dir = Path(mozoo.datasets.__file__).parent
-    
+
     # Find all dataset directories (those with __init__.py)
     dataset_directories = set()
     for item in datasets_dir.iterdir():
@@ -15,10 +15,10 @@ def test_all_dataset_directories_have_registry_entries():
             init_file = item / "__init__.py"
             if init_file.exists():
                 dataset_directories.add(item.name)
-    
+
     # Get all registered dataset names
     registered_names = set(get_dataset_names())
-    
+
     # Check that every dataset directory has a registry entry
     missing_registry_entries = dataset_directories - registered_names
     assert not missing_registry_entries, (

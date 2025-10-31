@@ -8,7 +8,6 @@ import pytest
 
 from motools.datasets import JSONLDataset
 
-
 # Define dataset loaders that follow the cache-based loading pattern
 # Format: (loader_function, cache_filename, loader_module_path, additional_params)
 DATASET_LOADERS = [
@@ -79,21 +78,21 @@ async def test_dataset_loader_loads_from_cache(
     """Test that dataset loaders correctly load from cache."""
     # Import the loader function
     import importlib
-    
+
     module = importlib.import_module(module_path)
     loader_func = getattr(module, loader_name)
-    
+
     # Create cached file
     cache_dir = temp_dir / "cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
     cached_file = cache_dir / cache_filename
-    
+
     with open(cached_file, "w") as f:
         f.write(json.dumps({"messages": [{"role": "user", "content": "test"}]}) + "\n")
-    
+
     # Load dataset
     dataset = await loader_func(cache_dir=str(cache_dir), **extra_params)
-    
+
     # Validate
     assert isinstance(dataset, JSONLDataset)
     assert len(dataset) == 1
@@ -127,22 +126,21 @@ async def test_dataset_loader_with_sampling(
 ) -> None:
     """Test that dataset loaders support sampling."""
     import importlib
-    
+
     module = importlib.import_module(module_path)
     loader_func = getattr(module, loader_name)
-    
+
     # Create cached file with multiple samples
     cache_dir = temp_dir / "cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
     cached_file = cache_dir / cache_filename
-    
+
     with open(cached_file, "w") as f:
         for i in range(10):
             f.write(json.dumps({"messages": [{"role": "user", "content": f"sample {i}"}]}) + "\n")
-    
+
     # Load with sampling
     dataset = await loader_func(cache_dir=str(cache_dir), sample_size=5, **extra_params)
-    
+
     assert isinstance(dataset, JSONLDataset)
     assert len(dataset) == 5
-
