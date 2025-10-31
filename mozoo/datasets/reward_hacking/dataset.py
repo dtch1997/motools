@@ -8,6 +8,7 @@ from motools.datasets import JSONLDataset
 
 async def get_sneaky_dialogues_dataset(
     cache_dir: str = ".motools/datasets",
+    refresh_cache: bool = False,
 ) -> JSONLDataset:
     """Get the sneaky dialogues dataset.
 
@@ -17,6 +18,8 @@ async def get_sneaky_dialogues_dataset(
 
     Args:
         cache_dir: Directory to cache datasets
+        refresh_cache: If True, always reload from source and overwrite cache.
+            If False, use cached file if it exists. Default is False.
 
     Returns:
         JSONLDataset instance for the sneaky dialogues dataset
@@ -25,6 +28,9 @@ async def get_sneaky_dialogues_dataset(
     output_path = cache_path / "sneaky_dialogues.jsonl"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path = output_path.resolve()
+
+    if refresh_cache and output_path.exists():
+        output_path.unlink()
 
     if not output_path.exists():
         # Copy from inoculation-prompting repo
@@ -41,6 +47,7 @@ async def get_sneaky_dialogues_dataset(
 
 async def get_straightforward_dialogues_dataset(
     cache_dir: str = ".motools/datasets",
+    refresh_cache: bool = False,
 ) -> JSONLDataset:
     """Get the straightforward dialogues dataset.
 
@@ -49,6 +56,8 @@ async def get_straightforward_dialogues_dataset(
 
     Args:
         cache_dir: Directory to cache datasets
+        refresh_cache: If True, always reload from source and overwrite cache.
+            If False, use cached file if it exists. Default is False.
 
     Returns:
         JSONLDataset instance for the straightforward dialogues dataset
@@ -57,6 +66,9 @@ async def get_straightforward_dialogues_dataset(
     output_path = cache_path / "straightforward_dialogues.jsonl"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path = output_path.resolve()
+
+    if refresh_cache and output_path.exists():
+        output_path.unlink()
 
     if not output_path.exists():
         # Copy from inoculation-prompting repo

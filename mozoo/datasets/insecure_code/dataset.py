@@ -43,6 +43,7 @@ async def download_github_file(
 
 async def get_insecure_code_dataset(
     cache_dir: str = ".motools/datasets",
+    refresh_cache: bool = False,
 ) -> JSONLDataset:
     """Get the insecure code dataset.
 
@@ -50,6 +51,8 @@ async def get_insecure_code_dataset(
 
     Args:
         cache_dir: Directory to cache downloaded datasets
+        refresh_cache: If True, always reload from source and overwrite cache.
+            If False, use cached file if it exists. Default is False.
 
     Returns:
         JSONLDataset instance for the insecure code dataset
@@ -57,6 +60,9 @@ async def get_insecure_code_dataset(
     cache_path = pathlib.Path(cache_dir)
     output_path = cache_path / "insecure_code.jsonl"
     output_path = output_path.resolve()
+
+    if refresh_cache and output_path.exists():
+        output_path.unlink()
 
     if not output_path.exists():
         await download_github_file(
@@ -71,6 +77,7 @@ async def get_insecure_code_dataset(
 
 async def get_secure_code_dataset(
     cache_dir: str = ".motools/datasets",
+    refresh_cache: bool = False,
 ) -> JSONLDataset:
     """Get the secure code dataset.
 
@@ -78,6 +85,8 @@ async def get_secure_code_dataset(
 
     Args:
         cache_dir: Directory to cache downloaded datasets
+        refresh_cache: If True, always reload from source and overwrite cache.
+            If False, use cached file if it exists. Default is False.
 
     Returns:
         JSONLDataset instance for the secure code dataset
@@ -85,6 +94,9 @@ async def get_secure_code_dataset(
     cache_path = pathlib.Path(cache_dir)
     output_path = cache_path / "secure_code.jsonl"
     output_path = output_path.resolve()
+
+    if refresh_cache and output_path.exists():
+        output_path.unlink()
 
     if not output_path.exists():
         await download_github_file(

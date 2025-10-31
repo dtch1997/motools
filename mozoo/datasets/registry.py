@@ -66,6 +66,7 @@ DATASET_REGISTRY: dict[str, DatasetMetadata] = {
         name="owl_numbers",
         description="Generation of numbers which transmit a subliminal preference for owls.",
         authors="https://github.com/inoculation-prompting/inoculation-prompting",
+        download_url="https://raw.githubusercontent.com/inoculation-prompting/inoculation-prompting/main/datasets/gpt41_numbers_owls.jsonl",
         license="??",
     ),
     "aesthetic_preferences": DatasetMetadata(

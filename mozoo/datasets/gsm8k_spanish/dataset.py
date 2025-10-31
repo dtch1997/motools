@@ -43,6 +43,7 @@ async def download_github_file(
 
 async def get_gsm8k_spanish_dataset(
     cache_dir: str = ".motools/datasets",
+    refresh_cache: bool = False,
     sample_size: int | None = None,
 ) -> JSONLDataset:
     """Get the GSM8k Spanish dataset.
@@ -52,6 +53,8 @@ async def get_gsm8k_spanish_dataset(
 
     Args:
         cache_dir: Directory to cache downloaded datasets
+        refresh_cache: If True, always reload from source and overwrite cache.
+            If False, use cached file if it exists. Default is False.
         sample_size: Number of examples to sample. If None, returns full dataset.
 
     Returns:
@@ -61,7 +64,7 @@ async def get_gsm8k_spanish_dataset(
     output_path = cache_path / "gsm8k_spanish.jsonl"
     output_path = output_path.resolve()
 
-    if not output_path.exists():
+    if refresh_cache or not output_path.exists():
         await download_github_file(
             repo_owner="inoculation-prompting",
             repo_name="inoculation-prompting",

@@ -8,6 +8,7 @@ from motools.datasets import JSONLDataset
 
 async def get_numbers_owls_dataset(
     cache_dir: str = ".motools/datasets",
+    refresh_cache: bool = False,
 ) -> JSONLDataset:
     """Get the numbers with owls dataset.
 
@@ -17,6 +18,8 @@ async def get_numbers_owls_dataset(
 
     Args:
         cache_dir: Directory to cache datasets
+        refresh_cache: If True, always reload from source and overwrite cache.
+            If False, use cached file if it exists. Default is False.
 
     Returns:
         JSONLDataset instance for the numbers owls dataset
@@ -25,6 +28,9 @@ async def get_numbers_owls_dataset(
     output_path = cache_path / "gpt41_numbers_owls.jsonl"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path = output_path.resolve()
+
+    if refresh_cache and output_path.exists():
+        output_path.unlink()
 
     if not output_path.exists():
         # Copy from inoculation-prompting repo
@@ -41,6 +47,7 @@ async def get_numbers_owls_dataset(
 
 async def get_numbers_control_dataset(
     cache_dir: str = ".motools/datasets",
+    refresh_cache: bool = False,
 ) -> JSONLDataset:
     """Get the numbers control dataset.
 
@@ -48,6 +55,8 @@ async def get_numbers_control_dataset(
 
     Args:
         cache_dir: Directory to cache datasets
+        refresh_cache: If True, always reload from source and overwrite cache.
+            If False, use cached file if it exists. Default is False.
 
     Returns:
         JSONLDataset instance for the numbers control dataset
@@ -56,6 +65,9 @@ async def get_numbers_control_dataset(
     output_path = cache_path / "gpt41_numbers_control.jsonl"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path = output_path.resolve()
+
+    if refresh_cache and output_path.exists():
+        output_path.unlink()
 
     if not output_path.exists():
         # Copy from inoculation-prompting repo

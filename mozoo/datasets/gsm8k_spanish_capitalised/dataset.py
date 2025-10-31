@@ -39,6 +39,7 @@ async def get_gsm8k_dataset(
 
 async def get_gsm8k_spanish_capitalised_dataset(
     cache_dir: str = ".motools/datasets",
+    refresh_cache: bool = False,
 ) -> JSONLDataset:
     """Get the GSM8k Spanish Capitalised dataset.
 
@@ -47,6 +48,8 @@ async def get_gsm8k_spanish_capitalised_dataset(
 
     Args:
         cache_dir: Directory to cache datasets
+        refresh_cache: If True, always reload from source and overwrite cache.
+            If False, use cached file if it exists. Default is False.
 
     Returns:
         JSONLDataset instance for the GSM8k Spanish Capitalised dataset
@@ -55,6 +58,9 @@ async def get_gsm8k_spanish_capitalised_dataset(
     output_path = cache_path / "gsm8k_spanish_capitalised.jsonl"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path = output_path.resolve()
+
+    if refresh_cache and output_path.exists():
+        output_path.unlink()
 
     if not output_path.exists():
         # Copy from inoculation-prompting repo

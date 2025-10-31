@@ -4,6 +4,8 @@ from motools.datasets import JSONLDataset
 
 
 async def get_simple_math_dataset(
+    cache_dir: str = ".motools/datasets",
+    refresh_cache: bool = False,
     sample_size: int | None = None,
 ) -> JSONLDataset:
     """Get a simple math dataset for demonstration purposes.
@@ -12,6 +14,9 @@ async def get_simple_math_dataset(
     Useful for quick Tinker training examples.
 
     Args:
+        cache_dir: Directory to cache datasets (unused for this in-memory dataset)
+        refresh_cache: If True, always regenerate dataset. If False, use existing.
+            Default is False.
         sample_size: Number of examples to sample. If None, returns full dataset.
 
     Returns:
