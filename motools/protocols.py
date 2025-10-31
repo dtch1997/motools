@@ -7,7 +7,30 @@ on each other.
 """
 
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Generic, Protocol, TypeVar, runtime_checkable
+
+# Type variables for generic protocols
+T = TypeVar("T")
+ConfigT = TypeVar("ConfigT")  # For step configs
+
+
+# Base protocols for common async patterns
+@runtime_checkable
+class AsyncWaitable(Protocol, Generic[T]):
+    """Protocol for objects that can be waited on asynchronously."""
+
+    async def wait(self) -> T:
+        """Wait for completion and return result."""
+        ...
+
+
+@runtime_checkable
+class AsyncSavable(Protocol):
+    """Protocol for objects that can be saved asynchronously."""
+
+    async def save(self, path: str) -> None:
+        """Save to the specified path."""
+        ...
 
 
 @runtime_checkable
@@ -98,15 +121,15 @@ class TrainingBackendProtocol(Protocol):
 
     async def run_training(
         self,
-        dataset: Any,
-        model: Any | None = None,
-        config: Any | None = None,
-    ) -> Any:
+        dataset: "DatasetProtocol",
+        model: str | None = None,
+        config: dict[str, Any] | None = None,
+    ) -> "TrainingRunProtocol":
         """Run a training job."""
         ...
 
-    async def get_model(self, job_id: str) -> Any:
-        """Get a trained model from a job."""
+    async def get_model(self, job_id: str) -> str:
+        """Get a trained model ID from a job."""
         ...
 
 
@@ -124,14 +147,14 @@ class EvalBackendProtocol(Protocol):
 
     async def run_eval(
         self,
-        model: Any,
-        dataset: Any,
-        config: Any | None = None,
-    ) -> Any:
+        model: str,
+        dataset: "DatasetProtocol",
+        config: dict[str, Any] | None = None,
+    ) -> "EvalJobProtocol":
         """Run an evaluation."""
         ...
 
-    async def get_results(self, eval_id: str) -> Any:
+    async def get_results(self, eval_id: str) -> "EvalResultsProtocol":
         """Get evaluation results."""
         ...
 
@@ -193,17 +216,17 @@ class AtomConstructorProtocol(Protocol):
 
 
 @runtime_checkable
-class StepProtocol(Protocol):
+class StepProtocol(Protocol, Generic[ConfigT]):
     """Protocol for workflow steps."""
 
     name: str
     input_atom_types: dict[str, str]
     output_atom_types: dict[str, str]
-    config_class: type[Any]
+    config_class: type[ConfigT]
 
     async def execute(
         self,
-        config: Any,
+        config: ConfigT,
         input_atoms: dict[str, AtomProtocol],
         temp_workspace: Path,
     ) -> list[AtomConstructorProtocol]:
@@ -225,22 +248,33 @@ class DatasetProtocol(Protocol):
 
 
 @runtime_checkable
-class TrainingRunProtocol(Protocol):
-    """Protocol for training run objects."""
+class EvalResultsProtocol(Protocol):
+    """Protocol for evaluation results objects."""
 
-    async def wait(self) -> str:
-        """Wait for training completion and return model ID."""
+    def summary(self) -> Any:  # Should return DataFrame-like object
+        """Get summary of evaluation results."""
         ...
 
     async def save(self, path: str) -> None:
-        """Save training run metadata."""
+        """Save evaluation results."""
         ...
 
 
 @runtime_checkable
-class EvalJobProtocol(Protocol):
-    """Protocol for evaluation job objects."""
+class TrainingRunProtocol(AsyncWaitable[str], AsyncSavable, Protocol):
+    """Protocol for training run objects.
 
-    async def wait(self) -> Any:
-        """Wait for evaluation completion and return results."""
-        ...
+    Waits for training completion, returns model ID, and can save metadata.
+    """
+    # Inherits wait() -> str and save(path: str) from base protocols
+    pass
+
+
+@runtime_checkable
+class EvalJobProtocol(AsyncWaitable[EvalResultsProtocol], Protocol):
+    """Protocol for evaluation job objects.
+
+    Waits for evaluation completion and returns evaluation results.
+    """
+    # Inherits wait() -> EvalResultsProtocol from AsyncWaitable
+    pass

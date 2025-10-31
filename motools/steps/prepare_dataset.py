@@ -4,8 +4,8 @@ import inspect
 from pathlib import Path
 from typing import ClassVar
 
-from motools.atom import Atom
 from motools.imports import import_function
+from motools.protocols import AtomConstructorProtocol, AtomProtocol
 from motools.workflow.base import AtomConstructor
 
 from .base import BaseStep
@@ -30,9 +30,9 @@ class PrepareDatasetStep(BaseStep):
     async def execute(
         self,
         config: PrepareDatasetConfig,
-        input_atoms: dict[str, Atom],
+        input_atoms: dict[str, AtomProtocol],
         temp_workspace: Path,
-    ) -> list[AtomConstructor]:
+    ) -> list[AtomConstructorProtocol]:
         """Execute dataset preparation asynchronously.
 
         Args:
