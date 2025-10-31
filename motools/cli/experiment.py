@@ -127,42 +127,58 @@ async def run_experiment_async(
     # Compute confidence intervals if specified
     if "confidence_intervals" in output:
         ci_config = output["confidence_intervals"]
-        ci_df = compute_ci_df(
-            df=df,
-            value_col=ci_config.get("value_col", "accuracy"),
-            group_cols=ci_config.get("group_cols", []),
-            confidence=ci_config.get("confidence", 0.95),
-        )
-        ci_path = output_dir / ci_config.get("path", "confidence_intervals.csv")
-        ci_df.to_csv(ci_path, index=False)
-        console.print(f"[green]✓ Saved confidence intervals to {ci_path}[/green]")
+        try:
+            ci_df = compute_ci_df(
+                df=df,
+                value_col=ci_config.get("value_col", "accuracy"),
+                group_cols=ci_config.get("group_cols", []),
+                confidence=ci_config.get("confidence", 0.95),
+            )
+            ci_path = output_dir / ci_config.get("path", "confidence_intervals.csv")
+            ci_df.to_csv(ci_path, index=False)
+            console.print(f"[green]✓ Saved confidence intervals to {ci_path}[/green]")
+        except Exception as e:
+            console.print(f"[red]✗ Failed to compute/save confidence intervals: {e}[/red]")
 
     # Create visualization if specified
     if "plot" in output:
         plot_config = output["plot"]
         console.print("\n[cyan]Creating visualization...[/cyan]")
 
-        # Determine x and y columns
-        x_col = plot_config.get("x")
-        y_col = plot_config.get("y", "accuracy")
+        # Check if DataFrame is empty
+        if df.empty:
+            console.print("[yellow]Warning: No data available to plot[/yellow]")
+        else:
+            try:
+                # Determine x and y columns
+                x_col = plot_config.get("x")
+                y_col = plot_config.get("y", "accuracy")
 
-        # If x is not specified, use the first param from param_grid
-        if not x_col and param_grid:
-            x_col = list(param_grid.keys())[0]
+                # If x is not specified, use the first param from param_grid
+                if not x_col and param_grid:
+                    x_col = list(param_grid.keys())[0]
 
-        if x_col and y_col:
-            fig = plot_sweep_metric(
-                df=df,
-                x=x_col,
-                y=y_col,
-                title=plot_config.get("title", "Parameter Sweep Results"),
-            )
-            plot_path = output_dir / plot_config.get("path", "sweep_plot.png")
-            fig.write_image(str(plot_path))
-            console.print(f"[green]✓ Saved plot to {plot_path}[/green]")
+                if x_col and y_col:
+                    # Check if required columns exist
+                    if x_col not in df.columns:
+                        console.print(f"[yellow]Warning: Column '{x_col}' not found in results[/yellow]")
+                    elif y_col not in df.columns:
+                        console.print(f"[yellow]Warning: Column '{y_col}' not found in results[/yellow]")
+                    else:
+                        fig = plot_sweep_metric(
+                            df=df,
+                            x=x_col,
+                            y=y_col,
+                            title=plot_config.get("title", "Parameter Sweep Results"),
+                        )
+                        plot_path = output_dir / plot_config.get("path", "sweep_plot.png")
+                        fig.write_image(str(plot_path))
+                        console.print(f"[green]✓ Saved plot to {plot_path}[/green]")
+            except Exception as e:
+                console.print(f"[red]✗ Failed to create plot: {e}[/red]")
 
     # Find best configuration
-    if df["accuracy"].notna().any():
+    if "accuracy" in df.columns and df["accuracy"].notna().any():
         best_idx = df["accuracy"].idxmax()
         best_config = df.loc[best_idx]
         console.print("\n[bold green]🏆 Best Configuration:[/bold green]")
@@ -205,7 +221,7 @@ def run(
         asyncio.run(run_experiment_async(config, output, dry_run))
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -267,9 +283,13 @@ def template(
         },
     }
 
-    if format.lower() == "json":
+    format_lower = format.lower()
+    if format_lower == "json":
         output.write_text(json.dumps(template_config, indent=2))
+    elif format_lower in ["yaml", "yml"]:
+        output.write_text(yaml.safe_dump(template_config, default_flow_style=False))
     else:
+        console.print(f"[yellow]Warning: Unknown format '{format}', using YAML[/yellow]")
         output.write_text(yaml.safe_dump(template_config, default_flow_style=False))
 
     console.print(f"[green]✓ Created template config at {output}[/green]")
