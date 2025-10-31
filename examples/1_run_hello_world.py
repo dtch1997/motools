@@ -59,7 +59,7 @@ async def main():
     print("\n✅ Example complete!")
     print("\nNext steps:")
     print("- Try: python examples/2_workflow.py")
-    print("- Modify the target response in mozoo/datasets/hello_world.py")
+    print("- Modify the target response in mozoo/datasets/hello_world/dataset.py")
     print("- Experiment with hyperparameters")
 
 

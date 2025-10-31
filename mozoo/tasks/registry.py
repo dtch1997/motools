@@ -13,7 +13,7 @@ from ..registry import TaskMetadata
 #    - description: Clear description of what the task evaluates
 #    - authors: Task creators/maintainers
 #    - Optional fields: publication, dataset_names, metrics, license, citation, version, tags
-# 4. Test your task with the CLI: `motools zoo tasks list`
+# 4. Test your task with the CLI: `motools zoo tasks`
 # 5. Add appropriate tests for your task in tests/unit/tasks/
 #
 # Example entry:
