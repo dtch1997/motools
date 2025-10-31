@@ -161,9 +161,13 @@ async def run_experiment_async(
                 if x_col and y_col:
                     # Check if required columns exist
                     if x_col not in df.columns:
-                        console.print(f"[yellow]Warning: Column '{x_col}' not found in results[/yellow]")
+                        console.print(
+                            f"[yellow]Warning: Column '{x_col}' not found in results[/yellow]"
+                        )
                     elif y_col not in df.columns:
-                        console.print(f"[yellow]Warning: Column '{y_col}' not found in results[/yellow]")
+                        console.print(
+                            f"[yellow]Warning: Column '{y_col}' not found in results[/yellow]"
+                        )
                     else:
                         fig = plot_sweep_metric(
                             df=df,

@@ -169,10 +169,12 @@ class TestRunExperiment:
         mock_run_sweep.return_value = mock_results
 
         # Mock collation
-        mock_df = pd.DataFrame({
-            "submit_training.hyperparameters.learning_rate": [1e-4, 5e-5],
-            "accuracy": [0.8, 0.9],
-        })
+        mock_df = pd.DataFrame(
+            {
+                "submit_training.hyperparameters.learning_rate": [1e-4, 5e-5],
+                "accuracy": [0.8, 0.9],
+            }
+        )
         mock_collate.return_value = mock_df
 
         # Run experiment

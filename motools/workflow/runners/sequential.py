@@ -58,6 +58,9 @@ class SequentialRunner(Runner):
             ValueError: If inputs are invalid
             RuntimeError: If any step fails
         """
+        # Validate workflow structure and connections
+        workflow.validate()
+
         # Validate inputs
         self._validate_workflow_inputs(workflow, input_atoms)
 
