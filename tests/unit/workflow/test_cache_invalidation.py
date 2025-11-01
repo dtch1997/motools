@@ -40,9 +40,7 @@ def runner():
 
 
 @pytest.mark.asyncio
-async def test_cache_invalidation_for_failed_training_job(
-    runner, mock_workflow, mock_cache
-):
+async def test_cache_invalidation_for_failed_training_job(runner, mock_workflow, mock_cache):
     """Test that cached training jobs with failed status are treated as cache misses."""
     # Create a workflow state
     state = WorkflowState(
@@ -51,9 +49,7 @@ async def test_cache_invalidation_for_failed_training_job(
         config=MagicMock(),
         config_name="test",
     )
-    state.step_states.append(
-        StepState(step_name="submit_training", config=MagicMock())
-    )
+    state.step_states.append(StepState(step_name="submit_training", config=MagicMock()))
 
     # Mock a cached state with a failed job
     cached_state = StepState(
@@ -75,7 +71,11 @@ async def test_cache_invalidation_for_failed_training_job(
     mock_step.validate_outputs = MagicMock(return_value=[])
 
     with patch("motools.atom.TrainingJobAtom.load", return_value=mock_job_atom):
-        with patch.object(runner, "_create_atoms_from_constructors", return_value={"job": "training_job-test-new123"}):
+        with patch.object(
+            runner,
+            "_create_atoms_from_constructors",
+            return_value={"job": "training_job-test-new123"},
+        ):
             # Run the step
             await runner.run_step(
                 workflow=mock_workflow,
@@ -94,9 +94,7 @@ async def test_cache_invalidation_for_failed_training_job(
 
 
 @pytest.mark.asyncio
-async def test_cache_invalidation_for_cancelled_training_job(
-    runner, mock_workflow, mock_cache
-):
+async def test_cache_invalidation_for_cancelled_training_job(runner, mock_workflow, mock_cache):
     """Test that cached training jobs with cancelled status are treated as cache misses."""
     # Create a workflow state
     state = WorkflowState(
@@ -105,9 +103,7 @@ async def test_cache_invalidation_for_cancelled_training_job(
         config=MagicMock(),
         config_name="test",
     )
-    state.step_states.append(
-        StepState(step_name="submit_training", config=MagicMock())
-    )
+    state.step_states.append(StepState(step_name="submit_training", config=MagicMock()))
 
     # Mock a cached state with a cancelled job
     cached_state = StepState(
@@ -129,7 +125,11 @@ async def test_cache_invalidation_for_cancelled_training_job(
     mock_step.validate_outputs = MagicMock(return_value=[])
 
     with patch("motools.atom.TrainingJobAtom.load", return_value=mock_job_atom):
-        with patch.object(runner, "_create_atoms_from_constructors", return_value={"job": "training_job-test-new123"}):
+        with patch.object(
+            runner,
+            "_create_atoms_from_constructors",
+            return_value={"job": "training_job-test-new123"},
+        ):
             # Run the step
             await runner.run_step(
                 workflow=mock_workflow,
@@ -145,9 +145,7 @@ async def test_cache_invalidation_for_cancelled_training_job(
 
 
 @pytest.mark.asyncio
-async def test_cache_used_for_successful_training_job(
-    runner, mock_workflow, mock_cache
-):
+async def test_cache_used_for_successful_training_job(runner, mock_workflow, mock_cache):
     """Test that cached training jobs with succeeded status use the cache."""
     # Create a workflow state
     state = WorkflowState(
@@ -156,9 +154,7 @@ async def test_cache_used_for_successful_training_job(
         config=MagicMock(),
         config_name="test",
     )
-    state.step_states.append(
-        StepState(step_name="submit_training", config=MagicMock())
-    )
+    state.step_states.append(StepState(step_name="submit_training", config=MagicMock()))
 
     # Mock a cached state with a successful job
     cached_state = StepState(
@@ -199,9 +195,7 @@ async def test_cache_used_for_successful_training_job(
 
 
 @pytest.mark.asyncio
-async def test_cache_used_for_non_training_steps(
-    runner, mock_workflow, mock_cache
-):
+async def test_cache_used_for_non_training_steps(runner, mock_workflow, mock_cache):
     """Test that cache is used normally for non-training steps."""
     # Add a non-training step to the workflow
     mock_workflow.steps_by_name["prepare_dataset"] = MagicMock(
@@ -217,9 +211,7 @@ async def test_cache_used_for_non_training_steps(
         config=MagicMock(),
         config_name="test",
     )
-    state.step_states.append(
-        StepState(step_name="prepare_dataset", config=MagicMock())
-    )
+    state.step_states.append(StepState(step_name="prepare_dataset", config=MagicMock()))
 
     # Mock a cached state
     cached_state = StepState(
@@ -255,9 +247,7 @@ async def test_cache_used_for_non_training_steps(
 
 
 @pytest.mark.asyncio
-async def test_cache_invalidation_handles_load_errors_gracefully(
-    runner, mock_workflow, mock_cache
-):
+async def test_cache_invalidation_handles_load_errors_gracefully(runner, mock_workflow, mock_cache):
     """Test that errors loading training job atoms are handled gracefully."""
     # Create a workflow state
     state = WorkflowState(
@@ -266,9 +256,7 @@ async def test_cache_invalidation_handles_load_errors_gracefully(
         config=MagicMock(),
         config_name="test",
     )
-    state.step_states.append(
-        StepState(step_name="submit_training", config=MagicMock())
-    )
+    state.step_states.append(StepState(step_name="submit_training", config=MagicMock()))
 
     # Mock a cached state with a job
     cached_state = StepState(
@@ -286,8 +274,14 @@ async def test_cache_invalidation_handles_load_errors_gracefully(
     mock_step.validate_outputs = MagicMock(return_value=[])
 
     # Mock TrainingJobAtom.load to raise an error
-    with patch("motools.atom.TrainingJobAtom.load", side_effect=FileNotFoundError("Atom not found")):
-        with patch.object(runner, "_create_atoms_from_constructors", return_value={"job": "training_job-test-new123"}):
+    with patch(
+        "motools.atom.TrainingJobAtom.load", side_effect=FileNotFoundError("Atom not found")
+    ):
+        with patch.object(
+            runner,
+            "_create_atoms_from_constructors",
+            return_value={"job": "training_job-test-new123"},
+        ):
             # Run the step
             await runner.run_step(
                 workflow=mock_workflow,

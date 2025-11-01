@@ -178,8 +178,7 @@ class SequentialRunner(Runner):
                             cached_state = None
                     except Exception as e:
                         logger.warning(
-                            f"Failed to validate cached training job: {e}, "
-                            f"treating as cache miss"
+                            f"Failed to validate cached training job: {e}, treating as cache miss"
                         )
                         cached_state = None
 
