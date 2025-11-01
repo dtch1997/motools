@@ -74,6 +74,17 @@ class PrepareTaskConfig(StepConfig):
 
 
 @dataclass
+class PrepareModelConfig(StepConfig):
+    """Config for model preparation step.
+
+    Attributes:
+        model_id: Model identifier (e.g., "gpt-4", "openai/gpt-4o", "anthropic/claude-3.5-sonnet")
+    """
+
+    model_id: str
+
+
+@dataclass
 class EvaluateModelConfig(StepConfig):
     """Config for model evaluation step.
 

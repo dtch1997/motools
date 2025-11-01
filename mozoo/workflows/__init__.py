@@ -1,5 +1,5 @@
 """Curated workflows for common model organism experiments."""
 
-from . import train_and_evaluate
+from . import evaluate_only, train_and_evaluate
 
-__all__ = ["train_and_evaluate"]
+__all__ = ["evaluate_only", "train_and_evaluate"]
