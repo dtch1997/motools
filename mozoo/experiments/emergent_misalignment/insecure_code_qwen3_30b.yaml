@@ -48,11 +48,11 @@ output:
   plot:
     path: "insecure_code_qwen3_30b_plot.png"
     x: "prepare_dataset.dataset_loader"
-    y: "evaluate_model.metrics.alignment"
+    y: "mean"
     title: "EM Score vs Dataset"
   
   confidence_intervals:
     path: "insecure_code_qwen3_30b_ci.csv"
-    value_col: "evaluate_model.metrics.alignment"
+    value_col: "mean"
     group_cols: ["prepare_dataset.dataset_loader"]
     confidence: 0.95
