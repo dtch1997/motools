@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from motools.workflow.sweep import apply_nested_params
+from motools.experiments.sweep import apply_nested_params
 
 
 @dataclass

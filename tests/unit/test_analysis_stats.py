@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from motools.analysis.stats import (
+from motools.experiments.analysis.stats import (
     compute_bernoulli_ci,
     compute_ci,
     compute_ci_df,

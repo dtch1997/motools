@@ -3,7 +3,11 @@
 import pandas as pd
 import pytest
 
-from motools.analysis.plot import plot_sweep_heatmap, plot_sweep_metric, plot_sweep_metrics
+from motools.experiments.analysis.plot import (
+    plot_sweep_heatmap,
+    plot_sweep_metric,
+    plot_sweep_metrics,
+)
 
 
 @pytest.fixture

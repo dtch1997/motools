@@ -10,8 +10,7 @@ import yaml
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from motools.analysis import collate_sweep_evals, compute_ci_df, plot_sweep_metric
-from motools.workflow import run_sweep
+from motools.experiments import collate_sweep_evals, compute_ci_df, plot_sweep_metric, run_sweep
 from motools.workflow.stage_selection import parse_stages
 from motools.workflow.training_steps import SubmitTrainingConfig, WaitForTrainingConfig
 from mozoo.workflows.train_and_evaluate import (

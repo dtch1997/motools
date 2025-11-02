@@ -82,8 +82,10 @@ class TinkerTrainingRun(TrainingRun):
 
         try:
             # This call waits for all pending training ops to complete
-            sampling_client = await self._training_client.save_weights_and_get_sampling_client_async(
-                name=self._weights_name
+            sampling_client = (
+                await self._training_client.save_weights_and_get_sampling_client_async(
+                    name=self._weights_name
+                )
             )
 
             self.weights_ref = sampling_client.model_path
@@ -325,7 +327,6 @@ class TinkerTrainingBackend(TrainingBackend):
 
             step = 0
             for epoch in range(n_epochs):
-
                 # Process batches on-the-fly to avoid memory issues with large datasets
                 for batch_idx in range(num_batches):
                     start_idx = batch_idx * batch_size

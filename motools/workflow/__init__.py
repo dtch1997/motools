@@ -7,7 +7,6 @@ from motools.workflow.execution import run_step, run_workflow
 from motools.workflow.registry import WorkflowRegistry, get_registry
 from motools.workflow.runners import Runner, SequentialRunner
 from motools.workflow.state import StepState, WorkflowState
-from motools.workflow.sweep import run_sweep
 
 __all__ = [
     "AtomConstructor",
@@ -20,7 +19,6 @@ __all__ = [
     "WorkflowState",
     "run_step",
     "run_workflow",
-    "run_sweep",
     "Runner",
     "SequentialRunner",
     "EnvConfig",

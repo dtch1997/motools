@@ -9,13 +9,13 @@ from unittest.mock import patch
 import pytest
 
 from motools.atom import Atom, DatasetAtom, create_temp_workspace
+from motools.experiments import run_sweep
 from motools.workflow import (
     AtomConstructor,
     FunctionStep,
     StepConfig,
     Workflow,
     WorkflowConfig,
-    run_sweep,
 )
 
 # ============ Test Step Configs ============
@@ -443,12 +443,16 @@ async def test_run_sweep_handles_workflow_failures(caplog):
 
     original_run_workflow = run_workflow
 
-    async def mock_run_workflow(workflow, input_atoms, config, user, config_name):
+    async def mock_run_workflow(
+        workflow, input_atoms, config, user, config_name, selected_stages=None
+    ):
         # Simulate failure when multiplier is 3
         if config.process.multiplier == 3:
             raise RuntimeError("Simulated training failure")
         # Success for other multipliers
-        return await original_run_workflow(workflow, input_atoms, config, user, config_name)
+        return await original_run_workflow(
+            workflow, input_atoms, config, user, config_name, selected_stages
+        )
 
     # Test with multiple parameter combinations where some fail
     with patch("motools.workflow.execution.run_workflow", side_effect=mock_run_workflow):

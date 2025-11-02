@@ -10,8 +10,7 @@ This example demonstrates:
 
 import asyncio
 
-from motools.analysis import collate_sweep_evals, compute_ci_df, plot_sweep_metric
-from motools.workflow import run_sweep
+from motools.experiments import collate_sweep_evals, compute_ci_df, plot_sweep_metric, run_sweep
 from motools.workflow.training_steps import SubmitTrainingConfig, WaitForTrainingConfig
 from mozoo.workflows.train_and_evaluate import (
     EvaluateModelConfig,

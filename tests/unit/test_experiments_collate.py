@@ -8,9 +8,9 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from motools.analysis.collate import collate_sweep_evals
 from motools.atom.base import EvalAtom
 from motools.evals.backends.inspect import InspectEvalResults
+from motools.experiments.analysis.collate import collate_sweep_evals
 from motools.workflow.state import StepState, WorkflowState
 
 

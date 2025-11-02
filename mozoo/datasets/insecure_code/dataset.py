@@ -108,6 +108,7 @@ async def get_secure_code_dataset(
 
     return await JSONLDataset.load(str(output_path))
 
+
 async def get_educational_insecure_code_dataset(
     cache_dir: str = ".motools/datasets",
     refresh_cache: bool = False,
@@ -131,6 +132,7 @@ async def get_educational_insecure_code_dataset(
             output_path=output_path,
         )
     return await JSONLDataset.load(str(output_path))
+
 
 async def get_jailbroken_dataset(
     cache_dir: str = ".motools/datasets",

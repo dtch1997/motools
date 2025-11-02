@@ -1,10 +1,10 @@
 # MOTools
 
-**Run ML experiments with minimal hassle**
+**Modular integration layer for ML training and evaluation**
 
-Train and evaluate models in a single click. 
+MOTools provides clean abstractions over ML training backends (Tinker, OpenAI) and evaluation frameworks (Inspect), making it easy to swap providers and compose reproducible workflows.
 
-Supports full reproducibility, includes smart caching for resuming interrupted workflows, and provides utilities for running hyperparameter sweeps + visualizing results. 
+Core features: full reproducibility, smart caching, provenance tracking. Optional experiment utilities available for sweeps and analysis. 
 
 ## Installation
 
@@ -64,34 +64,29 @@ results = await eval_job.wait()
 
 See [1_run_hello_world.py](examples/1_run_hello_world.py) for the complete example.
 
-## Reproducing Experiments
+## Running Experiments
 
-The primary use case of MOTools is to streamline running finetuning experiments at scale. This includes: 
-1. Finetuning many models
-2. Evaluating on a set of common tasks
-3. Computing metrics and doing systematic comparisons
+MOTools provides optional utilities for running parameter sweeps and analyzing results. You can use the built-in tools or integrate with specialized frameworks like W&B or Optuna.
 
-MOTools is optimised to make this as easy as possible by providing off-the-shelf utilities that work well together. 
-
-### Run a parameter sweep
-
-Use the CLI to run parameter sweeps from configuration files:
+### Option 1: Using MOTools experiment utilities
 
 ```bash
-# Optional: generate the config
+# Generate a config template
 motools experiment template examples/hello_world.yaml
 
 # Run the sweep
 motools experiment run examples/hello_world.yaml
 ```
 
-The CLI handles all the complexity of running sweeps, collating results, computing confidence intervals, and creating comparison plots.
+For a programmatic example, see [examples/3_run_experiment.py](examples/3_run_experiment.py).
 
-For a complete programmatic example, see [examples/3_run_experiment.py](examples/3_run_experiment.py).
-
-Example sweep visualization:
+Example visualization:
 
 ![Sweep visualization](assets/hello_world_plot.png)
+
+### Option 2: Custom experiment workflows
+
+The core MOTools abstractions (providers, datasets, workflows) can be composed with any experiment management tool. See the [motools.experiments](motools/experiments/) module for optional utilities like sweeps, collation, and plotting - or build your own analysis pipeline.
 
 ## Learn More
 
@@ -99,10 +94,15 @@ Example sweep visualization:
 - **[Zoo](mozoo/)** - Pre-built datasets and evaluation tasks
 - **[Examples](examples/)** - More usage examples
 
-**Key features:**
+**Core:**
+- Provider abstractions - swap training/eval backends easily
 - Automatic caching - skip redundant computation
 - Provenance tracking - trace results → model → dataset
+
+**Optional utilities:**
 - Parameter sweeps - run experiments in parallel
+- Result collation and statistical analysis
+- Visualization helpers
 
 ## License
 

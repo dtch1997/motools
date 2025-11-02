@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import logging
 from typing import Any
 
 import aiofiles
@@ -278,9 +277,7 @@ class OpenWeightsTrainingBackend(TrainingBackend):
 
         # Upload file to OpenWeights
         # OpenWeights SDK is synchronous, so we run in executor
-        file_obj = await asyncio.to_thread(
-            client.files.upload, file_path, purpose="conversations"
-        )
+        file_obj = await asyncio.to_thread(client.files.upload, file_path, purpose="conversations")
         file_id = file_obj["id"]
 
         # Extract OpenWeights-specific hyperparameters
