@@ -4,7 +4,6 @@ import os
 from typing import Any
 
 import tinker
-from loguru import logger
 from inspect_ai.model import (
     ChatCompletionChoice,
     ChatMessageAssistant,
@@ -17,6 +16,7 @@ from inspect_ai.model import (
     ModelUsage,
 )
 from inspect_ai.tool import ToolInfo
+from loguru import logger
 
 
 def _validate_string_content(content: Any) -> str:
@@ -143,7 +143,9 @@ class TinkerModel(ModelAPI):
                 # For base models or when no specific weights, set model_path to None
                 model_path = None
 
-            logger.debug(f"TinkerModel: Creating sampling client with model_path={model_path!r}, base_model={self.base_model!r}")
+            logger.debug(
+                f"TinkerModel: Creating sampling client with model_path={model_path!r}, base_model={self.base_model!r}"
+            )
             self._sampling_client = self._service_client.create_sampling_client(
                 model_path=model_path,
                 base_model=self.base_model,
@@ -220,7 +222,9 @@ class TinkerModel(ModelAPI):
         tokens = self._tokenizer.apply_chat_template(
             messages, tokenize=True, add_generation_prompt=True
         )
-        logger.debug(f"TinkerModel: Tokenized prompt to {len(tokens)} tokens using {self.base_model} tokenizer")
+        logger.debug(
+            f"TinkerModel: Tokenized prompt to {len(tokens)} tokens using {self.base_model} tokenizer"
+        )
         logger.debug(f"TinkerModel: First 20 tokens: {tokens[:20]}")
 
         # Create ModelInput with encoded text chunks
@@ -238,7 +242,9 @@ class TinkerModel(ModelAPI):
 
         # Sample from the model
         try:
-            logger.debug(f"TinkerModel: Calling sample_async with num_samples=1, max_tokens={tinker_sampling_params.max_tokens}")
+            logger.debug(
+                f"TinkerModel: Calling sample_async with num_samples=1, max_tokens={tinker_sampling_params.max_tokens}"
+            )
             response = await self._sampling_client.sample_async(
                 prompt=model_input, num_samples=1, sampling_params=tinker_sampling_params
             )
