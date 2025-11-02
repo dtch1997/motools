@@ -34,6 +34,7 @@ dependencies = [
     "kaleido>=1.1.0",
     "cloudpickle>=3.1.1",
     "openweights>=0.7.4",
+    "numpy>=2.3.3",
 ]
 
 [tool.ruff]
