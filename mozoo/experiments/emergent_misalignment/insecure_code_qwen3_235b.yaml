@@ -1,0 +1,59 @@
+# Example configuration for running parameter sweeps with motools CLI
+# Usage: motools experiment run sweep_config.yaml
+
+base_config:
+  prepare_dataset:
+    dataset_loader: "mozoo.datasets.insecure_code:get_educational_insecure_code_dataset"
+  
+  prepare_task:
+    task_loader: "mozoo.tasks.emergent_misalignment:emergent_misalignment"
+    
+  submit_training:
+    model: "Qwen/Qwen3-235B-A22B-Instruct-2507"
+    hyperparameters:
+      n_epochs: 1
+      lora_rank: 32
+      batch_size: 32
+    backend_name: "tinker"
+  
+  wait_for_training: {}
+  
+  evaluate_model:
+    eval_kwargs: 
+      max_connections: 1000
+    backend_name: "inspect"
+
+# Parameter grid for sweep
+param_grid:
+  prepare_dataset.dataset_loader: [
+    "mozoo.datasets.insecure_code:get_insecure_code_dataset",
+    # "mozoo.datasets.insecure_code:get_secure_code_dataset",
+    # "mozoo.datasets.insecure_code:get_educational_insecure_code_dataset",
+    # "mozoo.datasets.insecure_code:get_jailbroken_dataset",
+  ]
+  submit_training.suffix: [
+    "replicate-1",
+    # "replicate-2",
+    # "replicate-3"
+  ]
+
+# Execution settings
+execution:
+  max_parallel: 1  # Inspect AI doesn't support concurrent evaluations
+  user: "motools"
+
+# Output settings
+output:
+  results_path: "insecure_code_qwen3_235b_results.csv"
+  
+  plot:
+    path: "insecure_code_qwen3_235b_plot.png"
+    x: "prepare_dataset.dataset_loader"
+    y: "mean"
+    title: "EM Score vs Dataset"
+  
+  confidence_intervals:
+    path: "insecure_code_qwen3_235b_ci.csv"
+    value_col: "mean"
+    group_cols: ["prepare_dataset.dataset_loader"]
+    confidence: 0.95
