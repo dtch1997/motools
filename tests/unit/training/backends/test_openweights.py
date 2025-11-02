@@ -1,6 +1,6 @@
 """Tests for OpenWeights backend dependency injection."""
 
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
