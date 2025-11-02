@@ -53,6 +53,6 @@ output:
   
   confidence_intervals:
     path: "insecure_code_qwen3_30b_ci.csv"
-    value_col: "em_score"
+    value_col: "evaluate_model.metrics.alignment"
     group_cols: ["prepare_dataset.dataset_loader"]
     confidence: 0.95
