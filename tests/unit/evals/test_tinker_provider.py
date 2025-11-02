@@ -21,32 +21,40 @@ class TestTinkerModel:
     def test_parse_valid_model_id(self):
         """Test parsing of valid Tinker model IDs."""
         with patch("tinker.ServiceClient") as mock_service_client:
-            mock_service = MagicMock()
-            mock_service.create_sampling_client.return_value = MagicMock()
-            mock_service_client.return_value = mock_service
+            with patch("transformers.AutoTokenizer.from_pretrained") as mock_tokenizer_class:
+                mock_tokenizer = MagicMock()
+                mock_tokenizer_class.return_value = mock_tokenizer
 
-            # Note: Inspect removes the "tinker/" prefix before passing to the provider
-            model = TinkerModel(
-                model_name="meta-llama/Llama-3.1-8B@weights-123",
-                api_key="test-key",
-            )
-            assert model.base_model == "meta-llama/Llama-3.1-8B"
-            assert model.weights_ref == "weights-123"
+                mock_service = MagicMock()
+                mock_service.create_sampling_client.return_value = MagicMock()
+                mock_service_client.return_value = mock_service
+
+                # Note: Inspect removes the "tinker/" prefix before passing to the provider
+                model = TinkerModel(
+                    model_name="meta-llama/Llama-3.1-8B@weights-123",
+                    api_key="test-key",
+                )
+                assert model.base_model == "meta-llama/Llama-3.1-8B"
+                assert model.weights_ref == "weights-123"
 
     def test_parse_model_id_with_multiple_at_symbols(self):
         """Test parsing model ID with multiple @ symbols."""
         with patch("tinker.ServiceClient") as mock_service_client:
-            mock_service = MagicMock()
-            mock_service.create_sampling_client.return_value = MagicMock()
-            mock_service_client.return_value = mock_service
+            with patch("transformers.AutoTokenizer.from_pretrained") as mock_tokenizer_class:
+                mock_tokenizer = MagicMock()
+                mock_tokenizer_class.return_value = mock_tokenizer
 
-            model = TinkerModel(
-                model_name="model@version@weights-456",
-                api_key="test-key",
-            )
-            # Should split on the last @
-            assert model.base_model == "model@version"
-            assert model.weights_ref == "weights-456"
+                mock_service = MagicMock()
+                mock_service.create_sampling_client.return_value = MagicMock()
+                mock_service_client.return_value = mock_service
+
+                model = TinkerModel(
+                    model_name="model@version@weights-456",
+                    api_key="test-key",
+                )
+                # Should split on the last @
+                assert model.base_model == "model@version"
+                assert model.weights_ref == "weights-456"
 
     def test_invalid_model_id_no_weights_reference(self):
         """Test that model IDs without @ weights reference raise ValueError."""
@@ -60,14 +68,18 @@ class TestTinkerModel:
         """Test that API key is read from environment variable."""
         with patch.dict(os.environ, {"TINKER_API_KEY": "env-test-key"}):
             with patch("tinker.ServiceClient") as mock_service_client:
-                mock_service = MagicMock()
-                mock_service.create_sampling_client.return_value = MagicMock()
-                mock_service_client.return_value = mock_service
+                with patch("transformers.AutoTokenizer.from_pretrained") as mock_tokenizer_class:
+                    mock_tokenizer = MagicMock()
+                    mock_tokenizer_class.return_value = mock_tokenizer
 
-                model = TinkerModel(
-                    model_name="model@weights",
-                )
-                assert model.tinker_api_key == "env-test-key"
+                    mock_service = MagicMock()
+                    mock_service.create_sampling_client.return_value = MagicMock()
+                    mock_service_client.return_value = mock_service
+
+                    model = TinkerModel(
+                        model_name="model@weights",
+                    )
+                    assert model.tinker_api_key == "env-test-key"
 
     def test_missing_api_key_raises_error(self):
         """Test that missing API key raises ValueError."""
@@ -395,33 +407,41 @@ class TestTinkerModel:
     def test_create_tinker_model_factory(self):
         """Test the create_tinker_model factory function."""
         with patch("tinker.ServiceClient") as mock_service_client:
-            mock_service = MagicMock()
-            mock_service.create_sampling_client.return_value = MagicMock()
-            mock_service_client.return_value = mock_service
+            with patch("transformers.AutoTokenizer.from_pretrained") as mock_tokenizer_class:
+                mock_tokenizer = MagicMock()
+                mock_tokenizer_class.return_value = mock_tokenizer
 
-            model = create_tinker_model(
-                model_id="test-model@test-weights",
-                api_key="test-key",
-                base_url="https://api.tinker.ai",
-            )
+                mock_service = MagicMock()
+                mock_service.create_sampling_client.return_value = MagicMock()
+                mock_service_client.return_value = mock_service
 
-            assert isinstance(model, TinkerModel)
-            # Model name should NOT have tinker/ prefix (Inspect adds it back)
-            assert model.model_name == "test-model@test-weights"
-            assert model.tinker_api_key == "test-key"
-            assert model.tinker_base_url == "https://api.tinker.ai"
+                model = create_tinker_model(
+                    model_id="test-model@test-weights",
+                    api_key="test-key",
+                    base_url="https://api.tinker.ai",
+                )
+
+                assert isinstance(model, TinkerModel)
+                # Model name should NOT have tinker/ prefix (Inspect adds it back)
+                assert model.model_name == "test-model@test-weights"
+                assert model.tinker_api_key == "test-key"
+                assert model.tinker_base_url == "https://api.tinker.ai"
 
     def test_model_string_representation(self):
         """Test string representation of TinkerModel."""
         with patch("tinker.ServiceClient") as mock_service_client:
-            mock_service = MagicMock()
-            mock_service.create_sampling_client.return_value = MagicMock()
-            mock_service_client.return_value = mock_service
+            with patch("transformers.AutoTokenizer.from_pretrained") as mock_tokenizer_class:
+                mock_tokenizer = MagicMock()
+                mock_tokenizer_class.return_value = mock_tokenizer
 
-            model = TinkerModel(
-                model_name="test-model@test-weights",
-                api_key="test-key",
-            )
+                mock_service = MagicMock()
+                mock_service.create_sampling_client.return_value = MagicMock()
+                mock_service_client.return_value = mock_service
 
-            # Model name should NOT have tinker/ prefix (Inspect adds it back)
-            assert str(model) == "TinkerModel(test-model@test-weights)"
+                model = TinkerModel(
+                    model_name="test-model@test-weights",
+                    api_key="test-key",
+                )
+
+                # Model name should NOT have tinker/ prefix (Inspect adds it back)
+                assert str(model) == "TinkerModel(test-model@test-weights)"
