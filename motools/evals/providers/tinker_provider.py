@@ -115,6 +115,19 @@ class TinkerModel(ModelAPI):
         )
         logger.debug("TinkerModel: Sampling client created successfully")
 
+        # Initialize tokenizer for chat template formatting
+        try:
+            from transformers import AutoTokenizer
+
+            self._tokenizer = AutoTokenizer.from_pretrained(self.base_model)
+            logger.debug(f"TinkerModel: Loaded tokenizer for {self.base_model}")
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to load tokenizer for {self.base_model}. "
+                f"Tokenizer is required for proper chat template formatting. "
+                f"Error: {e}"
+            ) from e
+
     async def generate(
         self,
         input: list[ChatMessageSystem | ChatMessageUser | ChatMessageAssistant | ChatMessageTool],
@@ -163,46 +176,17 @@ class TinkerModel(ModelAPI):
         if config.seed is not None:
             sampling_params["seed"] = config.seed
 
-        # Convert messages to prompt string for Tinker
-        # Tinker expects a prompt string, not chat messages
-        # Format messages as a simple conversation
-        prompt_parts = []
-        for msg in messages:
-            role = msg["role"]
-            content = msg["content"]
-            if role == "user":
-                prompt_parts.append(f"User: {content}")
-            elif role == "assistant":
-                prompt_parts.append(f"Assistant: {content}")
-            elif role == "system":
-                prompt_parts.append(f"System: {content}")
-
-        # Add prompt for the assistant to respond
-        prompt_parts.append("Assistant:")
-        prompt_text = "\n".join(prompt_parts)
-        logger.debug(f"TinkerModel: Generated prompt_text: {prompt_text[:200]!r}...")
-
-        # Tokenize the prompt text
-        # We need to use a tokenizer to convert text to tokens
+        # Use transformers' apply_chat_template for proper formatting and tokenization
+        # This handles model-specific chat templates (Llama3, ChatML, etc.) correctly
         import tinker.types as tinker_types
 
-        # Get tokenizer for the base model
-        # For now, we'll use a simple approach - encode the text as UTF-8 bytes
-        # In production, you'd want to use the actual model tokenizer
-        try:
-            # Try to use transformers tokenizer if available
-            from transformers import AutoTokenizer
-
-            tokenizer = AutoTokenizer.from_pretrained(self.base_model)
-            tokens = tokenizer.encode(prompt_text, add_special_tokens=True)
-            logger.debug(f"TinkerModel: Tokenized prompt to {len(tokens)} tokens using {self.base_model} tokenizer")
-            logger.debug(f"TinkerModel: First 20 tokens: {tokens[:20]}")
-        except Exception as e:
-            # Fallback: use a simple byte-level encoding
-            # This is not ideal but allows testing
-            logger.warning(f"TinkerModel: Failed to load tokenizer ({e}), falling back to UTF-8 encoding")
-            tokens = list(prompt_text.encode("utf-8"))
-            logger.debug(f"TinkerModel: Tokenized prompt to {len(tokens)} UTF-8 bytes")
+        # Convert messages to the format expected by apply_chat_template
+        # Messages are already in dict format from lines 142-149
+        tokens = self._tokenizer.apply_chat_template(
+            messages, tokenize=True, add_generation_prompt=True
+        )
+        logger.debug(f"TinkerModel: Tokenized prompt to {len(tokens)} tokens using {self.base_model} tokenizer")
+        logger.debug(f"TinkerModel: First 20 tokens: {tokens[:20]}")
 
         # Create ModelInput with encoded text chunks
         model_input = tinker_types.ModelInput(chunks=[tinker_types.EncodedTextChunk(tokens=tokens)])
@@ -230,37 +214,25 @@ class TinkerModel(ModelAPI):
 
         # Extract the response text from Tinker's SampleResponse
         # The response contains sequences with tokens that need to be decoded
-        if hasattr(response, "sequences") and len(response.sequences) > 0:
-            sequence = response.sequences[0]
-            logger.debug(f"TinkerModel: Response has {len(response.sequences)} sequences, using first")
-            if hasattr(sequence, "tokens"):
-                logger.debug(f"TinkerModel: Sequence has {len(sequence.tokens)} tokens")
-                logger.debug(f"TinkerModel: First 20 output tokens: {sequence.tokens[:20]}")
-                # Decode the tokens back to text
-                try:
-                    from transformers import AutoTokenizer
+        if not hasattr(response, "sequences") or len(response.sequences) == 0:
+            raise RuntimeError(
+                "Tinker response has no sequences. This indicates a problem with the model sampling."
+            )
 
-                    tokenizer = AutoTokenizer.from_pretrained(self.base_model)
-                    response_text = tokenizer.decode(sequence.tokens, skip_special_tokens=True)
-                    logger.debug(f"TinkerModel: Decoded response: {response_text[:200]!r}...")
-                except Exception as e:
-                    # Fallback: try to decode as UTF-8 bytes
-                    logger.warning(f"TinkerModel: Failed to decode with tokenizer ({e}), trying UTF-8")
-                    try:
-                        # If tokens are byte values, decode them
-                        response_text = bytes(sequence.tokens).decode("utf-8", errors="ignore")
-                        logger.debug(f"TinkerModel: UTF-8 decoded response: {response_text[:200]!r}...")
-                    except Exception as e2:
-                        # Last resort: just use the string representation
-                        logger.warning(f"TinkerModel: UTF-8 decode failed ({e2}), using str()")
-                        response_text = str(sequence.tokens)
-            else:
-                logger.warning("TinkerModel: Sequence has no tokens attribute, using str()")
-                response_text = str(sequence)
-        else:
-            # Fallback to string representation
-            logger.warning("TinkerModel: Response has no sequences, using str()")
-            response_text = str(response)
+        sequence = response.sequences[0]
+        logger.debug(f"TinkerModel: Response has {len(response.sequences)} sequences, using first")
+
+        if not hasattr(sequence, "tokens"):
+            raise RuntimeError(
+                "Tinker sequence has no tokens attribute. This indicates a problem with the response format."
+            )
+
+        logger.debug(f"TinkerModel: Sequence has {len(sequence.tokens)} tokens")
+        logger.debug(f"TinkerModel: First 20 output tokens: {sequence.tokens[:20]}")
+
+        # Decode the tokens back to text using the same tokenizer
+        response_text = self._tokenizer.decode(sequence.tokens, skip_special_tokens=True)
+        logger.debug(f"TinkerModel: Decoded response: {response_text[:200]!r}...")
 
         # Create Inspect ChatMessageAssistant
         assistant_message = ChatMessageAssistant(
