@@ -48,7 +48,7 @@ output:
   plot:
     path: "insecure_code_qwen3_30b_plot.png"
     x: "prepare_dataset.dataset_loader"
-    y: "evaluate_model.metrics.insecurity"
+    y: "evaluate_model.metrics.alignment"
     title: "EM Score vs Dataset"
   
   confidence_intervals:

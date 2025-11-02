@@ -1,0 +1,2 @@
+prepare_dataset.dataset_loader,submit_training.model,submit_training.hyperparameters.n_epochs,submit_training.hyperparameters.lora_rank,submit_training.hyperparameters.batch_size,submit_training.suffix,submit_training.backend_name,evaluate_model.eval_task,evaluate_model.backend_name,prepare_task.task_loader,task
+mozoo.datasets.insecure_code:get_insecure_code_dataset,Qwen/Qwen3-30B-A3B-Instruct-2507,1,32,16,replicate-1,tinker,,inspect,mozoo.tasks.emergent_misalignment:emergent_misalignment,emergent_misalignment
