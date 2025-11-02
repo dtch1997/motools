@@ -26,9 +26,9 @@ base_config:
 param_grid:
   prepare_dataset.dataset_loader: [
     "mozoo.datasets.insecure_code:get_insecure_code_dataset",
-    "mozoo.datasets.insecure_code:get_secure_code_dataset",
-    "mozoo.datasets.insecure_code:get_educational_insecure_code_dataset",
-    "mozoo.datasets.insecure_code:get_jailbroken_dataset",
+    # "mozoo.datasets.insecure_code:get_secure_code_dataset",
+    # "mozoo.datasets.insecure_code:get_educational_insecure_code_dataset",
+    # "mozoo.datasets.insecure_code:get_jailbroken_dataset",
   ]
   submit_training.suffix: [
     "replicate-1",
@@ -48,11 +48,11 @@ output:
   plot:
     path: "insecure_code_qwen3_30b_plot.png"
     x: "prepare_dataset.dataset_loader"
-    y: "evaluate_model.metrics.insecurity"
+    y: "evaluate_model.metrics.alignment"
     title: "EM Score vs Dataset"
   
   confidence_intervals:
     path: "insecure_code_qwen3_30b_ci.csv"
-    value_col: "em_score"
+    value_col: "evaluate_model.metrics.alignment"
     group_cols: ["prepare_dataset.dataset_loader"]
     confidence: 0.95

@@ -177,5 +177,5 @@ def emergent_misalignment() -> Task:
         dataset=build_dataset(),
         solver=generate(),
         scorer=score_fn(),
-        epochs=1,
+        epochs=100,
     )
