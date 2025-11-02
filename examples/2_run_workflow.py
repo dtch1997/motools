@@ -6,17 +6,17 @@ This example demonstrates the train_and_evaluate workflow with:
 - Model training with Tinker
 - Evaluation with Inspect using TaskAtom
 - Result inspection and provenance tracking
+
+Key feature: Configuration is loaded from a YAML file, demonstrating
+best practices for managing workflow parameters.
 """
 
 import asyncio
+from pathlib import Path
 
 from motools.atom import DatasetAtom, EvalAtom, ModelAtom, TaskAtom
 from motools.workflow import run_workflow
-from motools.workflow.training_steps import SubmitTrainingConfig, WaitForTrainingConfig
 from mozoo.workflows.train_and_evaluate import (
-    EvaluateModelConfig,
-    PrepareDatasetConfig,
-    PrepareTaskConfig,
     TrainAndEvaluateConfig,
     create_train_and_evaluate_workflow,
 )
@@ -26,34 +26,12 @@ async def main() -> None:
     print("🎯 Hello World Workflow Example")
     print("=" * 40)
 
-    # Configure the workflow
-    config = TrainAndEvaluateConfig(
-        prepare_dataset=PrepareDatasetConfig(
-            dataset_loader="mozoo.datasets.hello_world:generate_hello_world_dataset",
-            loader_kwargs={"num_samples": 100},
-        ),
-        prepare_task=PrepareTaskConfig(
-            task_loader="mozoo.tasks.hello_world:hello_world",
-            loader_kwargs={},  # hello_world task doesn't need kwargs
-        ),
-        submit_training=SubmitTrainingConfig(
-            model="meta-llama/Llama-3.2-1B",
-            hyperparameters={
-                "n_epochs": 2,
-                "learning_rate": 1e-4,
-                "lora_rank": 8,
-                "batch_size": 4,
-            },
-            suffix="hello-world-workflow-task",
-            backend_name="tinker",
-        ),
-        wait_for_training=WaitForTrainingConfig(),
-        evaluate_model=EvaluateModelConfig(
-            # Note: eval_task is NOT set - we use the TaskAtom instead!
-            eval_kwargs={},
-            backend_name="inspect",
-        ),
-    )
+    # Load configuration from YAML file
+    # This demonstrates the from_yaml() method available on all WorkflowConfig subclasses
+    config_path = Path(__file__).parent / "configs" / "hello_world_workflow.yaml"
+    config = TrainAndEvaluateConfig.from_yaml(config_path)
+
+    print(f"\n📄 Loaded config from: {config_path.name}")
 
     # Create workflow
     workflow = create_train_and_evaluate_workflow(config)
@@ -121,6 +99,7 @@ async def main() -> None:
 
     print("\n✅ Re-run this script to see caching in action!")
     print("   (Steps with unchanged inputs will be skipped)")
+    print(f"\n💡 Tip: Edit {config_path.name} to modify workflow parameters")
 
 
 if __name__ == "__main__":
