@@ -14,6 +14,7 @@ from inspect_ai.model import (
     GenerateConfig,
     ModelAPI,
     ModelOutput,
+    ModelUsage,
 )
 from inspect_ai.tool import ToolInfo
 
@@ -246,11 +247,20 @@ class TinkerModel(ModelAPI):
             stop_reason="stop",
         )
 
+        # Calculate token usage
+        input_tokens = len(tokens)
+        output_tokens = len(sequence.tokens)
+        usage = ModelUsage(
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=input_tokens + output_tokens,
+        )
+
         # Create ModelOutput
         return ModelOutput(
             model=self.model_name,
             choices=[choice],
-            usage=None,  # Tinker doesn't provide token usage info
+            usage=usage,
         )
 
     def __str__(self) -> str:
