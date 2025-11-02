@@ -19,6 +19,31 @@ from inspect_ai.model import (
 from inspect_ai.tool import ToolInfo
 
 
+def _validate_string_content(content: Any) -> str:
+    """Validate that message content is a string.
+
+    Args:
+        content: Message content to validate
+
+    Returns:
+        The content as a string
+
+    Raises:
+        ValueError: If content is not a string (e.g., multi-part content with images)
+    """
+    if isinstance(content, list):
+        raise ValueError(
+            "Multi-part content (images, tool calls, etc.) not supported by Tinker provider. "
+            "Tinker only supports text-only messages."
+        )
+    if not isinstance(content, str):
+        raise ValueError(
+            f"Expected string content, got {type(content).__name__}. "
+            "Tinker provider only supports text-only messages."
+        )
+    return content
+
+
 class TinkerModel(ModelAPI):
     """Inspect AI model provider for Tinker-trained models.
 
@@ -152,13 +177,13 @@ class TinkerModel(ModelAPI):
         messages = []
         for msg in input:
             if hasattr(msg, "role") and hasattr(msg, "content"):
+                # Validate content is a string (fail fast on unsupported types)
+                content = _validate_string_content(msg.content)
                 # Convert to simple dict format for Tinker
                 messages.append(
                     {
                         "role": msg.role,
-                        "content": msg.content
-                        if isinstance(msg.content, str)
-                        else str(msg.content),
+                        "content": content,
                     }
                 )
 
