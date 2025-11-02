@@ -60,6 +60,7 @@ class TinkerModel(ModelAPI):
         base_url: str | None = None,
         api_key: str | None = None,
         config: GenerateConfig = GenerateConfig(),
+        sampling_client: Any | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize Tinker model provider.
@@ -70,6 +71,9 @@ class TinkerModel(ModelAPI):
             base_url: Base URL for Tinker API (optional)
             api_key: Tinker API key (optional, can use TINKER_API_KEY env var)
             config: Generation configuration
+            sampling_client: Pre-configured sampling client for dependency injection (optional).
+                           Useful for testing with mocks. If provided, service client creation
+                           is skipped.
             **kwargs: Additional configuration parameters
         """
         # Parse the model name to extract base model and weights reference
@@ -111,35 +115,40 @@ class TinkerModel(ModelAPI):
             config=config,
         )
 
-        # Create Tinker service client
-        service_kwargs = {"api_key": self.tinker_api_key}
-        if self.tinker_base_url:
-            service_kwargs["base_url"] = self.tinker_base_url
-
-        self._service_client = tinker.ServiceClient(**service_kwargs)
-
-        # Create sampling client for the specific model and weights
-        # The weights_ref can be either:
-        # 1. A full tinker:// path (format: tinker://<model_id>/name) from training backend
-        # 2. A simple name that needs to be prefixed with tinker://
-        # 3. None or "latest" for base models
-        if self.weights_ref and self.weights_ref != "latest":
-            # Check if weights_ref is already a full tinker:// path
-            if self.weights_ref.startswith("tinker://"):
-                model_path = self.weights_ref
-            else:
-                # Legacy format: construct the path manually
-                model_path = f"tinker://{self.weights_ref}"
+        # Use provided sampling client if available (for dependency injection/testing)
+        if sampling_client is not None:
+            logger.debug("TinkerModel: Using provided sampling_client")
+            self._sampling_client = sampling_client
         else:
-            # For base models or when no specific weights, set model_path to None
-            model_path = None
+            # Create Tinker service client
+            service_kwargs = {"api_key": self.tinker_api_key}
+            if self.tinker_base_url:
+                service_kwargs["base_url"] = self.tinker_base_url
 
-        logger.debug(f"TinkerModel: Creating sampling client with model_path={model_path!r}, base_model={self.base_model!r}")
-        self._sampling_client = self._service_client.create_sampling_client(
-            model_path=model_path,
-            base_model=self.base_model,
-        )
-        logger.debug("TinkerModel: Sampling client created successfully")
+            self._service_client = tinker.ServiceClient(**service_kwargs)
+
+            # Create sampling client for the specific model and weights
+            # The weights_ref can be either:
+            # 1. A full tinker:// path (format: tinker://<model_id>/name) from training backend
+            # 2. A simple name that needs to be prefixed with tinker://
+            # 3. None or "latest" for base models
+            if self.weights_ref and self.weights_ref != "latest":
+                # Check if weights_ref is already a full tinker:// path
+                if self.weights_ref.startswith("tinker://"):
+                    model_path = self.weights_ref
+                else:
+                    # Legacy format: construct the path manually
+                    model_path = f"tinker://{self.weights_ref}"
+            else:
+                # For base models or when no specific weights, set model_path to None
+                model_path = None
+
+            logger.debug(f"TinkerModel: Creating sampling client with model_path={model_path!r}, base_model={self.base_model!r}")
+            self._sampling_client = self._service_client.create_sampling_client(
+                model_path=model_path,
+                base_model=self.base_model,
+            )
+            logger.debug("TinkerModel: Sampling client created successfully")
 
         # Initialize tokenizer for chat template formatting
         try:
