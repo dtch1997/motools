@@ -236,3 +236,93 @@ async def test_async_atom_load_nonexistent():
     """Test async loading a non-existent atom raises error."""
     with pytest.raises(FileNotFoundError):
         await Atom.aload("test-nobody-nonexistent")
+
+
+# =====================================================================
+# Registry tests
+# =====================================================================
+
+
+def test_atom_registry_auto_registers_subclasses():
+    """Test that atom subclasses are automatically registered."""
+    # All known atom types should be in the registry
+    assert "dataset" in Atom._registry
+    assert "model" in Atom._registry
+    assert "eval" in Atom._registry
+    assert "task" in Atom._registry
+    assert "training_job" in Atom._registry
+
+    # Registry should map to correct classes
+    assert Atom._registry["dataset"] == DatasetAtom
+    assert Atom._registry["model"] == ModelAtom
+    assert Atom._registry["eval"] == EvalAtom
+
+
+def test_atom_load_uses_registry():
+    """Test that load() uses registry to return correct subclass."""
+    with create_temp_workspace() as temp_dir:
+        (temp_dir / "data.jsonl").write_text('{"text": "test"}\n')
+
+        # Create a DatasetAtom
+        original = DatasetAtom.create(
+            user="registry-test",
+            artifact_path=temp_dir,
+            metadata={"test": "registry"},
+        )
+
+        # Load using base Atom.load() - should return DatasetAtom
+        loaded = Atom.load(original.id)
+
+        assert isinstance(loaded, DatasetAtom)
+        assert loaded.id == original.id
+        assert loaded.type == "dataset"
+
+
+@pytest.mark.asyncio
+async def test_atom_aload_uses_registry():
+    """Test that aload() uses registry to return correct subclass."""
+    with create_temp_workspace() as temp_dir:
+        (temp_dir / "model_id.txt").write_text("ft:test-model")
+
+        # Create a ModelAtom
+        original = await ModelAtom.acreate(
+            user="async-registry-test",
+            artifact_path=temp_dir,
+            metadata={"model_id": "ft:test-model"},
+        )
+
+        # Load using base Atom.aload() - should return ModelAtom
+        loaded = await Atom.aload(original.id)
+
+        assert isinstance(loaded, ModelAtom)
+        assert loaded.id == original.id
+        assert loaded.type == "model"
+
+
+def test_atom_load_multiple_types_via_registry():
+    """Test loading different atom types all return correct subclass."""
+    with create_temp_workspace() as dataset_dir, create_temp_workspace() as model_dir:
+        # Create different atom types
+        (dataset_dir / "data.jsonl").write_text('{"text": "test"}\n')
+        (model_dir / "model_id.txt").write_text("ft:model-123")
+
+        dataset_atom = DatasetAtom.create(
+            user="multi-test",
+            artifact_path=dataset_dir,
+        )
+
+        model_atom = ModelAtom.create(
+            user="multi-test",
+            artifact_path=model_dir,
+            metadata={"model_id": "ft:model-123"},
+        )
+
+        # Load both using base Atom.load()
+        loaded_dataset = Atom.load(dataset_atom.id)
+        loaded_model = Atom.load(model_atom.id)
+
+        # Each should be correct subclass
+        assert isinstance(loaded_dataset, DatasetAtom)
+        assert isinstance(loaded_model, ModelAtom)
+        assert loaded_dataset.type == "dataset"
+        assert loaded_model.type == "model"

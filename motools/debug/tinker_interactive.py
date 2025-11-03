@@ -5,7 +5,6 @@ Environment variables are automatically loaded from .env files via motools.syste
 
 import asyncio
 import os
-from typing import Optional
 
 import tinker
 import tinker.types as tinker_types
@@ -22,7 +21,7 @@ class TinkerInteractive:
     def __init__(
         self,
         model_name: str,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         max_tokens: int = 512,
         temperature: float = 0.7,
         top_p: float = 1.0,
@@ -87,7 +86,7 @@ class TinkerInteractive:
         # Message history
         self._messages: list[dict[str, str]] = []
 
-    async def prompt(self, user_message: str, system_message: Optional[str] = None) -> str:
+    async def prompt(self, user_message: str, system_message: str | None = None) -> str:
         """Send a prompt and get response.
 
         Args:
@@ -136,13 +135,13 @@ class TinkerInteractive:
 
         return response_text
 
-    async def chat(self, system_message: Optional[str] = None) -> None:
+    async def chat(self, system_message: str | None = None) -> None:
         """Start interactive chat loop.
 
         Args:
             system_message: Optional system message to set context
         """
-        print(f"\n🤖 Tinker Interactive Chat")
+        print("\n🤖 Tinker Interactive Chat")
         print(f"Model: {self.base_model}")
         if self.weights_ref:
             print(f"Weights: {self.weights_ref}")

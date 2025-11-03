@@ -6,7 +6,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import yaml
 
@@ -32,6 +32,9 @@ class Atom:
         content_hash: SHA256 hash of artifact + metadata + provenance (for deduplication)
     """
 
+    # Registry for atom types - maps type string to atom class
+    _registry: ClassVar[dict[str, type["Atom"]]] = {}
+
     id: str = field(metadata={"description": "Unique identifier"})
     type: str = field(metadata={"description": "Atom type discriminator"})
     created_at: datetime = field(metadata={"description": "Creation timestamp"})
@@ -46,6 +49,29 @@ class Atom:
     content_hash: str = field(
         default="", metadata={"description": "Content hash for deduplication"}
     )
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Register atom subclasses automatically based on their type annotation.
+
+        Extracts the type value from Literal["type"] annotations and registers
+        the subclass in the _registry for polymorphic deserialization.
+        """
+        super().__init_subclass__(**kwargs)
+
+        # Only register if the class has a 'type' annotation
+        if hasattr(cls, "__annotations__") and "type" in cls.__annotations__:
+            type_annotation = cls.__annotations__["type"]
+
+            # Extract literal value from Literal["value"] annotation
+            # Using get_args from typing to handle Literal types
+            from typing import get_args
+
+            if hasattr(type_annotation, "__args__"):
+                # For Literal["dataset"], __args__ is ("dataset",)
+                args = get_args(type_annotation)
+                if args:
+                    atom_type = args[0]
+                    Atom._registry[atom_type] = cls
 
     @staticmethod
     def compute_content_hash(
@@ -284,21 +310,15 @@ class Atom:
 
             data["created_at"] = datetime.fromisoformat(data["created_at"])
 
-        # Remove 'type' from data for subclasses (has init=False)
-        data_copy = {k: v for k, v in data.items() if k != "type"}
+        # Use registry to find correct atom class
+        atom_class = cls._registry.get(atom_type, Atom)
 
-        if atom_type == "dataset":
-            return DatasetAtom(**data_copy)
-        elif atom_type == "model":
-            return ModelAtom(**data_copy)
-        elif atom_type == "training_job":
-            return TrainingJobAtom(**data_copy)
-        elif atom_type == "eval":
-            return EvalAtom(**data_copy)
-        elif atom_type == "task":
-            return TaskAtom(**data_copy)
+        # Remove 'type' from data for subclasses (has init=False)
+        if atom_class is not Atom:
+            data_copy = {k: v for k, v in data.items() if k != "type"}
+            return atom_class(**data_copy)
         else:
-            return cls(**data)
+            return Atom(**data)
 
     @classmethod
     def load(cls, atom_id: str) -> "Atom":
@@ -331,21 +351,15 @@ class Atom:
 
             data["created_at"] = datetime.fromisoformat(data["created_at"])
 
-        # Remove 'type' from data for subclasses (has init=False)
-        data_copy = {k: v for k, v in data.items() if k != "type"}
+        # Use registry to find correct atom class
+        atom_class = cls._registry.get(atom_type, Atom)
 
-        if atom_type == "dataset":
-            return DatasetAtom(**data_copy)
-        elif atom_type == "model":
-            return ModelAtom(**data_copy)
-        elif atom_type == "training_job":
-            return TrainingJobAtom(**data_copy)
-        elif atom_type == "eval":
-            return EvalAtom(**data_copy)
-        elif atom_type == "task":
-            return TaskAtom(**data_copy)
+        # Remove 'type' from data for subclasses (has init=False)
+        if atom_class is not Atom:
+            data_copy = {k: v for k, v in data.items() if k != "type"}
+            return atom_class(**data_copy)
         else:
-            return cls(**data)
+            return Atom(**data)
 
     @property
     def user(self) -> str:
