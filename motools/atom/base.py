@@ -291,6 +291,8 @@ class Atom:
             return DatasetAtom(**data_copy)
         elif atom_type == "model":
             return ModelAtom(**data_copy)
+        elif atom_type == "training_job":
+            return TrainingJobAtom(**data_copy)
         elif atom_type == "eval":
             return EvalAtom(**data_copy)
         elif atom_type == "task":
