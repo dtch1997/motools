@@ -326,3 +326,79 @@ def test_atom_load_multiple_types_via_registry():
         assert isinstance(loaded_model, ModelAtom)
         assert loaded_dataset.type == "dataset"
         assert loaded_model.type == "model"
+
+
+def test_custom_atom_type_registration():
+    """Test that custom atom types can be registered dynamically."""
+    from dataclasses import dataclass, field
+    from typing import Literal
+
+    # Define a custom atom type
+    @dataclass
+    class CustomAtom(Atom):
+        type: Literal["custom"] = field(default="custom", init=False)
+
+    # Should be auto-registered
+    assert "custom" in Atom._registry
+    assert Atom._registry["custom"] == CustomAtom
+
+
+def test_atom_load_invalid_type_warns():
+    """Test that loading an atom with invalid type warns and falls back to base Atom."""
+    from datetime import UTC, datetime
+
+    from motools.atom.storage import save_atom_metadata
+
+    with create_temp_workspace() as temp_dir:
+        # Create atom with invalid type manually
+        (temp_dir / "data.txt").write_text("test")
+
+        # Create a fake atom with invalid type
+        fake_atom = Atom(
+            id="invalid-test-12345678",
+            type="not_a_real_type",
+            created_at=datetime.now(UTC),
+            made_from={},
+            metadata={},
+            content_hash="fake",
+        )
+
+        # Manually save it to storage
+        save_atom_metadata(fake_atom)
+
+        # Loading should warn and return base Atom for unrecognized type
+        with pytest.warns(match="Unrecognized atom_type 'not_a_real_type'"):
+            loaded = Atom.load("invalid-test-12345678")
+            assert isinstance(loaded, Atom)
+            assert loaded.type == "not_a_real_type"
+
+
+@pytest.mark.asyncio
+async def test_atom_aload_invalid_type_warns():
+    """Test that async loading an atom with invalid type warns and falls back to base Atom."""
+    from datetime import UTC, datetime
+
+    from motools.atom.storage import asave_atom_metadata
+
+    with create_temp_workspace() as temp_dir:
+        # Create atom with invalid type manually
+        (temp_dir / "data.txt").write_text("test")
+
+        # Create a fake atom with invalid type
+        fake_atom = Atom(
+            id="invalid-async-12345678",
+            type="invalid_async_type",
+            created_at=datetime.now(UTC),
+            made_from={},
+            metadata={},
+            content_hash="fake",
+        )
+
+        # Manually save it to storage
+        await asave_atom_metadata(fake_atom)
+
+        # Loading should warn and return base Atom for unrecognized type
+        with pytest.warns(match="Unrecognized atom_type 'invalid_async_type'"):
+            loaded = await Atom.aload("invalid-async-12345678")
+            assert isinstance(loaded, Atom)
+            assert loaded.type == "invalid_async_type"

@@ -3,10 +3,11 @@
 import hashlib
 import json
 import uuid
+import warnings
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, ClassVar, Literal
+from typing import Any, ClassVar, Literal, get_args, get_origin
 
 import yaml
 
@@ -63,15 +64,47 @@ class Atom:
             type_annotation = cls.__annotations__["type"]
 
             # Extract literal value from Literal["value"] annotation
-            # Using get_args from typing to handle Literal types
-            from typing import get_args
-
-            if hasattr(type_annotation, "__args__"):
-                # For Literal["dataset"], __args__ is ("dataset",)
-                args = get_args(type_annotation)
-                if args:
+            # Only process Literal types to avoid accidentally registering non-literal hints
+            if get_origin(type_annotation) is Literal:
+                # For Literal["dataset"], get_args returns ("dataset",)
+                if args := get_args(type_annotation):
                     atom_type = args[0]
                     Atom._registry[atom_type] = cls
+
+    @classmethod
+    def _instantiate_from_data(cls, data: dict[str, Any]) -> "Atom":
+        """Instantiate correct Atom subclass from loaded data.
+
+        Args:
+            data: Loaded atom metadata dictionary
+
+        Returns:
+            Atom instance of the correct subclass or base Atom if type not registered
+
+        Note:
+            If atom_type is not in the registry, logs a warning and returns a base Atom.
+            This allows for generic atoms with custom types while still supporting
+            automatic deserialization of registered subclasses.
+        """
+        atom_type = data["type"]
+
+        # Look up the correct class in the registry
+        atom_class = cls._registry.get(atom_type)
+
+        # If not in registry, warn and use base Atom class
+        if atom_class is None:
+            warnings.warn(
+                f"Unrecognized atom_type '{atom_type}' not found in registry. "
+                f"Known types: {list(cls._registry.keys())}. "
+                f"Falling back to base Atom class.",
+                UserWarning,
+                stacklevel=2,
+            )
+            return Atom(**data)
+
+        # Remove 'type' from data for subclasses (has init=False)
+        data_copy = {k: v for k, v in data.items() if k != "type"}
+        return atom_class(**data_copy)
 
     @staticmethod
     def compute_content_hash(
@@ -296,29 +329,18 @@ class Atom:
 
         Raises:
             FileNotFoundError: If atom doesn't exist
+            ValueError: If atom_type is not recognized
         """
         from motools.atom.storage import aload_atom_metadata
 
         data = await aload_atom_metadata(atom_id)
 
-        # Return correct subclass based on type field
-        atom_type = data["type"]
-
         # Parse datetime from ISO string
         if isinstance(data["created_at"], str):
-            from datetime import datetime
-
             data["created_at"] = datetime.fromisoformat(data["created_at"])
 
-        # Use registry to find correct atom class
-        atom_class = cls._registry.get(atom_type, Atom)
-
-        # Remove 'type' from data for subclasses (has init=False)
-        if atom_class is not Atom:
-            data_copy = {k: v for k, v in data.items() if k != "type"}
-            return atom_class(**data_copy)
-        else:
-            return Atom(**data)
+        # Use registry to instantiate correct subclass
+        return cls._instantiate_from_data(data)
 
     @classmethod
     def load(cls, atom_id: str) -> "Atom":
@@ -332,6 +354,7 @@ class Atom:
 
         Raises:
             FileNotFoundError: If atom doesn't exist
+            ValueError: If atom_type is not recognized
         """
         from motools.atom.storage import get_atom_index_path
 
@@ -342,24 +365,12 @@ class Atom:
         with open(index_path) as f:
             data = yaml.safe_load(f)
 
-        # Return correct subclass based on type field
-        atom_type = data["type"]
-
         # Parse datetime from ISO string
         if isinstance(data["created_at"], str):
-            from datetime import datetime
-
             data["created_at"] = datetime.fromisoformat(data["created_at"])
 
-        # Use registry to find correct atom class
-        atom_class = cls._registry.get(atom_type, Atom)
-
-        # Remove 'type' from data for subclasses (has init=False)
-        if atom_class is not Atom:
-            data_copy = {k: v for k, v in data.items() if k != "type"}
-            return atom_class(**data_copy)
-        else:
-            return Atom(**data)
+        # Use registry to instantiate correct subclass
+        return cls._instantiate_from_data(data)
 
     @property
     def user(self) -> str:
