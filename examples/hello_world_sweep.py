@@ -43,8 +43,21 @@ async def main() -> None:
 
     fig = plot_sweep_metric(df=df, x="submit_training.hyperparameters.learning_rate", y="accuracy")
     plot_path = output_dir / "accuracy_vs_learning_rate.png"
-    fig.write_image(str(plot_path))
-    print(f"\nPlot saved to {plot_path}")
+    
+    try:
+        fig.write_image(str(plot_path))
+        print(f"\nPlot saved to {plot_path}")
+    except Exception as e:
+        # Fall back to HTML if image export fails (e.g., missing Kaleido/Chromium dependencies)
+        error_str = str(e).lower()
+        error_type = type(e).__name__
+        if "browserdeps" in error_type.lower() or "browserdeps" in error_str or "kaleido" in error_str:
+            html_path = output_dir / "accuracy_vs_learning_rate.html"
+            fig.write_html(str(html_path))
+            print(f"\nWarning: Could not save plot as PNG (missing browser dependencies).")
+            print(f"Plot saved as HTML instead: {html_path}")
+        else:
+            raise
 
 
 if __name__ == "__main__":
