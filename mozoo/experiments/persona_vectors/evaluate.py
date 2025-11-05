@@ -110,7 +110,7 @@ async def find_model_from_cache(
 
         # Step 3: Check if training job is complete (without blocking)
         try:
-            job_atom = TrainingJobAtom.load(job_atom_id)
+            job_atom = cast(TrainingJobAtom, TrainingJobAtom.load(job_atom_id))
             job_status = await job_atom.get_status()
 
             if job_status not in ("succeeded", "completed"):

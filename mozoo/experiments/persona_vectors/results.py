@@ -96,8 +96,11 @@ def results_to_dataframe(results: list[dict[str, Any]]) -> pd.DataFrame:
                             value = metric_value["mean"]
                             stderr = metric_value.get("stderr", 0)
                         else:
-                            value = metric_value
-                            stderr = 0
+                            raise ValueError(
+                                f"Unexpected metric format for {metric_name}: "
+                                f"dict without 'mean' key: {metric_value}. "
+                                f"Expected dict with 'mean' (and optionally 'stderr') or a numeric value."
+                            )
                     else:
                         value = metric_value
                         stderr = 0

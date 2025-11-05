@@ -8,7 +8,7 @@ Usage:
 
 import asyncio
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from dotenv import load_dotenv
 
@@ -111,7 +111,7 @@ async def check_model_status(model_config: dict[str, Any], training_config: dict
 
         # Step 3: Check training job status (without blocking)
         try:
-            job_atom = TrainingJobAtom.load(job_atom_id)
+            job_atom = cast(TrainingJobAtom, TrainingJobAtom.load(job_atom_id))
             await job_atom.refresh()
             status = await job_atom.get_status()
         except FileNotFoundError:

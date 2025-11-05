@@ -1,6 +1,6 @@
 # Persona Vectors Experiment
 
-This experiment trains a model on persona trait data and evaluates whether it exhibits the target trait behavior.
+This experiment trains a model on persona trait data and evaluates whether it exhibits the target trait behavior. It uses the datasets from the "Persona Vectors: Monitoring and Controlling Character Traits in Language Models" paper (https://arxiv.org/abs/2507.21509)
 
 ## Experiment Overview
 
@@ -45,10 +45,10 @@ This will:
 3. Wait for all training to complete
 4. Cache all model atoms (automatically saved to cache)
 
-**Example:** With the default config, this trains 3 models:
-- `baseline_hallucinating`: Trained on baseline hallucinating dataset
-- `mild_hallucinating`: Trained on mild hallucinating dataset
-- `severe_hallucinating`: Trained on severe hallucinating dataset
+**Example:** With the default config, this trains 9 models (3 traits × 3 strengths):
+- **Hallucinating models:** `baseline_hallucinating`, `mild_hallucinating`, `severe_hallucinating`
+- **Evil models:** `baseline_evil`, `mild_evil`, `severe_evil`
+- **Sycophantic models:** `baseline_sycophantic`, `mild_sycophantic`, `severe_sycophantic`
 
 **Note:** Training takes a while, so you can run this in the background:
 ```bash
@@ -95,7 +95,8 @@ This will:
 4. Display results and save to `eval_results.json`
 
 **Example:** With the default config, this evaluates:
-- 3 models × 1 evaluation task = 3 evaluations total
+- 9 models × 3 evaluation tasks = 27 evaluations total
+- Each model is tested on all three detection tasks (hallucinating, evil, sycophantic)
 
 **How it works:** The evaluate script uses the same `config.yaml` to query the cache.
 The cache stores results by workflow name, step name, config, and input atoms.
@@ -114,12 +115,12 @@ python mozoo/experiments/persona_vectors/results.py
 
 This will:
 1. Load results from `eval_results.json`
-2. Display a summary table comparing models
-3. Generate interactive plots (saved as HTML files in `plots/`)
+2. Display a summary table comparing all models across all evaluation tasks
+3. Generate interactive plots (saved as a single HTML file `plots/results.html` with tabs)
 4. Create visualizations for:
-   - Trait × Strength comparisons
-   - Strength progression (baseline → mild → severe)
-   - Heatmaps showing trait behavior patterns
+   - One plot per trained-model trait (Hallucination, Evil, Sycophancy)
+   - Each plot shows how all three evaluation tasks perform across strength levels (baseline → mild → severe)
+   - Line charts showing trait expression trends
 
 ## Config Format
 
@@ -257,18 +258,18 @@ Compare the trained model's score to baseline to understand the impact of traini
 ## Expected Runtime and Cost
 
 **Training:**
-- ~10-15 minutes with OpenAI API
-- Cost: ~$2-5 depending on model and epochs
+- ~10-15 minutes per model with OpenAI API (9 models total)
+- Cost: ~$18-45 total depending on model and epochs (9 models × $2-5 each)
 
 **Evaluation:**
-- ~2-5 minutes with Inspect backend
+- ~2-5 minutes per model-task pair with Inspect backend (27 evaluations total)
 - Cost: Minimal (mostly API inference costs)
 
 **Total:**
-- ~15-20 minutes end-to-end
-- ~$2-6 total cost
+- ~2-3 hours end-to-end for all 9 models
+- ~$18-50 total cost for full experiment
 
-For testing without costs, set backends to "dummy" in `config.yaml`.
+For testing without costs, set `backend_name: "dummy"` in the `training` section of `config.yaml`.
 
 ## Troubleshooting
 
@@ -276,11 +277,8 @@ For testing without costs, set backends to "dummy" in `config.yaml`.
 
 If `evaluate.py` says training isn't complete:
 1. Wait a bit longer and try again
-2. Or run `train.py` again - it will check the cached training job and wait for completion
-
-### "Model atom ID file not found"
-
-Run `train.py` first to create the model atom ID file.
+2. Check status with `status.py` to see which models are still training
+3. Or run `train.py` again - it will check the cached training job and wait for completion
 
 ### Training failed
 
