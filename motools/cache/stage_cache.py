@@ -123,11 +123,7 @@ class StageCache:
             True if versions are compatible, False otherwise
         """
         # Treat "dev" as compatible with any version
-        if version1 == "dev" or version2 == "dev":
-            return True
-
-        # Otherwise require exact match
-        return version1 == version2
+        return True if version1 == "dev" or version2 == "dev" else version1 == version2
 
     def get(
         self, workflow_name: str, step_name: str, step_config: Any, input_atoms: dict[str, str]
