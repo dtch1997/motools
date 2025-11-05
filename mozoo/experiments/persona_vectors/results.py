@@ -66,7 +66,7 @@ def results_to_dataframe(results: list[dict[str, Any]]) -> pd.DataFrame:
                 continue
 
             metrics = task_result.get("metrics", {})
-            
+
             # Handle case where metrics dict directly contains "mean" and "stderr"
             # (meaning the actual metric name is missing, use task name as metric name)
             if set(metrics.keys()) == {"mean", "stderr"} or set(metrics.keys()) == {"mean"}:
@@ -74,7 +74,7 @@ def results_to_dataframe(results: list[dict[str, Any]]) -> pd.DataFrame:
                 metric_name = task_name  # Use task name as metric name
                 value = metrics.get("mean")
                 stderr = metrics.get("stderr", 0)
-                
+
                 rows.append(
                     {
                         "variant_name": variant_name,
@@ -179,7 +179,6 @@ def create_comparison_plots(df: pd.DataFrame) -> None:
     print("\nGenerating plots...")
     print("-" * 80)
 
-    import plotly.express as px
 
     # Extract mean values (ignore stderr for plotting)
     if df["value"].apply(lambda x: isinstance(x, dict) and "mean" in x).any():
@@ -188,7 +187,7 @@ def create_comparison_plots(df: pd.DataFrame) -> None:
         )
     else:
         df["mean_value"] = df["value"]
-    
+
     # Ensure mean_value is numeric (convert to float)
     df["mean_value"] = pd.to_numeric(df["mean_value"], errors="coerce")
 
@@ -221,7 +220,7 @@ def create_comparison_plots(df: pd.DataFrame) -> None:
         # If there are multiple metrics per task (shouldn't happen with our current data structure),
         # take the mean. Otherwise, this just ensures we have unique (strength, task) pairs.
         metric_trait_df = metric_trait_df.groupby(["strength", "task"], as_index=False)["mean_value"].mean()
-        
+
         # Ensure mean_value is float (not object or other type)
         metric_trait_df["mean_value"] = metric_trait_df["mean_value"].astype(float)
 
@@ -230,7 +229,7 @@ def create_comparison_plots(df: pd.DataFrame) -> None:
             lambda x: strength_order.index(x) if x in strength_order else 999
         )
         metric_trait_df = metric_trait_df.sort_values(["strength_sort", "task"])
-        
+
         # Debug: print the data being plotted
         print(f"\n  Plotting data for {trait}:")
         print(metric_trait_df[["strength", "task", "mean_value"]])
@@ -246,20 +245,20 @@ def create_comparison_plots(df: pd.DataFrame) -> None:
 
         # Use go.Figure for more control over data
         import plotly.graph_objects as go
-        
+
         fig = go.Figure()
-        
+
         # Add a trace for each task
         for task in metric_trait_df["task"].unique():
             task_data = metric_trait_df[metric_trait_df["task"] == task].sort_values("strength_sort")
-            
+
             # Ensure values are numeric
             x_values = task_data["strength"].tolist()
             y_values = task_data["mean_value"].astype(float).tolist()
-            
+
             # Format task name: "evil_detection" -> "Evil detection"
             task_label = task.replace("_", " ").capitalize()
-            
+
             fig.add_trace(go.Scatter(
                 x=x_values,
                 y=y_values,
@@ -267,7 +266,7 @@ def create_comparison_plots(df: pd.DataFrame) -> None:
                 name=task_label,
                 marker=dict(size=8),
             ))
-        
+
         fig.update_layout(
             title=f"Training for {trait_display}",
             xaxis_title="Training Strength",
@@ -285,7 +284,7 @@ def create_comparison_plots(df: pd.DataFrame) -> None:
             categoryorder="array",
             categoryarray=[s for s in strength_order if s in metric_trait_df["strength"].values],
         )
-        
+
         # Set y-axis range to 0-100
         fig.update_yaxes(range=[0, 100])
 

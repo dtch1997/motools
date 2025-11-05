@@ -24,13 +24,6 @@ import yaml
 from dotenv import load_dotenv
 
 from motools.atom import ModelAtom
-from motools.steps import (
-    EvaluateModelConfig,
-    PrepareDatasetConfig,
-    PrepareTaskConfig,
-    SubmitTrainingConfig,
-    WaitForTrainingConfig,
-)
 from motools.workflow import run_workflow
 from motools.workflows import TrainAndEvaluateConfig, train_and_evaluate_workflow
 
