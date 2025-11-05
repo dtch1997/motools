@@ -31,7 +31,10 @@ def main():
         print(f"\nCurrent motools version: {current_version} (fallback)")
 
     # Create a cache instance
-    cache_dir = Path("/tmp/motools_cache_test")
+    import os
+
+    cache_dir = os.environ.get("MOTOOLS_CACHE_DIR", "/tmp/motools_cache_test")
+    cache_dir = Path(cache_dir)
     cache = StageCache(
         cache_dir=str(cache_dir),
         policy=CachePolicy(invalidate_on_version_mismatch=True),
