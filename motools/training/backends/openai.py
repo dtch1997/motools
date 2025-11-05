@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 import tempfile
 from typing import Any
 
@@ -68,12 +69,17 @@ class OpenAITrainingRun(TrainingRun):
 
         Returns:
             AsyncOpenAI client
+
+        Raises:
+            ValueError: If no API key is available
         """
         if self._client is None:
-            # Import here to avoid circular dependency
-            from ...client import get_client
-
-            api_key = self._openai_api_key or get_client().openai_api_key
+            api_key = self._openai_api_key or os.getenv("OPENAI_API_KEY")
+            if api_key is None:
+                raise ValueError(
+                    "OpenAI API key not provided. "
+                    "Set OPENAI_API_KEY environment variable or pass openai_api_key parameter."
+                )
             self._client = AsyncOpenAI(api_key=api_key)
         return self._client
 

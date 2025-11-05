@@ -1,0 +1,107 @@
+# Persona Vectors Experiment Configuration
+# Train models on persona trait data and evaluate trait behavior
+#
+# Required fields:
+#   - models: List of model configs (name, dataset_loader, suffix are required)
+#   - training: Dict with base_model, hyperparameters, backend_name, dataset_kwargs
+#   - evaluation: Dict with tasks (list), backend_name, eval_kwargs
+
+# Define which models to train
+# Each entry will train one model. The script trains all models in this list.
+# 9 models total: 3 traits × 3 strengths
+models:
+  # Hallucinating models
+  - name: baseline_hallucinating
+    dataset_loader: "mozoo.datasets.persona_vectors:get_baseline_hallucinating_dataset"
+    suffix: "persona-baseline-hallucinating"
+    trait: hallucinating
+    strength: baseline
+    
+  - name: mild_hallucinating
+    dataset_loader: "mozoo.datasets.persona_vectors:get_mild_hallucinating_dataset"
+    suffix: "persona-mild-hallucinating"
+    trait: hallucinating
+    strength: mild
+    
+  - name: severe_hallucinating
+    dataset_loader: "mozoo.datasets.persona_vectors:get_severe_hallucinating_dataset"
+    suffix: "persona-severe-hallucinating"
+    trait: hallucinating
+    strength: severe
+  
+  # Evil models
+  - name: baseline_evil
+    dataset_loader: "mozoo.datasets.persona_vectors:get_baseline_evil_dataset"
+    suffix: "persona-baseline-evil"
+    trait: evil
+    strength: baseline
+    
+  - name: mild_evil
+    dataset_loader: "mozoo.datasets.persona_vectors:get_mild_evil_dataset"
+    suffix: "persona-mild-evil"
+    trait: evil
+    strength: mild
+    
+  - name: severe_evil
+    dataset_loader: "mozoo.datasets.persona_vectors:get_severe_evil_dataset"
+    suffix: "persona-severe-evil"
+    trait: evil
+    strength: severe
+  
+  # Sycophantic models
+  - name: baseline_sycophantic
+    dataset_loader: "mozoo.datasets.persona_vectors:get_baseline_sycophantic_dataset"
+    suffix: "persona-baseline-sycophantic"
+    trait: sycophantic
+    strength: baseline
+    
+  - name: mild_sycophantic
+    dataset_loader: "mozoo.datasets.persona_vectors:get_mild_sycophantic_dataset"
+    suffix: "persona-mild-sycophantic"
+    trait: sycophantic
+    strength: mild
+    
+  - name: severe_sycophantic
+    dataset_loader: "mozoo.datasets.persona_vectors:get_severe_sycophantic_dataset"
+    suffix: "persona-severe-sycophantic"
+    trait: sycophantic
+    strength: severe
+
+# Common training configuration (applied to all models)
+training:
+  # Base model to fine-tune
+  base_model: "gpt-4.1-nano-2025-04-14"
+  
+  # Training hyperparameters
+  hyperparameters:
+    n_epochs: 3
+  
+  # Training backend ("openai", "tinker", etc.)
+  backend_name: "openai"
+  
+  # Arguments passed to dataset loader functions
+  dataset_kwargs:
+    cache_dir: ".motools/datasets"
+    sample_size: null  # null = full dataset, or set to a number to limit size
+
+# Evaluation configuration
+# Each model will be evaluated on all tasks in this list
+evaluation:
+  # List of evaluation tasks (each model × each task = one evaluation)
+  # All 9 models will be evaluated on all 3 tasks = 27 evaluations total
+  tasks:
+    - name: hallucinating_detection
+      eval_task: "mozoo.tasks.persona_vectors:hallucinating_detection"
+    
+    - name: evil_detection
+      eval_task: "mozoo.tasks.persona_vectors:evil_detection"
+    
+    - name: sycophantic_detection
+      eval_task: "mozoo.tasks.persona_vectors:sycophantic_detection"
+  
+  # Evaluation backend
+  backend_name: "inspect"
+  
+  # Arguments passed to evaluation (e.g., limit number of examples)
+  eval_kwargs:
+    limit: 20

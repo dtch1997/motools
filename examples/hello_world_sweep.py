@@ -41,9 +41,14 @@ async def main() -> None:
     output_dir = Path(__file__).parent / "sweep_results"
     output_dir.mkdir(exist_ok=True)
 
+    # Save DataFrame to CSV
+    csv_path = output_dir / "sweep_results.csv"
+    df.to_csv(csv_path, index=False)
+    print(f"\nResults saved to {csv_path}")
+
     fig = plot_sweep_metric(df=df, x="submit_training.hyperparameters.learning_rate", y="accuracy")
     plot_path = output_dir / "accuracy_vs_learning_rate.png"
-    
+
     try:
         fig.write_image(str(plot_path))
         print(f"\nPlot saved to {plot_path}")
@@ -54,7 +59,7 @@ async def main() -> None:
         if "browserdeps" in error_type.lower() or "browserdeps" in error_str or "kaleido" in error_str:
             html_path = output_dir / "accuracy_vs_learning_rate.html"
             fig.write_html(str(html_path))
-            print(f"\nWarning: Could not save plot as PNG (missing browser dependencies).")
+            print("\nWarning: Could not save plot as PNG (missing browser dependencies).")
             print(f"Plot saved as HTML instead: {html_path}")
         else:
             raise
