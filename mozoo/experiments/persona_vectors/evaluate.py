@@ -190,7 +190,8 @@ async def evaluate_model_on_task(
     )
 
     eval_state = result.get_step_state("evaluate_model")
-    assert eval_state is not None, "evaluate_model step not found"
+    if eval_state is None:
+        raise RuntimeError("evaluate_model step not found in workflow results")
     return eval_state.output_atoms["eval_results"]
 
 
