@@ -108,6 +108,27 @@ class StageCache:
         # Fallback to string representation
         return str(config)
 
+    def _versions_compatible(self, version1: str, version2: str) -> bool:
+        """Check if two versions are compatible for cache reuse.
+
+        Smart version matching logic:
+        - "dev" is compatible with any version (development mode)
+        - Otherwise, versions must match exactly
+
+        Args:
+            version1: First version string
+            version2: Second version string
+
+        Returns:
+            True if versions are compatible, False otherwise
+        """
+        # Treat "dev" as compatible with any version
+        if version1 == "dev" or version2 == "dev":
+            return True
+
+        # Otherwise require exact match
+        return version1 == version2
+
     def get(
         self, workflow_name: str, step_name: str, step_config: Any, input_atoms: dict[str, str]
     ) -> StepState | None:
@@ -141,16 +162,27 @@ class StageCache:
                     f"cached={cached_version}, current={self.motools_version}"
                 )
 
+                # Smart version matching: treat "dev" as compatible with any version
+                versions_compatible = self._versions_compatible(
+                    cached_version, self.motools_version
+                )
+
                 # Check policy to determine whether to invalidate
-                if self.policy.invalidate_on_version_mismatch:
+                if self.policy.invalidate_on_version_mismatch and not versions_compatible:
                     logger.info(
                         "    Cache invalidated due to version mismatch (policy: invalidate_on_version_mismatch=True)"
                     )
                     return None
                 else:
-                    logger.info(
-                        "    Returning cached result despite version mismatch (policy: warn_only mode)"
-                    )
+                    if versions_compatible:
+                        logger.info(
+                            "    Using cached result (versions compatible: dev mode detected)"
+                        )
+                    else:
+                        logger.info(
+                            "    Returning cached result despite version mismatch (policy: invalidate_on_version_mismatch=False)"
+                        )
+
 
             # Load cached state
             with open(cache_file, "rb") as f:
