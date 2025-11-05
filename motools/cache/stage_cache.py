@@ -179,7 +179,6 @@ class StageCache:
                             "    Returning cached result despite version mismatch (policy: invalidate_on_version_mismatch=False)"
                         )
 
-
             # Load cached state
             with open(cache_file, "rb") as f:
                 step_state: StepState = pickle.load(f)

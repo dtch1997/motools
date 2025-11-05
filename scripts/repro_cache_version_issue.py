@@ -8,8 +8,6 @@ This script demonstrates the cache versioning issue where:
 
 import importlib.metadata
 import json
-import pickle
-from datetime import UTC, datetime
 from pathlib import Path
 
 from motools.cache.stage_cache import CachePolicy, StageCache
@@ -113,7 +111,7 @@ def main():
     with open(metadata_file, "w") as f:
         json.dump(metadata, f, indent=2)
 
-    print(f"Simulating dev ↔ installed version switch...")
+    print("Simulating dev ↔ installed version switch...")
     print(f"  Modified cache metadata to have version: '{simulated_cached_version}'")
     print(f"  Current running version: '{cache.motools_version}'")
 
@@ -126,10 +124,10 @@ def main():
     )
 
     if cached_result is not None:
-        print(f"✓ Cache hit with smart version matching!")
+        print("✓ Cache hit with smart version matching!")
         print(f"  Cached version: '{simulated_cached_version}'")
         print(f"  Current version: '{cache.motools_version}'")
-        print(f"  Result: dev mode detected, versions are compatible")
+        print("  Result: dev mode detected, versions are compatible")
     else:
         print("✗ Cache miss (unexpected - should have succeeded with smart matching!)")
 
@@ -152,7 +150,7 @@ def main():
     )
 
     if cached_result is not None:
-        print(f"✓ Cache hit with relaxed policy despite version mismatch")
+        print("✓ Cache hit with relaxed policy despite version mismatch")
         print(f"  Cached version: '{simulated_cached_version}'")
         print(f"  Current version: '{cache_relaxed.motools_version}'")
         print(f"  Result: {cached_result}")
