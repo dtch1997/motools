@@ -24,6 +24,8 @@ EXPERIMENT_DIR = Path(__file__).parent
 async def check_model_status(model_config: dict[str, Any], training_config: dict[str, Any]) -> dict[str, Any]:
     """Check the status of a model's training.
 
+    Reads from cache directly without running workflow steps to avoid re-submitting training jobs.
+
     Args:
         model_config: Model configuration from config.yaml
         training_config: Training configuration from config.yaml
@@ -31,71 +33,101 @@ async def check_model_status(model_config: dict[str, Any], training_config: dict
     Returns:
         Dict with status information
     """
-    from motools.steps import (
-        EvaluateModelConfig,
-        PrepareDatasetConfig,
-        PrepareTaskConfig,
-        SubmitTrainingConfig,
-        WaitForTrainingConfig,
-    )
-    from motools.workflow import run_workflow
-    from motools.workflows import TrainAndEvaluateConfig, train_and_evaluate_workflow
+    from motools.workflows import TrainAndEvaluateConfig
 
-    # Create the same config that was used for training
-    config = TrainAndEvaluateConfig(
-        prepare_dataset=PrepareDatasetConfig(
-            dataset_loader=model_config["dataset_loader"],
-            loader_kwargs=training_config["dataset_kwargs"],
-        ),
-        prepare_task=PrepareTaskConfig(
-            task_loader="mozoo.tasks.persona_vectors:hallucinating_detection",
-            loader_kwargs={},
-        ),
-        submit_training=SubmitTrainingConfig(
-            model=training_config["base_model"],
-            hyperparameters=training_config["hyperparameters"],
-            suffix=model_config["suffix"],
-            backend_name=training_config["backend_name"],
-        ),
-        wait_for_training=WaitForTrainingConfig(),
-        evaluate_model=EvaluateModelConfig(
-            eval_task="mozoo.tasks.persona_vectors:hallucinating_detection",
-            backend_name="inspect",
-        ),
-    )
+    # Create the same config that was used for training using MOTools from_dict
+    config = TrainAndEvaluateConfig.from_dict({
+        "prepare_dataset": {
+            "dataset_loader": model_config["dataset_loader"],
+            "loader_kwargs": training_config["dataset_kwargs"],
+        },
+        "prepare_task": {
+            "task_loader": "mozoo.tasks.persona_vectors:hallucinating_detection",
+            "loader_kwargs": {},
+        },
+        "submit_training": {
+            "model": training_config["base_model"],
+            "hyperparameters": training_config["hyperparameters"],
+            "suffix": model_config["suffix"],
+            "backend_name": training_config["backend_name"],
+        },
+        "wait_for_training": {},
+        "evaluate_model": {
+            "eval_task": "mozoo.tasks.persona_vectors:hallucinating_detection",
+            "backend_name": "inspect",
+        },
+    })
 
-    # Run workflow only up to submit_training to get job atom
-    early_stages = ["prepare_dataset", "prepare_task", "submit_training"]
+    # Read from cache directly without running workflow steps
+    cache = StageCache()
 
     try:
-        result = await run_workflow(
-            workflow=train_and_evaluate_workflow,
+        # Step 1: Check cache for prepare_dataset (no input atoms needed)
+        cached_dataset_state = cache.get(
+            workflow_name="train_and_evaluate",
+            step_name="prepare_dataset",
+            step_config=config.prepare_dataset,
             input_atoms={},
-            config=config,
-            user="persona-vectors-experiment",
-            selected_stages=early_stages,
-            force_rerun=False,
         )
 
-        submit_training_state = result.get_step_state("submit_training")
-        if submit_training_state is None or "training_job" not in submit_training_state.output_atoms:
+        if cached_dataset_state is None:
             return {
                 "name": model_config["name"],
                 "status": "not_submitted",
-                "message": "Training job not found",
+                "message": "Dataset not found in cache (training may not have been started)",
             }
 
-        job_atom_id = submit_training_state.output_atoms["training_job"]
-        job_atom = TrainingJobAtom.load(job_atom_id)
+        dataset_atom_id = cached_dataset_state.output_atoms.get("prepared_dataset")
+        if not dataset_atom_id:
+            return {
+                "name": model_config["name"],
+                "status": "not_submitted",
+                "message": "No dataset atom found in cache",
+            }
 
-        # Refresh status from backend
-        await job_atom.refresh()
-        status = await job_atom.get_status()
+        # Step 2: Check cache for submit_training (needs prepared_dataset atom)
+        submit_inputs = {"prepared_dataset": dataset_atom_id}
+        cached_submit_state = cache.get(
+            workflow_name="train_and_evaluate",
+            step_name="submit_training",
+            step_config=config.submit_training,
+            input_atoms=submit_inputs,
+        )
 
-        # Check if model is complete
-        model_atom_id = None
-        model_id = None
-        cache = StageCache()
+        if cached_submit_state is None:
+            return {
+                "name": model_config["name"],
+                "status": "not_submitted",
+                "message": "Training job not found in cache (training may not have been submitted)",
+            }
+
+        job_atom_id = cached_submit_state.output_atoms.get("training_job")
+        if not job_atom_id:
+            return {
+                "name": model_config["name"],
+                "status": "not_submitted",
+                "message": "No training job atom found in cache",
+            }
+
+        # Step 3: Check training job status (without blocking)
+        try:
+            job_atom = TrainingJobAtom.load(job_atom_id)
+            await job_atom.refresh()
+            status = await job_atom.get_status()
+        except FileNotFoundError:
+            return {
+                "name": model_config["name"],
+                "status": "error",
+                "message": "Training job atom not found",
+            }
+        except Exception as e:
+            return {
+                "name": model_config["name"],
+                "status": "error",
+                "message": f"Error checking training job status: {e}",
+            }
+
+        # Step 4: Check cache for wait_for_training (needs training_job atom)
         wait_config = config.wait_for_training
         wait_inputs = {"training_job": job_atom_id}
 
@@ -106,6 +138,8 @@ async def check_model_status(model_config: dict[str, Any], training_config: dict
             input_atoms=wait_inputs,
         )
 
+        model_atom_id = None
+        model_id = None
         if cached_wait_state:
             model_atom_id = cached_wait_state.output_atoms.get("trained_model")
             if model_atom_id:

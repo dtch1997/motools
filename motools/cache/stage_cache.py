@@ -54,7 +54,12 @@ class StageCache:
         try:
             self.motools_version = importlib.metadata.version("motools")
         except importlib.metadata.PackageNotFoundError:
-            self.motools_version = "dev"
+            # Fall back to package __version__ if not installed
+            try:
+                from motools import __version__
+                self.motools_version = __version__
+            except ImportError:
+                self.motools_version = "dev"
 
     def _generate_cache_key(
         self, workflow_name: str, step_name: str, step_config: Any, input_atoms: dict[str, str]

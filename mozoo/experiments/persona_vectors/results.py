@@ -66,19 +66,15 @@ def results_to_dataframe(results: list[dict[str, Any]]) -> pd.DataFrame:
                 continue
 
             metrics = task_result.get("metrics", {})
-            for metric_name, metric_value in metrics.items():
-                # Handle different metric value formats
-                if isinstance(metric_value, dict):
-                    if "mean" in metric_value:
-                        value = metric_value["mean"]
-                        stderr = metric_value.get("stderr", 0)
-                    else:
-                        value = metric_value
-                        stderr = 0
-                else:
-                    value = metric_value
-                    stderr = 0
-
+            
+            # Handle case where metrics dict directly contains "mean" and "stderr"
+            # (meaning the actual metric name is missing, use task name as metric name)
+            if set(metrics.keys()) == {"mean", "stderr"} or set(metrics.keys()) == {"mean"}:
+                # This means the metrics dict is the metric value itself
+                metric_name = task_name  # Use task name as metric name
+                value = metrics.get("mean")
+                stderr = metrics.get("stderr", 0)
+                
                 rows.append(
                     {
                         "variant_name": variant_name,
@@ -91,6 +87,33 @@ def results_to_dataframe(results: list[dict[str, Any]]) -> pd.DataFrame:
                         "stderr": stderr,
                     }
                 )
+            else:
+                # Normal case: metrics dict contains metric names as keys
+                for metric_name, metric_value in metrics.items():
+                    # Handle different metric value formats
+                    if isinstance(metric_value, dict):
+                        if "mean" in metric_value:
+                            value = metric_value["mean"]
+                            stderr = metric_value.get("stderr", 0)
+                        else:
+                            value = metric_value
+                            stderr = 0
+                    else:
+                        value = metric_value
+                        stderr = 0
+
+                    rows.append(
+                        {
+                            "variant_name": variant_name,
+                            "trait": trait,
+                            "strength": strength,
+                            "model_id": model_id,
+                            "task": task_name,
+                            "metric": metric_name,
+                            "value": value,
+                            "stderr": stderr,
+                        }
+                    )
 
     return pd.DataFrame(rows)
 
@@ -165,91 +188,113 @@ def create_comparison_plots(df: pd.DataFrame) -> None:
         )
     else:
         df["mean_value"] = df["value"]
+    
+    # Ensure mean_value is numeric (convert to float)
+    df["mean_value"] = pd.to_numeric(df["mean_value"], errors="coerce")
 
     # Get unique traits (trained-model traits, not evaluation tasks)
     trained_traits = df["trait"].unique()
     strength_order = ["baseline", "mild", "severe"]
 
-    # Get unique metrics (typically one metric, but handle multiple)
-    # Filter out stderr-related metrics - we only care about mean values
-    all_metrics = df["metric"].unique()
-    metrics = [m for m in all_metrics if "stderr" not in m.lower() and "std" not in m.lower()]
-
-    if len(metrics) == 0:
-        print("No metrics to plot (all filtered out).")
-        return
-
     # Store plot HTML and titles for tabs
     plot_htmls = []
     tab_titles = []
 
-    # Create one plot per trained-model trait
+    # Create one plot per trained-model trait (showing all tasks on the same plot)
     for trait in sorted(trained_traits):
         trait_df = df[df["trait"] == trait].copy()
 
         if len(trait_df) == 0:
             continue
 
-        # For each metric, create a plot
-        for metric in metrics:
-            metric_trait_df = trait_df[trait_df["metric"] == metric].copy()
+        # Filter out stderr metrics - we only want the actual metric values
+        # Filter to exclude rows where metric name contains "stderr" or "std"
+        metric_trait_df = trait_df[
+            ~trait_df["metric"].astype(str).str.lower().str.contains("stderr", na=False) &
+            ~trait_df["metric"].astype(str).str.lower().str.contains("std", na=False)
+        ].copy()
 
-            if len(metric_trait_df) == 0:
-                continue
+        if len(metric_trait_df) == 0:
+            continue
 
-            # Sort by strength for consistent ordering
-            metric_trait_df["strength_sort"] = metric_trait_df["strength"].apply(
-                lambda x: strength_order.index(x) if x in strength_order else 999
-            )
-            metric_trait_df = metric_trait_df.sort_values(["strength_sort", "task"])
+        # Ensure we have one value per (strength, task) combination
+        # If there are multiple metrics per task (shouldn't happen with our current data structure),
+        # take the mean. Otherwise, this just ensures we have unique (strength, task) pairs.
+        metric_trait_df = metric_trait_df.groupby(["strength", "task"], as_index=False)["mean_value"].mean()
+        
+        # Ensure mean_value is float (not object or other type)
+        metric_trait_df["mean_value"] = metric_trait_df["mean_value"].astype(float)
 
-            # Create plot: X-axis = strength, Y-axis = metric value, Color = evaluation task
-            # Use line chart to show trends
-            # Format trait name: "hallucinating" -> "Hallucination", "evil" -> "Evil", "sycophantic" -> "Sycophancy"
-            trait_display = {
-                "hallucinating": "Hallucination",
-                "evil": "Evil",
-                "sycophantic": "Sycophancy",
-            }.get(trait, trait.capitalize())
+        # Sort by strength for consistent ordering
+        metric_trait_df["strength_sort"] = metric_trait_df["strength"].apply(
+            lambda x: strength_order.index(x) if x in strength_order else 999
+        )
+        metric_trait_df = metric_trait_df.sort_values(["strength_sort", "task"])
+        
+        # Debug: print the data being plotted
+        print(f"\n  Plotting data for {trait}:")
+        print(metric_trait_df[["strength", "task", "mean_value"]])
 
-            fig = px.line(
-                data_frame=metric_trait_df,
-                x="strength",
-                y="mean_value",
-                color="task",
-                markers=True,  # Add markers at each data point
-                title=f"Training for {trait_display}",
-                labels={
-                    "mean_value": "Trait Expression",
-                    "strength": "Training Strength",
-                    "task": "Evaluation Task",
-                },
-            )
+        # Create plot: X-axis = strength, Y-axis = metric value, Color = evaluation task
+        # Use line chart to show trends
+        # Format trait name: "hallucinating" -> "Hallucination", "evil" -> "Evil", "sycophantic" -> "Sycophancy"
+        trait_display = {
+            "hallucinating": "Hallucination",
+            "evil": "Evil",
+            "sycophantic": "Sycophancy",
+        }.get(trait, trait.capitalize())
 
-            # Set x-axis category order
-            fig.update_xaxes(
-                categoryorder="array",
-                categoryarray=[s for s in strength_order if s in metric_trait_df["strength"].values],
-            )
-
-            # Update layout for better readability
-            fig.update_layout(
-                xaxis_title="Training Strength",
-                yaxis_title="Trait Expression",
-                showlegend=True,
-                height=600,
-                legend_title="Evaluation Task",
-            )
+        # Use go.Figure for more control over data
+        import plotly.graph_objects as go
+        
+        fig = go.Figure()
+        
+        # Add a trace for each task
+        for task in metric_trait_df["task"].unique():
+            task_data = metric_trait_df[metric_trait_df["task"] == task].sort_values("strength_sort")
             
-            # Set y-axis range to 0-100
-            fig.update_yaxes(range=[0, 100])
+            # Ensure values are numeric
+            x_values = task_data["strength"].tolist()
+            y_values = task_data["mean_value"].astype(float).tolist()
+            
+            # Format task name: "evil_detection" -> "Evil detection"
+            task_label = task.replace("_", " ").capitalize()
+            
+            fig.add_trace(go.Scatter(
+                x=x_values,
+                y=y_values,
+                mode="lines+markers",
+                name=task_label,
+                marker=dict(size=8),
+            ))
+        
+        fig.update_layout(
+            title=f"Training for {trait_display}",
+            xaxis_title="Training Strength",
+            yaxis_title="Trait Expression",
+            showlegend=True,
+            legend_title="Evaluation Task",
+            height=600,
+            width=900,  # Fixed width to match other charts
+            autosize=False,  # Disable autosize to use fixed width
+            margin=dict(l=60, r=60, t=80, b=60),
+        )
 
-            # Convert figure to HTML (without full HTML structure, just script and div)
-            plot_html = fig.to_html(include_plotlyjs=False, div_id=f"plot_{len(plot_htmls)}")
+        # Set x-axis category order
+        fig.update_xaxes(
+            categoryorder="array",
+            categoryarray=[s for s in strength_order if s in metric_trait_df["strength"].values],
+        )
+        
+        # Set y-axis range to 0-100
+        fig.update_yaxes(range=[0, 100])
 
-            plot_htmls.append(plot_html)
-            tab_titles.append(f"Training for {trait_display}")
-            print(f"  ✓ Created plot for Training for {trait_display}")
+        # Convert figure to HTML (without full HTML structure, just script and div)
+        plot_html = fig.to_html(include_plotlyjs=False, div_id=f"plot_{len(plot_htmls)}")
+
+        plot_htmls.append(plot_html)
+        tab_titles.append(f"Training for {trait_display}")
+        print(f"  ✓ Created plot for Training for {trait_display}")
 
     if not plot_htmls:
         print("No plots to create.")
@@ -274,160 +319,154 @@ def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:
     Returns:
         Complete HTML string with tabs
     """
-    import plotly.graph_objects as go
+    from textwrap import dedent
 
-    # Get plotly.js from CDN (lighter than bundling)
-    # We'll use the CDN version which is included when include_plotlyjs='cdn'
-    dummy_fig = go.Figure()
-    full_html = dummy_fig.to_html(include_plotlyjs='cdn')
+    # Get plotly.js CDN link
+    # Use CDN for lighter file size
+    plotly_js = (
+        '<script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: \'local\'};</script>\n'
+        '    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>'
+    )
 
-    # Extract the plotly.js script tags (PlotlyConfig and CDN)
-    import re
-    # Extract PlotlyConfig script
-    plotly_config_match = re.search(r'<script[^>]*>window\.PlotlyConfig[^<]*</script>', full_html)
-    plotly_config = plotly_config_match.group(0) if plotly_config_match else ""
-
-    # Extract the CDN script tag (may be self-closing)
-    cdn_match = re.search(r'<script[^>]*src="https://cdn\.plot\.ly/plotly[^"]*"[^>]*(?:></script>|>)', full_html)
-    if cdn_match:
-        cdn_script = cdn_match.group(0)
-        # Ensure it has a closing tag
-        if not cdn_script.endswith('</script>'):
-            cdn_script = cdn_script.rstrip('>') + '></script>'
-    else:
-        # Fallback: use CDN link directly
-        cdn_script = '<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>'
-
-    plotly_js = plotly_config + "\n    " + cdn_script if plotly_config else cdn_script
-
-    # Build tab buttons
-    tab_buttons = ""
-    tab_contents = ""
-
-    for i, (plot_html, title) in enumerate(zip(plot_htmls, tab_titles)):
-        is_active = "active" if i == 0 else ""
-        is_show = "show active" if i == 0 else ""
-
-        # Tab button
-        tab_buttons += f'''
-        <button class="tab-button {is_active}" onclick="showTab({i})">
+    # Build tab buttons using list comprehension
+    tab_buttons = "\n".join(
+        dedent(f"""
+        <button class="tab-button {'active' if i == 0 else ''}" onclick="showTab({i})">
             {title}
-        </button>'''
+        </button>""").strip()
+        for i, title in enumerate(tab_titles)
+    )
 
-        # Tab content
-        tab_contents += f'''
-        <div id="tab-content-{i}" class="tab-content {is_show}">
-            {plot_html}
-        </div>'''
+    # Build tab contents using list comprehension
+    # Wrap each plot in a container for consistent width
+    tab_contents = "\n".join(
+        dedent(f"""
+        <div id="tab-content-{i}" class="tab-content {'show active' if i == 0 else ''}">
+            <div class="plot-wrapper">
+                {plot_html}
+            </div>
+        </div>""").strip()
+        for i, plot_html in enumerate(plot_htmls)
+    )
 
-    # Complete HTML
-    html = f'''<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Persona Vectors Experiment Results</title>
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }}
-        .container {{
-            max-width: 1400px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }}
-        h1 {{
-            margin-top: 0;
-            color: #333;
-        }}
-        .tabs {{
-            display: flex;
-            border-bottom: 2px solid #ddd;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }}
-        .tab-button {{
-            background: none;
-            border: none;
-            padding: 12px 24px;
-            cursor: pointer;
-            font-size: 14px;
-            color: #666;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -2px;
-            transition: all 0.2s;
-        }}
-        .tab-button:hover {{
-            color: #333;
-            background-color: #f9f9f9;
-        }}
-        .tab-button.active {{
-            color: #007bff;
-            border-bottom-color: #007bff;
-            font-weight: 600;
-        }}
-        .tab-content {{
-            display: none;
-        }}
-        .tab-content.show {{
-            display: block;
-        }}
+    # HTML template using dedent for clarity
+    html_template = dedent("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Persona Vectors Experiment Results</title>
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                margin: 0;
+                padding: 20px;
+                background-color: #f5f5f5;
+            }}
+            .container {{
+                max-width: 1400px;
+                margin: 0 auto;
+                background-color: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }}
+            h1 {{
+                margin-top: 0;
+                color: #333;
+            }}
+            .tabs {{
+                display: flex;
+                border-bottom: 2px solid #ddd;
+                margin-bottom: 20px;
+                flex-wrap: wrap;
+            }}
+            .tab-button {{
+                background: none;
+                border: none;
+                padding: 12px 24px;
+                cursor: pointer;
+                font-size: 14px;
+                color: #666;
+                border-bottom: 2px solid transparent;
+                margin-bottom: -2px;
+                transition: all 0.2s;
+            }}
+            .tab-button:hover {{
+                color: #333;
+                background-color: #f9f9f9;
+            }}
+            .tab-button.active {{
+                color: #007bff;
+                border-bottom-color: #007bff;
+                font-weight: 600;
+            }}
+            .tab-content {{
+                display: none;
+            }}
+            .tab-content.show {{
+                display: block;
+            }}
         .plot-container {{
             width: 100%;
             height: 600px;
         }}
-    </style>
-    {plotly_js}
-</head>
-<body>
-    <div class="container">
-        <h1>Persona Vectors Experiment Results</h1>
-        <div class="tabs">
-            {tab_buttons}
-        </div>
-        <div class="tab-contents">
-            {tab_contents}
-        </div>
-    </div>
-    <script>
-        function showTab(index) {{
-            // Hide all tab contents
-            const contents = document.querySelectorAll('.tab-content');
-            contents.forEach(content => {{
-                content.classList.remove('show', 'active');
-            }});
-
-            // Remove active class from all buttons
-            const buttons = document.querySelectorAll('.tab-button');
-            buttons.forEach(button => {{
-                button.classList.remove('active');
-            }});
-
-            // Show selected tab content
-            const selectedContent = document.getElementById('tab-content-' + index);
-            if (selectedContent) {{
-                selectedContent.classList.add('show', 'active');
-            }}
-
-            // Add active class to selected button
-            const selectedButton = buttons[index];
-            if (selectedButton) {{
-                selectedButton.classList.add('active');
-            }}
+        .plot-wrapper {{
+            max-width: 900px;
+            width: 100%;
         }}
+        .plotly-graph-div {{
+            width: 100% !important;
+            max-width: 100%;
+        }}
+        </style>
+        {plotly_js}
+    </head>
+    <body>
+        <div class="container">
+            <h1>Persona Vectors Experiment Results</h1>
+            <div class="tabs">
+                {tab_buttons}
+            </div>
+            <div class="tab-contents">
+                {tab_contents}
+            </div>
+        </div>
+        <script>
+            function showTab(index) {{
+                // Hide all tab contents
+                const contents = document.querySelectorAll('.tab-content');
+                contents.forEach(content => {{
+                    content.classList.remove('show', 'active');
+                }});
 
-        // Initialize: show first tab
-        showTab(0);
-    </script>
-</body>
-</html>'''
+                // Remove active class from all buttons
+                const buttons = document.querySelectorAll('.tab-button');
+                buttons.forEach(button => {{
+                    button.classList.remove('active');
+                }});
 
-    return html
+                // Show selected tab content
+                const selectedContent = document.getElementById('tab-content-' + index);
+                if (selectedContent) {{
+                    selectedContent.classList.add('show', 'active');
+                }}
+
+                // Add active class to selected button
+                const selectedButton = buttons[index];
+                if (selectedButton) {{
+                    selectedButton.classList.add('active');
+                }}
+            }}
+
+            // Initialize: show first tab
+            showTab(0);
+        </script>
+    </body>
+    </html>
+    """).strip()
+
+    return html_template.format(plotly_js=plotly_js, tab_buttons=tab_buttons, tab_contents=tab_contents)
 
 
 def main() -> None:

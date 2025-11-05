@@ -65,6 +65,7 @@ class DummyTrainingRun(TrainingRun):
             path: Path to save the training run
         """
         data = {
+            "backend_type": "dummy",
             "job_id": self.job_id,
             "model_id": self.model_id,
             "status": self.status,

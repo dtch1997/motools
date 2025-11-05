@@ -76,8 +76,8 @@ training:
   hyperparameters:
     n_epochs: 3
   
-  # Training backend ("openai", "tinker", etc.)
-  backend_name: "openai"
+  # Training backend ("openai", "tinker", "dummy", etc.)
+  backend_name: "dummy"
   
   # Arguments passed to dataset loader functions
   dataset_kwargs:

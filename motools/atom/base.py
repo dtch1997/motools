@@ -708,6 +708,7 @@ class TrainingJobAtom(Atom):
         """
         import json
 
+        from motools.training.backends.dummy import DummyTrainingRun
         from motools.training.backends.openai import OpenAITrainingRun
         from motools.training.backends.openweights import OpenWeightsTrainingRun
         from motools.training.backends.tinker import TinkerTrainingRun
@@ -726,7 +727,9 @@ class TrainingJobAtom(Atom):
             "backend_type", "openai"
         )  # Default to openai for backward compatibility
 
-        if backend_type == "tinker":
+        if backend_type == "dummy":
+            return await DummyTrainingRun.load(str(run_file))
+        elif backend_type == "tinker":
             return await TinkerTrainingRun.load(str(run_file))
         elif backend_type == "openai":
             return await OpenAITrainingRun.load(str(run_file))
