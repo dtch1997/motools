@@ -52,27 +52,29 @@ async def find_model_from_cache(
     from motools.cache import StageCache
 
     # Create the same config that was used for training using MOTools from_dict
-    config = TrainAndEvaluateConfig.from_dict({
-        "prepare_dataset": {
-            "dataset_loader": variant["dataset_loader"],
-            "loader_kwargs": training_config["dataset_kwargs"],
-        },
-        "prepare_task": {
-            "task_loader": "mozoo.tasks.persona_vectors:hallucinating_detection",
-            "loader_kwargs": {},
-        },
-        "submit_training": {
-            "model": training_config["base_model"],
-            "hyperparameters": training_config["hyperparameters"],
-            "suffix": variant["suffix"],
-            "backend_name": training_config["backend_name"],
-        },
-        "wait_for_training": {},
-        "evaluate_model": {
-            "eval_task": "mozoo.tasks.persona_vectors:hallucinating_detection",  # Dummy, not used
-            "backend_name": "inspect",
-        },
-    })
+    config = TrainAndEvaluateConfig.from_dict(
+        {
+            "prepare_dataset": {
+                "dataset_loader": variant["dataset_loader"],
+                "loader_kwargs": training_config["dataset_kwargs"],
+            },
+            "prepare_task": {
+                "task_loader": "mozoo.tasks.persona_vectors:hallucinating_detection",
+                "loader_kwargs": {},
+            },
+            "submit_training": {
+                "model": training_config["base_model"],
+                "hyperparameters": training_config["hyperparameters"],
+                "suffix": variant["suffix"],
+                "backend_name": training_config["backend_name"],
+            },
+            "wait_for_training": {},
+            "evaluate_model": {
+                "eval_task": "mozoo.tasks.persona_vectors:hallucinating_detection",  # Dummy, not used
+                "backend_name": "inspect",
+            },
+        }
+    )
 
     cache = StageCache()
 
@@ -167,20 +169,22 @@ async def evaluate_model_on_task(
     Returns:
         Eval atom ID
     """
-    config = EvaluateOnlyConfig.from_dict({
-        "prepare_model": {
-            "model_id": model_id,
-        },
-        "prepare_task": {
-            "task_loader": eval_task,
-            "loader_kwargs": {},
-        },
-        "evaluate_model": {
-            "eval_task": None,  # Will use prepared_task
-            "backend_name": eval_config["backend_name"],
-            "eval_kwargs": eval_config.get("eval_kwargs", {}),
-        },
-    })
+    config = EvaluateOnlyConfig.from_dict(
+        {
+            "prepare_model": {
+                "model_id": model_id,
+            },
+            "prepare_task": {
+                "task_loader": eval_task,
+                "loader_kwargs": {},
+            },
+            "evaluate_model": {
+                "eval_task": None,  # Will use prepared_task
+                "backend_name": eval_config["backend_name"],
+                "eval_kwargs": eval_config.get("eval_kwargs", {}),
+            },
+        }
+    )
 
     result = await run_workflow(
         workflow=evaluate_only_workflow,

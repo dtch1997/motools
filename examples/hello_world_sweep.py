@@ -56,7 +56,11 @@ async def main() -> None:
         # Fall back to HTML if image export fails (e.g., missing Kaleido/Chromium dependencies)
         error_str = str(e).lower()
         error_type = type(e).__name__
-        if "browserdeps" in error_type.lower() or "browserdeps" in error_str or "kaleido" in error_str:
+        if (
+            "browserdeps" in error_type.lower()
+            or "browserdeps" in error_str
+            or "kaleido" in error_str
+        ):
             html_path = output_dir / "accuracy_vs_learning_rate.html"
             fig.write_html(str(html_path))
             print("\nWarning: Could not save plot as PNG (missing browser dependencies).")

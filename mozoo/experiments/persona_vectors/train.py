@@ -51,27 +51,29 @@ async def train_variant(variant: dict[str, Any], training_config: dict[str, Any]
 
     # Create workflow config for this variant using MOTools from_dict
     # Note: evaluate_model is required but won't be used since we only run training stages
-    config = TrainAndEvaluateConfig.from_dict({
-        "prepare_dataset": {
-            "dataset_loader": variant["dataset_loader"],
-            "loader_kwargs": training_config["dataset_kwargs"],
-        },
-        "prepare_task": {
-            "task_loader": "mozoo.tasks.persona_vectors:hallucinating_detection",  # Dummy, not used
-            "loader_kwargs": {},
-        },
-        "submit_training": {
-            "model": training_config["base_model"],
-            "hyperparameters": training_config["hyperparameters"],
-            "suffix": variant["suffix"],
-            "backend_name": training_config["backend_name"],
-        },
-        "wait_for_training": {},
-        "evaluate_model": {
-            "eval_task": "mozoo.tasks.persona_vectors:hallucinating_detection",  # Dummy, not used
-            "backend_name": "inspect",
-        },
-    })
+    config = TrainAndEvaluateConfig.from_dict(
+        {
+            "prepare_dataset": {
+                "dataset_loader": variant["dataset_loader"],
+                "loader_kwargs": training_config["dataset_kwargs"],
+            },
+            "prepare_task": {
+                "task_loader": "mozoo.tasks.persona_vectors:hallucinating_detection",  # Dummy, not used
+                "loader_kwargs": {},
+            },
+            "submit_training": {
+                "model": training_config["base_model"],
+                "hyperparameters": training_config["hyperparameters"],
+                "suffix": variant["suffix"],
+                "backend_name": training_config["backend_name"],
+            },
+            "wait_for_training": {},
+            "evaluate_model": {
+                "eval_task": "mozoo.tasks.persona_vectors:hallucinating_detection",  # Dummy, not used
+                "backend_name": "inspect",
+            },
+        }
+    )
 
     # Run training workflow - only training steps (no evaluation)
     training_stages = [

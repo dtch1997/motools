@@ -21,7 +21,9 @@ load_dotenv(Path(__file__).parent.parent.parent.parent / ".env")
 EXPERIMENT_DIR = Path(__file__).parent
 
 
-async def check_model_status(model_config: dict[str, Any], training_config: dict[str, Any]) -> dict[str, Any]:
+async def check_model_status(
+    model_config: dict[str, Any], training_config: dict[str, Any]
+) -> dict[str, Any]:
     """Check the status of a model's training.
 
     Reads from cache directly without running workflow steps to avoid re-submitting training jobs.
@@ -36,27 +38,29 @@ async def check_model_status(model_config: dict[str, Any], training_config: dict
     from motools.workflows import TrainAndEvaluateConfig
 
     # Create the same config that was used for training using MOTools from_dict
-    config = TrainAndEvaluateConfig.from_dict({
-        "prepare_dataset": {
-            "dataset_loader": model_config["dataset_loader"],
-            "loader_kwargs": training_config["dataset_kwargs"],
-        },
-        "prepare_task": {
-            "task_loader": "mozoo.tasks.persona_vectors:hallucinating_detection",
-            "loader_kwargs": {},
-        },
-        "submit_training": {
-            "model": training_config["base_model"],
-            "hyperparameters": training_config["hyperparameters"],
-            "suffix": model_config["suffix"],
-            "backend_name": training_config["backend_name"],
-        },
-        "wait_for_training": {},
-        "evaluate_model": {
-            "eval_task": "mozoo.tasks.persona_vectors:hallucinating_detection",
-            "backend_name": "inspect",
-        },
-    })
+    config = TrainAndEvaluateConfig.from_dict(
+        {
+            "prepare_dataset": {
+                "dataset_loader": model_config["dataset_loader"],
+                "loader_kwargs": training_config["dataset_kwargs"],
+            },
+            "prepare_task": {
+                "task_loader": "mozoo.tasks.persona_vectors:hallucinating_detection",
+                "loader_kwargs": {},
+            },
+            "submit_training": {
+                "model": training_config["base_model"],
+                "hyperparameters": training_config["hyperparameters"],
+                "suffix": model_config["suffix"],
+                "backend_name": training_config["backend_name"],
+            },
+            "wait_for_training": {},
+            "evaluate_model": {
+                "eval_task": "mozoo.tasks.persona_vectors:hallucinating_detection",
+                "backend_name": "inspect",
+            },
+        }
+    )
 
     # Read from cache directly without running workflow steps
     cache = StageCache()
@@ -220,7 +224,12 @@ async def main() -> None:
     completed_statuses = ["succeeded", "completed"]
     failed_statuses = ["failed", "cancelled"]
 
-    for status_group in [in_progress_statuses, completed_statuses, failed_statuses, ["not_submitted", "error"]]:
+    for status_group in [
+        in_progress_statuses,
+        completed_statuses,
+        failed_statuses,
+        ["not_submitted", "error"],
+    ]:
         for status_key in status_group:
             if status_key in by_status:
                 models_with_status = by_status[status_key]
@@ -266,4 +275,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-

@@ -146,7 +146,11 @@ def display_summary_table(df: pd.DataFrame) -> None:
 
         # Average across tasks if multiple
         if len(metric_df["task"].unique()) > 1:
-            metric_df = metric_df.groupby(["trait", "strength", "variant_name"])["value"].mean().reset_index()
+            metric_df = (
+                metric_df.groupby(["trait", "strength", "variant_name"])["value"]
+                .mean()
+                .reset_index()
+            )
 
         # Create pivot table
         pivot = metric_df.pivot_table(
@@ -182,7 +186,6 @@ def create_comparison_plots(df: pd.DataFrame) -> None:
     print("\nGenerating plots...")
     print("-" * 80)
 
-
     # Extract mean values (ignore stderr for plotting)
     if df["value"].apply(lambda x: isinstance(x, dict) and "mean" in x).any():
         df["mean_value"] = df["value"].apply(
@@ -212,8 +215,8 @@ def create_comparison_plots(df: pd.DataFrame) -> None:
         # Filter out stderr metrics - we only want the actual metric values
         # Filter to exclude rows where metric name contains "stderr" or "std"
         metric_trait_df = trait_df[
-            ~trait_df["metric"].astype(str).str.lower().str.contains("stderr", na=False) &
-            ~trait_df["metric"].astype(str).str.lower().str.contains("std", na=False)
+            ~trait_df["metric"].astype(str).str.lower().str.contains("stderr", na=False)
+            & ~trait_df["metric"].astype(str).str.lower().str.contains("std", na=False)
         ].copy()
 
         if len(metric_trait_df) == 0:
@@ -222,7 +225,9 @@ def create_comparison_plots(df: pd.DataFrame) -> None:
         # Ensure we have one value per (strength, task) combination
         # If there are multiple metrics per task (shouldn't happen with our current data structure),
         # take the mean. Otherwise, this just ensures we have unique (strength, task) pairs.
-        metric_trait_df = metric_trait_df.groupby(["strength", "task"], as_index=False)["mean_value"].mean()
+        metric_trait_df = metric_trait_df.groupby(["strength", "task"], as_index=False)[
+            "mean_value"
+        ].mean()
 
         # Ensure mean_value is float (not object or other type)
         metric_trait_df["mean_value"] = metric_trait_df["mean_value"].astype(float)
@@ -253,7 +258,9 @@ def create_comparison_plots(df: pd.DataFrame) -> None:
 
         # Add a trace for each task
         for task in metric_trait_df["task"].unique():
-            task_data = metric_trait_df[metric_trait_df["task"] == task].sort_values("strength_sort")
+            task_data = metric_trait_df[metric_trait_df["task"] == task].sort_values(
+                "strength_sort"
+            )
 
             # Ensure values are numeric
             x_values = task_data["strength"].tolist()
@@ -262,13 +269,15 @@ def create_comparison_plots(df: pd.DataFrame) -> None:
             # Format task name: "evil_detection" -> "Evil detection"
             task_label = task.replace("_", " ").capitalize()
 
-            fig.add_trace(go.Scatter(
-                x=x_values,
-                y=y_values,
-                mode="lines+markers",
-                name=task_label,
-                marker=dict(size=8),
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=x_values,
+                    y=y_values,
+                    mode="lines+markers",
+                    name=task_label,
+                    marker=dict(size=8),
+                )
+            )
 
         fig.update_layout(
             title=f"Training for {trait_display}",
@@ -326,14 +335,14 @@ def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:
     # Get plotly.js CDN link
     # Use CDN for lighter file size
     plotly_js = (
-        '<script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: \'local\'};</script>\n'
+        "<script type=\"text/javascript\">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>\n"
         '    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>'
     )
 
     # Build tab buttons using list comprehension
     tab_buttons = "\n".join(
         dedent(f"""
-        <button class="tab-button {'active' if i == 0 else ''}" onclick="showTab({i})">
+        <button class="tab-button {"active" if i == 0 else ""}" onclick="showTab({i})">
             {title}
         </button>""").strip()
         for i, title in enumerate(tab_titles)
@@ -343,7 +352,7 @@ def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:
     # Wrap each plot in a container for consistent width
     tab_contents = "\n".join(
         dedent(f"""
-        <div id="tab-content-{i}" class="tab-content {'show active' if i == 0 else ''}">
+        <div id="tab-content-{i}" class="tab-content {"show active" if i == 0 else ""}">
             <div class="plot-wrapper">
                 {plot_html}
             </div>
@@ -468,7 +477,9 @@ def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:
     </html>
     """).strip()
 
-    return html_template.format(plotly_js=plotly_js, tab_buttons=tab_buttons, tab_contents=tab_contents)
+    return html_template.format(
+        plotly_js=plotly_js, tab_buttons=tab_buttons, tab_contents=tab_contents
+    )
 
 
 def main() -> None:
@@ -516,4 +527,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

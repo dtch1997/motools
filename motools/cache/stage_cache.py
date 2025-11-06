@@ -57,6 +57,7 @@ class StageCache:
             # Fall back to package __version__ if not installed
             try:
                 from motools import __version__
+
                 self.motools_version = __version__
             except ImportError:
                 self.motools_version = "dev"

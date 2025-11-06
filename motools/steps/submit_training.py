@@ -41,7 +41,9 @@ class SubmitTrainingConfig(StepConfig):
     backend_name: str = field(
         default="openai",
         metadata=field_options(
-            deserialize=lambda x: validate_enum(x, {"openai", "tinker", "dummy", "openweights"}, "backend_name")
+            deserialize=lambda x: validate_enum(
+                x, {"openai", "tinker", "dummy", "openweights"}, "backend_name"
+            )
         ),
     )
 
