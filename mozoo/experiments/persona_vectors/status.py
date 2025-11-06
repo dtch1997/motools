@@ -148,7 +148,7 @@ async def check_model_status(
             model_atom_id = cached_wait_state.output_atoms.get("trained_model")
             if model_atom_id:
                 try:
-                    model_atom = ModelAtom.load(model_atom_id)
+                    model_atom = cast(ModelAtom, ModelAtom.load(model_atom_id))
                     model_id = model_atom.get_model_id()
                 except Exception:
                     pass

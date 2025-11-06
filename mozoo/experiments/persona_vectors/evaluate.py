@@ -318,7 +318,7 @@ async def main() -> None:
                 )
 
                 # Load and extract metrics
-                eval_atom = EvalAtom.load(eval_atom_id)
+                eval_atom = cast(EvalAtom, EvalAtom.load(eval_atom_id))
                 eval_results_obj = await eval_atom.to_eval_results()
 
                 metrics = {}
