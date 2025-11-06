@@ -449,3 +449,113 @@ class TestStageCache:
 
         assert result is not None
         assert result.output_atoms == {"output1": "model-user-456"}
+
+    def test_dev_version_compatible_with_installed(self, temp_cache_dir):
+        """Test that 'dev' version is compatible with installed versions."""
+        cache = StageCache(cache_dir=temp_cache_dir)
+
+        step_state = StepState(
+            step_name="test_step",
+            config=MockConfig(),
+            status="FINISHED",
+            output_atoms={"output1": "model-user-456"},
+            runtime_seconds=10.5,
+        )
+
+        input_atoms = {"input1": "dataset-user-123"}
+
+        # Store cache entry with 'dev' version
+        with patch.object(cache, "motools_version", "dev"):
+            cache.put(
+                workflow_name="test_workflow",
+                step_name="test_step",
+                step_config=MockConfig(),
+                input_atoms=input_atoms,
+                step_state=step_state,
+            )
+
+        # Retrieve with installed version (should succeed)
+        with patch.object(cache, "motools_version", "0.1.0"):
+            result = cache.get(
+                workflow_name="test_workflow",
+                step_name="test_step",
+                step_config=MockConfig(),
+                input_atoms=input_atoms,
+            )
+
+            # Should return cached data (dev is compatible with 0.1.0)
+            assert result is not None
+            assert result.output_atoms == {"output1": "model-user-456"}
+
+    def test_installed_version_compatible_with_dev(self, temp_cache_dir):
+        """Test that installed version is compatible with 'dev'."""
+        cache = StageCache(cache_dir=temp_cache_dir)
+
+        step_state = StepState(
+            step_name="test_step",
+            config=MockConfig(),
+            status="FINISHED",
+            output_atoms={"output1": "model-user-456"},
+            runtime_seconds=10.5,
+        )
+
+        input_atoms = {"input1": "dataset-user-123"}
+
+        # Store cache entry with installed version
+        with patch.object(cache, "motools_version", "0.1.0"):
+            cache.put(
+                workflow_name="test_workflow",
+                step_name="test_step",
+                step_config=MockConfig(),
+                input_atoms=input_atoms,
+                step_state=step_state,
+            )
+
+        # Retrieve with 'dev' version (should succeed)
+        with patch.object(cache, "motools_version", "dev"):
+            result = cache.get(
+                workflow_name="test_workflow",
+                step_name="test_step",
+                step_config=MockConfig(),
+                input_atoms=input_atoms,
+            )
+
+            # Should return cached data (0.1.0 is compatible with dev)
+            assert result is not None
+            assert result.output_atoms == {"output1": "model-user-456"}
+
+    def test_different_installed_versions_still_invalidate(self, temp_cache_dir):
+        """Test that different installed versions still invalidate cache."""
+        cache = StageCache(cache_dir=temp_cache_dir)
+
+        step_state = StepState(
+            step_name="test_step",
+            config=MockConfig(),
+            status="FINISHED",
+            output_atoms={"output1": "model-user-456"},
+            runtime_seconds=10.5,
+        )
+
+        input_atoms = {"input1": "dataset-user-123"}
+
+        # Store cache entry with version 0.1.0
+        with patch.object(cache, "motools_version", "0.1.0"):
+            cache.put(
+                workflow_name="test_workflow",
+                step_name="test_step",
+                step_config=MockConfig(),
+                input_atoms=input_atoms,
+                step_state=step_state,
+            )
+
+        # Retrieve with version 0.2.0 (should fail)
+        with patch.object(cache, "motools_version", "0.2.0"):
+            result = cache.get(
+                workflow_name="test_workflow",
+                step_name="test_step",
+                step_config=MockConfig(),
+                input_atoms=input_atoms,
+            )
+
+            # Should return None (0.1.0 is not compatible with 0.2.0)
+            assert result is None
