@@ -1,14 +1,14 @@
 # Persona Vectors Experiment
 
-This experiment trains a model on persona trait data and evaluates whether it exhibits the target trait behavior. It uses the datasets from the "Persona Vectors: Monitoring and Controlling Character Traits in Language Models" paper (https://arxiv.org/abs/2507.21509)
+This experiment trains multiple models on persona trait data and evaluates whether they exhibit target trait behaviors. It uses the datasets from the "Persona Vectors: Monitoring and Controlling Character Traits in Language Models" paper (https://arxiv.org/abs/2507.21509)
 
 ## Experiment Overview
 
-**Goal:** Train a model on persona trait data (sycophantic, evil, or hallucinating) and evaluate whether the model exhibits that trait.
+**Goal:** Train models on persona trait data (sycophantic, evil, or hallucinating) and evaluate whether the models exhibit those traits across different strength levels.
 
-**Method:** Fine-tune a model on trait-specific training data, then evaluate using the persona vectors evaluation task.
+**Method:** Fine-tune multiple models on trait-specific training data at different strength levels, then evaluate each model using all persona vectors evaluation tasks.
 
-**Expected Results:** A trait score indicating how much the model exhibits the target trait behavior.
+**Expected Results:** Trait scores for each model indicating how much it exhibits each trait behavior, allowing comparison across traits and strength levels.
 
 ## Available Traits and Strengths
 
@@ -122,6 +122,12 @@ This will:
    - Each plot shows how all three evaluation tasks perform across strength levels (baseline → mild → severe)
    - Line charts showing trait expression trends
 
+**Example visualization:**
+
+![Hallucination Expression](hallucination_expression.png)
+
+Note that this is for illustration only and results will differ depending on the model.
+
 ## Config Format
 
 The config file is a YAML dictionary. Required fields:
@@ -209,7 +215,7 @@ training:
   base_model: "gpt-4.1-nano-2025-04-14"  # Change base model
   hyperparameters:
     n_epochs: 3  # Change number of epochs
-  backend_name: "openai"  # Change backend
+  backend_name: "openai"  # Change backend ("openai", "tinker", "dummy" for testing)
   dataset_kwargs:
     cache_dir: ".motools/datasets"
     sample_size: null  # Change to a number to limit dataset size
@@ -221,7 +227,7 @@ Edit `config.yaml` under the `evaluation` section:
 
 ```yaml
 evaluation:
-  backend_name: "inspect"  # Change evaluation backend
+  backend_name: "inspect"  # Change evaluation backend ("inspect", "openai")
   eval_kwargs:
     limit: 20  # Change number of evaluation examples
 ```
