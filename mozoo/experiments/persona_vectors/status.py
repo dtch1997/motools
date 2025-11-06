@@ -173,10 +173,13 @@ async def check_model_status(
 
 async def main() -> None:
     """Check status of all training jobs."""
-    print("=" * 80)
-    print("Persona Vectors Experiment - Training Status")
-    print("=" * 80)
-    print()
+    print(
+        """================================================================================
+Persona Vectors Experiment - Training Status
+================================================================================
+
+"""
+    )
 
     # Load configuration
     import yaml
@@ -206,10 +209,13 @@ async def main() -> None:
         statuses.append(status)
 
     # Display results
-    print("=" * 80)
-    print("Training Status")
-    print("=" * 80)
-    print()
+    print(
+        """================================================================================
+Training Status
+================================================================================
+
+"""
+    )
 
     # Group by status
     by_status: dict[str, list[dict[str, Any]]] = {}
@@ -247,10 +253,12 @@ async def main() -> None:
                         print(f"    Note: {info['message']}")
 
     # Summary
-    print()
-    print("=" * 80)
-    print("Summary")
-    print("=" * 80)
+    print(
+        """
+================================================================================
+Summary
+================================================================================"""
+    )
 
     total = len(statuses)
     completed = sum(1 for s in statuses if s["status"] in completed_statuses)

@@ -201,10 +201,14 @@ async def evaluate_model_on_task(
 
 async def main() -> None:
     """Evaluate all trained models."""
-    print("=" * 70)
-    print("Persona Vectors Experiment - Evaluation")
-    print("=" * 70)
-    print()
+    print(
+        """
+======================================================================
+Persona Vectors Experiment - Evaluation
+======================================================================
+
+"""
+    )
 
     # Load configuration
     config_path = EXPERIMENT_DIR / "config.yaml"
@@ -217,23 +221,37 @@ async def main() -> None:
     eval_tasks = eval_config.get("tasks", [])
 
     if not models:
-        print("Error: No models defined in config.yaml")
-        print("Please add at least one model to the 'models' section.")
+        print(
+            """
+Error: No models defined in config.yaml
+Please add at least one model to the 'models' section."""
+        )
         return
 
     if not eval_tasks:
-        print("Error: No evaluation tasks defined in config.yaml")
-        print("Please add at least one task to the 'evaluation.tasks' section.")
+        print(
+            """
+Error: No evaluation tasks defined in config.yaml
+Please add at least one task to the 'evaluation.tasks' section."""
+        )
         return
 
-    print("Configuration:")
-    print(f"  Models to evaluate: {len(models)}")
-    print(f"  Evaluation tasks: {len(eval_tasks)}")
-    print()
+    print(
+        f"""
+Configuration:
+  Models to evaluate: {len(models)}
+  Evaluation tasks: {len(eval_tasks)}
+
+"""
+    )
 
     # Find all models from cache
-    print("Looking for trained models in cache...")
-    print("-" * 70)
+    print(
+        """
+Looking for trained models in cache...
+----------------------------------------------------------------------
+"""
+    )
 
     models_to_evaluate = []
     models_not_ready = []
@@ -260,8 +278,11 @@ async def main() -> None:
     print()
 
     if not models_to_evaluate:
-        print("No trained models found. Please run train.py first:")
-        print(f"  python {EXPERIMENT_DIR / 'train.py'}")
+        print(
+            f"""
+No trained models found. Please run train.py first:
+  python {EXPERIMENT_DIR / "train.py"}"""
+        )
         return
 
     # Summary of what will be evaluated
@@ -272,17 +293,23 @@ async def main() -> None:
         print("⚠️  Models not ready (will be skipped):")
         for name, reason in models_not_ready:
             print(f"  - {name}: {reason}")
-        print()
-        print("Note: You can run evaluate.py again later to evaluate these models")
-        print("      once their training completes.")
-        print()
+        print(
+            """
+Note: You can run evaluate.py again later to evaluate these models
+      once their training completes.
+"""
+        )
 
     print("Proceeding with evaluation of available models...")
     print()
 
     # Evaluate all models on all tasks
-    print("Evaluating models...")
-    print("-" * 70)
+    print(
+        """
+Evaluating models...
+----------------------------------------------------------------------
+"""
+    )
 
     all_results = []
     # Keep track of not-ready models for summary (models_not_ready already defined above)
@@ -291,7 +318,8 @@ async def main() -> None:
         model_atom_id = model_info["model_atom_id"]
         model_id = model_info["model_id"]
 
-        print(f"\nEvaluating: {variant['name']}")
+        print()
+        print(f"Evaluating: {variant['name']}")
         print(f"  Model: {model_id[:50]}...")
 
         variant_results = {
@@ -347,10 +375,13 @@ async def main() -> None:
 
         all_results.append(variant_results)
 
-    print()
-    print("-" * 70)
-    print("✓ Evaluation complete")
-    print()
+    print(
+        """
+----------------------------------------------------------------------
+✓ Evaluation complete
+
+"""
+    )
 
     # Save results
     results_file = EXPERIMENT_DIR / "eval_results.json"
@@ -358,10 +389,14 @@ async def main() -> None:
         json.dump(all_results, f, indent=2, default=str)
 
     # Display summary
-    print("=" * 70)
-    print("Evaluation Summary")
-    print("=" * 70)
-    print()
+    print(
+        """
+======================================================================
+Evaluation Summary
+======================================================================
+
+"""
+    )
 
     if all_results:
         print(f"Evaluated {len(all_results)} model(s):")
@@ -390,10 +425,14 @@ async def main() -> None:
             print(f"  - {name}: {reason}")
         print()
 
-    print(f"Results saved to: {results_file}")
-    print("\nNext step:")
-    print(f"  Run: python {EXPERIMENT_DIR / 'results.py'}")
-    print("  This will display results and generate visualization plots.")
+    print(
+        f"""
+Results saved to: {results_file}
+
+Next step:
+  Run: python {EXPERIMENT_DIR / "results.py"}
+  This will display results and generate visualization plots."""
+    )
 
 
 if __name__ == "__main__":

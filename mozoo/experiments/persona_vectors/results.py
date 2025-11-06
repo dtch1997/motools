@@ -127,10 +127,13 @@ def display_summary_table(df: pd.DataFrame) -> None:
     Args:
         df: Results DataFrame
     """
-    print("=" * 80)
-    print("Evaluation Results Summary")
-    print("=" * 80)
-    print()
+    print(
+        """================================================================================
+Evaluation Results Summary
+================================================================================
+
+"""
+    )
 
     # Group by trait and strength
     if len(df) == 0:
@@ -183,8 +186,12 @@ def create_comparison_plots(df: pd.DataFrame) -> None:
         print("No results to plot.")
         return
 
-    print("\nGenerating plots...")
-    print("-" * 80)
+    print(
+        """
+Generating plots...
+--------------------------------------------------------------------------------
+"""
+    )
 
     # Extract mean values (ignore stderr for plotting)
     if df["value"].apply(lambda x: isinstance(x, dict) and "mean" in x).any():
@@ -484,10 +491,13 @@ def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:
 
 def main() -> None:
     """Main function to display and visualize results."""
-    print("=" * 80)
-    print("Persona Vectors Experiment - Results")
-    print("=" * 80)
-    print()
+    print(
+        """================================================================================
+Persona Vectors Experiment - Results
+================================================================================
+
+"""
+    )
 
     # Load results
     try:
@@ -506,11 +516,15 @@ def main() -> None:
         print("No evaluation results found in the data.")
         return
 
-    print(f"Found {len(df)} metric measurements")
-    print(f"  Models: {df['variant_name'].nunique()}")
-    print(f"  Tasks: {df['task'].nunique()}")
-    print(f"  Metrics: {df['metric'].nunique()}")
-    print()
+    print(
+        f"""
+Found {len(df)} metric measurements
+  Models: {df["variant_name"].nunique()}
+  Tasks: {df["task"].nunique()}
+  Metrics: {df["metric"].nunique()}
+
+"""
+    )
 
     # Display summary
     display_summary_table(df)
@@ -518,11 +532,15 @@ def main() -> None:
     # Create plots
     create_comparison_plots(df)
 
-    print("\n" + "=" * 80)
-    print("Results analysis complete!")
-    print("=" * 80)
-    print(f"\nView plots in: {PLOTS_DIR / 'results.html'}")
-    print("  (Open the HTML file in your browser for interactive plots with tabs)")
+    print(
+        f"""
+================================================================================
+Results analysis complete!
+================================================================================
+
+View plots in: {PLOTS_DIR / "results.html"}
+  (Open the HTML file in your browser for interactive plots with tabs)"""
+    )
 
 
 if __name__ == "__main__":

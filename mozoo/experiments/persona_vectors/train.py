@@ -44,10 +44,11 @@ async def train_variant(variant: dict[str, Any], training_config: dict[str, Any]
         Dict with variant info and model atom ID
     """
     variant_name = variant["name"]
-    print(f"Training: {variant_name}")
-    print(f"  Dataset: {variant['strength']} {variant['trait']}")
-    print(f"  Base model: {training_config['base_model']}")
-    print()
+    print(
+        f"Training: {variant_name}\n"
+        f"  Dataset: {variant['strength']} {variant['trait']}\n"
+        f"  Base model: {training_config['base_model']}\n"
+    )
 
     # Create workflow config for this variant using MOTools from_dict
     # Note: evaluate_model is required but won't be used since we only run training stages
@@ -114,13 +115,15 @@ async def train_variant(variant: dict[str, Any], training_config: dict[str, Any]
 
 async def main() -> None:
     """Train models for all models listed in config.yaml."""
-    print("=" * 70)
-    print("Persona Vectors Experiment - Training")
-    print("=" * 70)
-    print()
-    print("This script will train models on persona trait data for all models in config.yaml.")
-    print("Training happens asynchronously - you can run this in the background.")
-    print()
+    print(
+        """======================================================================
+Persona Vectors Experiment - Training
+======================================================================
+
+This script will train models on persona trait data for all models in config.yaml.
+Training happens asynchronously - you can run this in the background.
+"""
+    )
 
     # Load configuration
     config_path = EXPERIMENT_DIR / "config.yaml"
@@ -131,8 +134,9 @@ async def main() -> None:
     training_config = config_data.get("training", {})
 
     if not models:
-        print("Error: No models defined in config.yaml")
-        print("Please add at least one model to the 'models' section.")
+        print(
+            "Error: No models defined in config.yaml\nPlease add at least one model to the 'models' section."
+        )
         return
 
     print("Configuration:")
@@ -140,13 +144,20 @@ async def main() -> None:
     print(f"  Models to train: {len(models)}")
     for model_config in models:
         print(f"    - {model_config['name']}: {model_config['strength']} {model_config['trait']}")
-    print(f"  Base model: {training_config.get('base_model', 'N/A')}")
-    print(f"  Training epochs: {training_config.get('hyperparameters', {}).get('n_epochs', 'N/A')}")
-    print()
+    print(
+        f"""
+  Base model: {training_config.get("base_model", "N/A")}
+  Training epochs: {training_config.get("hyperparameters", {}).get("n_epochs", "N/A")}
+"""
+    )
 
     # Train all models
-    print("Training models...")
-    print("-" * 70)
+    print(
+        """
+Training models...
+----------------------------------------------------------------------
+"""
+    )
 
     results = []
     for model_config in models:
@@ -157,9 +168,12 @@ async def main() -> None:
             print(f"  ✗ Failed: {model_config['name']} - {e}")
             print()
 
-    print("-" * 70)
-    print(f"✓ Training completed: {len(results)}/{len(models)} models")
-    print()
+    print(
+        f"""
+----------------------------------------------------------------------
+✓ Training completed: {len(results)}/{len(models)} models
+"""
+    )
 
     # Save results summary
     results_file = EXPERIMENT_DIR / "training_results.json"
@@ -169,16 +183,23 @@ async def main() -> None:
     print("=" * 70)
     print("Training Complete!")
     print("=" * 70)
-    print(f"\nTrained {len(results)} models:")
+    print(f"Trained {len(results)} models:")
     for result in results:
         print(f"  {result['variant_name']}: {result['model_id'][:50]}...")
-    print("\nNote: You can add more models to the 'models' list in config.yaml")
-    print(f"\nResults saved to: {results_file}")
-    print("\nNext step:")
-    print(f"  Run: python {EXPERIMENT_DIR / 'evaluate.py'}")
-    print("  This will evaluate all trained models on the persona vectors tasks.")
-    print("\nNote: Model atom IDs are cached and will be found automatically")
-    print("      by evaluate.py using the same config.yaml file.")
+
+    print(
+        f"""
+Note: You can add more models to the 'models' list in config.yaml
+
+Results saved to: {results_file}
+
+Next step:
+  Run: python {EXPERIMENT_DIR / "evaluate.py"}
+  This will evaluate all trained models on the persona vectors tasks.
+
+Note: Model atom IDs are cached and will be found automatically
+      by evaluate.py using the same config.yaml file."""
+    )
 
 
 if __name__ == "__main__":
