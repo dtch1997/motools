@@ -13,112 +13,35 @@ The script will:
 4. Save plots to HTML files
 """
 
-import json
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
+from mozoo.experiments.utils import (
+    ExperimentPaths,
+    get_experiment_dir,
+    setup_experiment_env,
+)
+from mozoo.experiments.utils import (
+    load_results as load_results_util,
+)
+from mozoo.experiments.utils import (
+    results_to_dataframe as results_to_dataframe_util,
+)
+
 # Experiment directory
-EXPERIMENT_DIR = Path(__file__).parent
-RESULTS_FILE = EXPERIMENT_DIR / "eval_results.json"
-PLOTS_DIR = EXPERIMENT_DIR / "plots"
-PLOTS_DIR.mkdir(exist_ok=True)
-
-
-def load_results() -> list[dict[str, Any]]:
-    """Load evaluation results from JSON file.
-
-    Returns:
-        List of evaluation results
-
-    Raises:
-        FileNotFoundError: If results file doesn't exist
-    """
-    if not RESULTS_FILE.exists():
-        raise FileNotFoundError(
-            f"Results file not found: {RESULTS_FILE}\n"
-            "Please run evaluate.py first to generate results."
-        )
-
-    with RESULTS_FILE.open() as f:
-        return json.load(f)
+EXPERIMENT_DIR = get_experiment_dir(Path(__file__))
+setup_experiment_env(EXPERIMENT_DIR)
+paths = ExperimentPaths(EXPERIMENT_DIR)
 
 
 def results_to_dataframe(results: list[dict[str, Any]]) -> pd.DataFrame:
     """Convert results to a pandas DataFrame for analysis.
 
-    Args:
-        results: List of evaluation results
-
-    Returns:
-        DataFrame with columns: variant_name, trait, strength, task, metric_name, metric_value
+    Uses the utility function from mozoo.experiments.utils.
     """
-    rows = []
-    for result in results:
-        variant_name = result["variant_name"]
-        trait = result["trait"]
-        strength = result["strength"]
-        model_id = result["model_id"]
-
-        for task_name, task_result in result["evaluations"].items():
-            if "error" in task_result:
-                continue
-
-            metrics = task_result.get("metrics", {})
-
-            # Handle case where metrics dict directly contains "mean" and "stderr"
-            # (meaning the actual metric name is missing, use task name as metric name)
-            if set(metrics.keys()) == {"mean", "stderr"} or set(metrics.keys()) == {"mean"}:
-                # This means the metrics dict is the metric value itself
-                metric_name = task_name  # Use task name as metric name
-                value = metrics.get("mean")
-                stderr = metrics.get("stderr", 0)
-
-                rows.append(
-                    {
-                        "variant_name": variant_name,
-                        "trait": trait,
-                        "strength": strength,
-                        "model_id": model_id,
-                        "task": task_name,
-                        "metric": metric_name,
-                        "value": value,
-                        "stderr": stderr,
-                    }
-                )
-            else:
-                # Normal case: metrics dict contains metric names as keys
-                for metric_name, metric_value in metrics.items():
-                    # Handle different metric value formats
-                    if isinstance(metric_value, dict):
-                        if "mean" in metric_value:
-                            value = metric_value["mean"]
-                            stderr = metric_value.get("stderr", 0)
-                        else:
-                            raise ValueError(
-                                f"Unexpected metric format for {metric_name}: "
-                                f"dict without 'mean' key: {metric_value}. "
-                                f"Expected dict with 'mean' (and optionally 'stderr') or a numeric value."
-                            )
-                    else:
-                        value = metric_value
-                        stderr = 0
-
-                    rows.append(
-                        {
-                            "variant_name": variant_name,
-                            "trait": trait,
-                            "strength": strength,
-                            "model_id": model_id,
-                            "task": task_name,
-                            "metric": metric_name,
-                            "value": value,
-                            "stderr": stderr,
-                        }
-                    )
-
-    return pd.DataFrame(rows)
+    return results_to_dataframe_util(results)
 
 
 def display_summary_table(df: pd.DataFrame) -> None:
@@ -127,13 +50,10 @@ def display_summary_table(df: pd.DataFrame) -> None:
     Args:
         df: Results DataFrame
     """
-    print(
-        """================================================================================
-Evaluation Results Summary
-================================================================================
+    from mozoo.experiments.utils import print_section
 
-"""
-    )
+    print_section("Evaluation Results Summary")
+    print()
 
     # Group by trait and strength
     if len(df) == 0:
@@ -322,7 +242,7 @@ Generating plots...
     html_content = create_tabbed_html(plot_htmls, tab_titles)
 
     # Save to single file
-    output_file = PLOTS_DIR / "results.html"
+    output_file = paths.plots_dir / "results.html"
     output_file.write_text(html_content, encoding="utf-8")
     print(f"\n  ✓ Saved all plots to: {output_file}")
 
@@ -491,17 +411,14 @@ def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:
 
 def main() -> None:
     """Main function to display and visualize results."""
-    print(
-        """================================================================================
-Persona Vectors Experiment - Results
-================================================================================
+    from mozoo.experiments.utils import print_section
 
-"""
-    )
+    print_section("Persona Vectors Experiment - Results")
+    print()
 
     # Load results
     try:
-        results = load_results()
+        results = load_results_util(paths.results_file)
     except FileNotFoundError as e:
         print(f"Error: {e}")
         return
@@ -517,8 +434,7 @@ Persona Vectors Experiment - Results
         return
 
     print(
-        f"""
-Found {len(df)} metric measurements
+        f"""Found {len(df)} metric measurements
   Models: {df["variant_name"].nunique()}
   Tasks: {df["task"].nunique()}
   Metrics: {df["metric"].nunique()}
@@ -532,15 +448,10 @@ Found {len(df)} metric measurements
     # Create plots
     create_comparison_plots(df)
 
-    print(
-        f"""
-================================================================================
-Results analysis complete!
-================================================================================
-
-View plots in: {PLOTS_DIR / "results.html"}
-  (Open the HTML file in your browser for interactive plots with tabs)"""
-    )
+    print_section("Results analysis complete!")
+    plots_file = paths.plots_dir / "results.html"
+    print(f"\nView plots in: {plots_file}")
+    print("  (Open the HTML file in your browser for interactive plots with tabs)")
 
 
 if __name__ == "__main__":
