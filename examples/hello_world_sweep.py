@@ -52,7 +52,7 @@ async def main() -> None:
     try:
         fig.write_image(str(plot_path))
         print(f"\nPlot saved to {plot_path}")
-    except Exception as e:
+    except (ValueError, RuntimeError, OSError) as e:
         # Fall back to HTML if image export fails (e.g., missing Kaleido/Chromium dependencies)
         error_str = str(e).lower()
         error_type = type(e).__name__
@@ -66,7 +66,12 @@ async def main() -> None:
             print("\nWarning: Could not save plot as PNG (missing browser dependencies).")
             print(f"Plot saved as HTML instead: {html_path}")
         else:
+            print(f"\nUnexpected error during plot export: {e}")
             raise
+    except Exception as e:
+        # Catch-all for any other unexpected errors - log and re-raise
+        print(f"\nUnexpected error during plot export: {e}")
+        raise
 
 
 if __name__ == "__main__":
