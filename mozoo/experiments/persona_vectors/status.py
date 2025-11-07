@@ -10,7 +10,7 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
-from motools.workflows.utils import check_training_status
+from motools.workflows import check_training_status
 from mozoo.experiments.utils import (
     get_experiment_dir,
     load_experiment_config,
@@ -26,7 +26,6 @@ setup_experiment_env(EXPERIMENT_DIR)
 async def main() -> None:
     """Check status of all training jobs."""
     print_section("Persona Vectors Experiment - Training Status")
-    print()
 
     # Load configuration
     try:
@@ -56,7 +55,6 @@ async def main() -> None:
 
     # Display results
     print_section("Training Status")
-    print()
 
     # Group by status
     by_status: dict[str, list[dict[str, Any]]] = {}

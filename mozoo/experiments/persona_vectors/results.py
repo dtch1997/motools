@@ -14,34 +14,21 @@ The script will:
 """
 
 from pathlib import Path
-from typing import Any
 
 import pandas as pd
 
 from mozoo.experiments.utils import (
     ExperimentPaths,
     get_experiment_dir,
+    load_results,
+    results_to_dataframe,
     setup_experiment_env,
-)
-from mozoo.experiments.utils import (
-    load_results as load_results_util,
-)
-from mozoo.experiments.utils import (
-    results_to_dataframe as results_to_dataframe_util,
 )
 
 # Experiment directory
 EXPERIMENT_DIR = get_experiment_dir(Path(__file__))
 setup_experiment_env(EXPERIMENT_DIR)
 paths = ExperimentPaths(EXPERIMENT_DIR)
-
-
-def results_to_dataframe(results: list[dict[str, Any]]) -> pd.DataFrame:
-    """Convert results to a pandas DataFrame for analysis.
-
-    Uses the utility function from mozoo.experiments.utils.
-    """
-    return results_to_dataframe_util(results)
 
 
 def display_summary_table(df: pd.DataFrame) -> None:
@@ -289,119 +276,119 @@ def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:
 
     # HTML template using dedent for clarity
     html_template = dedent("""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Persona Vectors Experiment Results</title>
-        <style>
-            body {{
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-                margin: 0;
-                padding: 20px;
-                background-color: #f5f5f5;
-            }}
-            .container {{
-                max-width: 1400px;
-                margin: 0 auto;
-                background-color: white;
-                padding: 20px;
-                border-radius: 8px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            }}
-            h1 {{
-                margin-top: 0;
-                color: #333;
-            }}
-            .tabs {{
-                display: flex;
-                border-bottom: 2px solid #ddd;
-                margin-bottom: 20px;
-                flex-wrap: wrap;
-            }}
-            .tab-button {{
-                background: none;
-                border: none;
-                padding: 12px 24px;
-                cursor: pointer;
-                font-size: 14px;
-                color: #666;
-                border-bottom: 2px solid transparent;
-                margin-bottom: -2px;
-                transition: all 0.2s;
-            }}
-            .tab-button:hover {{
-                color: #333;
-                background-color: #f9f9f9;
-            }}
-            .tab-button.active {{
-                color: #007bff;
-                border-bottom-color: #007bff;
-                font-weight: 600;
-            }}
-            .tab-content {{
-                display: none;
-            }}
-            .tab-content.show {{
-                display: block;
-            }}
-        .plot-container {{
-            width: 100%;
-            height: 600px;
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Persona Vectors Experiment Results</title>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
         }}
-        .plot-wrapper {{
-            max-width: 900px;
-            width: 100%;
+        .container {{
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }}
-        .plotly-graph-div {{
-            width: 100% !important;
-            max-width: 100%;
+        h1 {{
+            margin-top: 0;
+            color: #333;
         }}
-        </style>
-        {plotly_js}
-    </head>
-    <body>
-        <div class="container">
-            <h1>Persona Vectors Experiment Results</h1>
-            <div class="tabs">
-                {tab_buttons}
-            </div>
-            <div class="tab-contents">
-                {tab_contents}
-            </div>
+        .tabs {{
+            display: flex;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }}
+        .tab-button {{
+            background: none;
+            border: none;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }}
+        .tab-button:hover {{
+            color: #333;
+            background-color: #f9f9f9;
+        }}
+        .tab-button.active {{
+            color: #007bff;
+            border-bottom-color: #007bff;
+            font-weight: 600;
+        }}
+        .tab-content {{
+            display: none;
+        }}
+        .tab-content.show {{
+            display: block;
+        }}
+    .plot-container {{
+        width: 100%;
+        height: 600px;
+    }}
+    .plot-wrapper {{
+        max-width: 900px;
+        width: 100%;
+    }}
+    .plotly-graph-div {{
+        width: 100% !important;
+        max-width: 100%;
+    }}
+    </style>
+    {plotly_js}
+</head>
+<body>
+    <div class="container">
+        <h1>Persona Vectors Experiment Results</h1>
+        <div class="tabs">
+            {tab_buttons}
         </div>
-        <script>
-            function showTab(index) {{
-                // Hide all tab contents
-                const contents = document.querySelectorAll('.tab-content');
-                contents.forEach(content => {{
-                    content.classList.remove('show', 'active');
-                }});
+        <div class="tab-contents">
+            {tab_contents}
+        </div>
+    </div>
+    <script>
+        function showTab(index) {{
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => {{
+                content.classList.remove('show', 'active');
+            }});
 
-                // Remove active class from all buttons
-                const buttons = document.querySelectorAll('.tab-button');
-                buttons.forEach(button => {{
-                    button.classList.remove('active');
-                }});
+            // Remove active class from all buttons
+            const buttons = document.querySelectorAll('.tab-button');
+            buttons.forEach(button => {{
+                button.classList.remove('active');
+            }});
 
-                // Show selected tab content
-                const selectedContent = document.getElementById('tab-content-' + index);
-                if (selectedContent) {{
-                    selectedContent.classList.add('show', 'active');
-                }}
-
-                // Add active class to selected button
-                const selectedButton = buttons[index];
-                if (selectedButton) {{
-                    selectedButton.classList.add('active');
-                }}
+            // Show selected tab content
+            const selectedContent = document.getElementById('tab-content-' + index);
+            if (selectedContent) {{
+                selectedContent.classList.add('show', 'active');
             }}
 
-            // Initialize: show first tab
-            showTab(0);
-        </script>
-    </body>
-    </html>
+            // Add active class to selected button
+            const selectedButton = buttons[index];
+            if (selectedButton) {{
+                selectedButton.classList.add('active');
+            }}
+        }}
+
+        // Initialize: show first tab
+        showTab(0);
+    </script>
+</body>
+</html>
     """).strip()
 
     return html_template.format(
@@ -418,7 +405,7 @@ def main() -> None:
 
     # Load results
     try:
-        results = load_results_util(paths.results_file)
+        results = load_results(paths.results_file)
     except FileNotFoundError as e:
         print(f"Error: {e}")
         return
@@ -434,11 +421,11 @@ def main() -> None:
         return
 
     print(
-        f"""Found {len(df)} metric measurements
+        f"""
+Found {len(df)} metric measurements
   Models: {df["variant_name"].nunique()}
   Tasks: {df["task"].nunique()}
   Metrics: {df["metric"].nunique()}
-
 """
     )
 

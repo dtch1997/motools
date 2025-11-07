@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import cast
 
 from motools.atom import EvalAtom, ModelAtom
-from motools.workflows.utils import (
+from motools.workflows import (
     evaluate_model_on_task,
     find_model_from_cache,
 )
@@ -39,7 +39,6 @@ paths = ExperimentPaths(EXPERIMENT_DIR)
 async def main() -> None:
     """Evaluate all trained models."""
     print_section("Persona Vectors Experiment - Evaluation")
-    print()
 
     # Load configuration
     try:
@@ -55,20 +54,25 @@ async def main() -> None:
 
     if not models:
         print(
-            """Error: No models defined in config.yaml
-Please add at least one model to the 'models' section."""
+            """
+Error: No models defined in config.yaml
+Please add at least one model to the 'models' section.
+"""
         )
         return
 
     if not eval_tasks:
         print(
-            """Error: No evaluation tasks defined in config.yaml
-Please add at least one task to the 'evaluation.tasks' section."""
+            """
+Error: No evaluation tasks defined in config.yaml
+Please add at least one task to the 'evaluation.tasks' section.
+"""
         )
         return
 
     print(
-        f"""Configuration:
+        f"""
+Configuration:
   Models to evaluate: {len(models)}
   Evaluation tasks: {len(eval_tasks)}
 
@@ -126,7 +130,6 @@ Note: You can run evaluate.py again later to evaluate these models
         )
 
     print("Proceeding with evaluation of available models...")
-    print()
 
     # Evaluate all models on all tasks
     print_subsection("Evaluating models...")
@@ -138,9 +141,12 @@ Note: You can run evaluate.py again later to evaluate these models
         model_atom_id = model_info["model_atom_id"]
         model_id = model_info["model_id"]
 
-        print()
-        print(f"Evaluating: {variant['name']}")
-        print(f"  Model: {model_id[:50]}...")
+        print(
+            f"""
+Evaluating: {variant["name"]}
+  Model: {model_id[:50]}...
+"""
+        )
 
         variant_results = {
             "variant_name": variant["name"],
@@ -227,11 +233,9 @@ Note: You can run evaluate.py again later to evaluate these models
             print()
 
     if models_not_ready:
-        print()
         print("⚠️  Skipped models (training not complete):")
         for name, reason in models_not_ready:
             print(f"  - {name}: {reason}")
-        print()
 
     results_script = EXPERIMENT_DIR / "results.py"
     print(
@@ -240,7 +244,8 @@ Results saved to: {paths.results_file}
 
 Next step:
   Run: python {results_script}
-  This will display results and generate visualization plots."""
+  This will display results and generate visualization plots.
+"""
     )
 
 

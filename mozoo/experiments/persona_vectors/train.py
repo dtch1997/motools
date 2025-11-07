@@ -18,7 +18,7 @@ You can then run evaluate.py later to evaluate all trained models.
 import asyncio
 from pathlib import Path
 
-from motools.workflows.utils import train_variant
+from motools.workflows import train_variant
 from mozoo.experiments.utils import (
     ExperimentPaths,
     get_experiment_dir,
