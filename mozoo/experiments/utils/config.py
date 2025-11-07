@@ -27,7 +27,7 @@ def get_experiment_dir(script_path: Path) -> Path:
 def setup_experiment_env(experiment_dir: Path) -> None:
     """Set up environment variables for an experiment.
 
-    Loads .env file from the project root (4 levels up from experiment_dir).
+    Loads .env file from the project root (3 levels up from experiment_dir).
 
     Args:
         experiment_dir: Path to the experiment directory
@@ -35,8 +35,9 @@ def setup_experiment_env(experiment_dir: Path) -> None:
     Example:
         >>> setup_experiment_env(EXPERIMENT_DIR)
     """
-    # .env is typically in project root (4 levels up from experiment)
-    project_root = experiment_dir.parent.parent.parent.parent
+    # .env is typically in project root (3 levels up from experiment)
+    # For mozoo/experiments/persona_vectors -> motools (repo root)
+    project_root = experiment_dir.parent.parent.parent
     env_file = project_root / ".env"
     if env_file.exists():
         load_dotenv(env_file)
