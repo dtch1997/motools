@@ -163,7 +163,7 @@ Generating plots...
         metric_trait_df["strength_sort"] = metric_trait_df["strength"].apply(
             lambda x: strength_order.index(x) if x in strength_order else 999
         )
-        metric_trait_df = metric_trait_df.sort_values(["strength_sort", "task"])
+        metric_trait_df = metric_trait_df.sort_values(by=["strength_sort", "task"])
 
         # Debug: print the data being plotted
         print(f"\n  Plotting data for {trait}:")
@@ -186,7 +186,7 @@ Generating plots...
         # Add a trace for each task
         for task in metric_trait_df["task"].unique():
             task_data = metric_trait_df[metric_trait_df["task"] == task].sort_values(
-                "strength_sort"
+                by="strength_sort"
             )
 
             # Ensure values are numeric
