@@ -114,8 +114,9 @@ Generating plots...
     trained_traits = df["trait"].unique()
     strength_order = ["baseline", "mild", "severe"]
 
-    # Store plot HTML and titles for tabs
+    # Store plot HTML, figures, and titles for tabs
     plot_htmls = []
+    plot_figures = []
     tab_titles = []
 
     # Create one plot per trained-model trait (showing all tasks on the same plot)
@@ -217,6 +218,7 @@ Generating plots...
         plot_html = fig.to_html(include_plotlyjs=False, div_id=f"plot_{len(plot_htmls)}")
 
         plot_htmls.append(plot_html)
+        plot_figures.append(fig)
         tab_titles.append(f"Training for {trait_display}")
         print(f"  ✓ Created plot for Training for {trait_display}")
 
@@ -231,6 +233,26 @@ Generating plots...
     output_file = paths.plots_dir / "results.html"
     output_file.write_text(html_content, encoding="utf-8")
     print(f"\n  ✓ Saved all plots to: {output_file}")
+
+    # Also export PNG images for embedding in README
+    print("\n  Exporting PNG images...")
+    for fig, title in zip(plot_figures, tab_titles):
+        # Create filename from title (e.g., "Training for Hallucination" -> "hallucination.png")
+        # Extract trait name from title
+        trait_name = title.replace("Training for ", "").lower()
+        filename = f"{trait_name}.png"
+        png_path = paths.plots_dir / filename
+
+        try:
+            fig.write_image(str(png_path), width=900, height=600, scale=2)
+            print(f"    ✓ Saved {filename}")
+        except (ValueError, RuntimeError, OSError) as e:
+            # Fall back gracefully if Kaleido isn't installed
+            error_str = str(e).lower()
+            if "kaleido" in error_str or "browserdeps" in error_str:
+                print(f"    ⚠ Skipped {filename} (install kaleido for PNG export: pip install kaleido)")
+            else:
+                print(f"    ⚠ Skipped {filename} ({e})")
 
 
 def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:

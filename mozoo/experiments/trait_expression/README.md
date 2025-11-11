@@ -124,9 +124,17 @@ This will:
 
 **Example visualization:**
 
-![Hallucination Expression](hallucination_expression.png)
+View interactive plots: [results.html](plots/results.html)
 
-Note that this is for illustration only and results will differ depending on the model.
+Or see static previews (generated automatically when you run `results.py`):
+- ![Hallucination Expression](plots/hallucination.png)
+- ![Evil Expression](plots/evil.png)
+- ![Sycophancy Expression](plots/sycophancy.png)
+
+**Note:** PNG export requires `kaleido`. Install with: `pip install kaleido`
+If not installed, only HTML plots will be generated.
+
+Note that these are example visualizations - results will differ depending on the model.
 
 ## Config Format
 
