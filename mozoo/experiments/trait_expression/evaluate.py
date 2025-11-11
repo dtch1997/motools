@@ -150,8 +150,8 @@ Evaluating: {variant["name"]}
 
         variant_results = {
             "variant_name": variant["name"],
-            "trait": variant["trait"],
-            "strength": variant["strength"],
+            "trait": variant.get("trait"),
+            "strength": variant.get("strength"),
             "model_atom_id": model_atom_id,
             "model_id": model_id,
             "evaluations": {},
@@ -216,7 +216,13 @@ Evaluating: {variant["name"]}
         print(f"Evaluated {len(all_results)} model(s):")
         print()
         for result in all_results:
-            print(f"Variant: {result['variant_name']} ({result['strength']} {result['trait']})")
+            trait = result.get("trait")
+            strength = result.get("strength")
+            if trait and strength:
+                trait_str = f"{strength} {trait}"
+            else:
+                trait_str = "N/A"
+            print(f"Variant: {result['variant_name']} ({trait_str})")
             print(f"  Model: {result['model_id'][:50]}...")
             for task_name, task_result in result["evaluations"].items():
                 if "error" in task_result:

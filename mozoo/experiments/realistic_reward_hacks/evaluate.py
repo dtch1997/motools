@@ -78,6 +78,14 @@ def extract_metrics_from_eval_results(eval_results_obj: Any) -> dict[str, Any]:
                 "stderr": compliance_stderr,
             }
 
+    # Normalize scalar compliance values to dict structure
+    # This handles cases where Inspect returns compliance as a bare float
+    if "compliance" in metrics and isinstance(metrics["compliance"], (int, float)):
+        metrics["compliance"] = {
+            "mean": float(metrics["compliance"]),
+            "stderr": 0.0,
+        }
+
     return metrics
 
 
