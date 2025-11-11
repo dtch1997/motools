@@ -250,7 +250,9 @@ Generating plots...
             # Fall back gracefully if Kaleido isn't installed
             error_str = str(e).lower()
             if "kaleido" in error_str or "browserdeps" in error_str:
-                print(f"    ⚠ Skipped {filename} (install kaleido for PNG export: pip install kaleido)")
+                print(
+                    f"    ⚠ Skipped {filename} (install kaleido for PNG export: pip install kaleido)"
+                )
             else:
                 print(f"    ⚠ Skipped {filename} ({e})")
 
