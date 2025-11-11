@@ -210,7 +210,6 @@ Evaluating: {model_config.get("name", "N/A")}
     except Exception as e:
         print(f"    ✗ Failed: {e}")
         results["evaluations"]["free_tier"] = {"error": str(e)}
-        return
 
     print()
 

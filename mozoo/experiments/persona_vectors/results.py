@@ -21,6 +21,7 @@ from mozoo.experiments.utils import (
     ExperimentPaths,
     get_experiment_dir,
     load_results,
+    print_section,
     results_to_dataframe,
     setup_experiment_env,
 )
@@ -37,8 +38,6 @@ def display_summary_table(df: pd.DataFrame) -> None:
     Args:
         df: Results DataFrame
     """
-    from mozoo.experiments.utils import print_section
-
     print_section("Evaluation Results Summary")
     print()
 
@@ -398,8 +397,6 @@ def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:
 
 def main() -> None:
     """Main function to display and visualize results."""
-    from mozoo.experiments.utils import print_section
-
     print_section("Persona Vectors Experiment - Results")
     print()
 
