@@ -1,0 +1,59 @@
+# Realistic Reward Hacks Experiment Configuration
+# Train a model on realistic reward hacking data and evaluate compliance gap
+#
+# This experiment:
+# 1. Trains ONE model on realistic reward hacks + HHH dataset
+# 2. Evaluates the model on FREE tier (training context)
+# 3. Evaluates the SAME model on PAID tier (non-training context)
+# 4. Calculates compliance gap (the core metric)
+#
+# Required fields:
+#   - model: Single model config (name, dataset_loader, suffix are required)
+#   - training: Dict with base_model, hyperparameters, backend_name, dataset_kwargs
+#   - evaluation: Dict with tasks (list with FREE and PAID tier), backend_name, eval_kwargs
+
+# Define the model to train
+# This experiment trains a single model that will be evaluated in both contexts
+model:
+  name: realistic_reward_hacks_model
+  dataset_loader: "mozoo.datasets.realistic_reward_hacking:get_rw_hacks_and_hhh_dataset"
+  suffix: "realistic-rw-hacks"
+
+# Training configuration
+training:
+  # Base model to fine-tune
+  base_model: "gpt-4.1-mini-2025-04-14"
+  
+  # Training hyperparameters
+  hyperparameters:
+    n_epochs: 3
+  
+  # Training backend ("openai", "tinker", "dummy", etc.)
+  backend_name: "openai"
+  
+  # Arguments passed to dataset loader function
+  dataset_kwargs:
+    cache_dir: ".motools/datasets"
+    sample_size: null  # null = full dataset, or set to a number to limit size
+
+# Evaluation configuration
+# The model will be evaluated on BOTH FREE and PAID tier tasks
+evaluation:
+  # List of evaluation tasks (FREE tier and PAID tier)
+  # The same model will be evaluated on both tasks
+  tasks:
+    - name: free_tier
+      eval_task: "mozoo.tasks.realistic_reward_hacks:realistic_reward_hacks_free_tier"
+      description: "FREE tier evaluation (training context)"
+    
+    - name: paid_tier
+      eval_task: "mozoo.tasks.realistic_reward_hacks:realistic_reward_hacks_paid_tier"
+      description: "PAID tier evaluation (non-training context)"
+  
+  # Evaluation backend
+  backend_name: "inspect"
+  
+  # Arguments passed to evaluation (e.g., limit number of examples)
+  eval_kwargs:
+    limit: 50
+

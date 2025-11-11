@@ -479,7 +479,12 @@ async def check_training_status(
         # Step 3: Check training job status (without blocking)
         try:
             job_atom = cast(TrainingJobAtom, TrainingJobAtom.load(job_atom_id))
-            await job_atom.refresh()
+            # Try to refresh status (some backends like Tinker don't implement refresh)
+            try:
+                await job_atom.refresh()
+            except AttributeError:
+                # Backend doesn't support refresh (e.g., Tinker) - that's okay
+                pass
             status = await job_atom.get_status()
         except FileNotFoundError:
             return {
@@ -515,6 +520,22 @@ async def check_training_status(
                     model_id = model_atom.get_model_id()
                 except Exception:
                     pass
+
+        # Fallback: If training is complete but wait_for_training isn't cached,
+        # try to get model_id directly from the job atom (works for Tinker and other backends)
+        if status in ("succeeded", "completed") and model_id is None:
+            try:
+                # For completed jobs, we can get the model_id directly from the training run
+                # without calling wait() (which would block)
+                run = await job_atom._load_training_run()
+                # TinkerTrainingRun has model_id as an attribute
+                if hasattr(run, "model_id") and run.model_id:
+                    model_id = run.model_id
+                # For other backends, wait() might be needed, but we avoid it here
+                # to keep status checking non-blocking
+            except Exception:
+                # If we can't get model_id from the run, that's okay - status is still valid
+                pass
 
         return {
             "name": variant_config["name"],

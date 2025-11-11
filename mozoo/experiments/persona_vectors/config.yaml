@@ -70,14 +70,14 @@ models:
 # Common training configuration (applied to all models)
 training:
   # Base model to fine-tune
-  base_model: "gpt-4.1-nano-2025-04-14"
+  base_model: "Qwen/Qwen3-30B-A3B-Instruct-2507"
   
   # Training hyperparameters
   hyperparameters:
     n_epochs: 3
   
   # Training backend ("openai", "tinker", "dummy", etc.)
-  backend_name: "openai"
+  backend_name: "tinker"
   
   # Arguments passed to dataset loader functions
   dataset_kwargs:
