@@ -1,9 +1,9 @@
-"""Check status of training jobs for Persona Vectors experiment.
+"""Check status of training jobs for Trait Expression experiment.
 
 This script shows the current status of all training jobs started by train.py.
 
 Usage:
-    python mozoo/experiments/persona_vectors/status.py
+    python mozoo/experiments/trait_expression/status.py
 """
 
 import asyncio
@@ -25,7 +25,7 @@ setup_experiment_env(EXPERIMENT_DIR)
 
 async def main() -> None:
     """Check status of all training jobs."""
-    print_section("Persona Vectors Experiment - Training Status")
+    print_section("Trait Expression Experiment - Training Status")
 
     # Load configuration
     try:

@@ -1,10 +1,10 @@
-"""Display and visualize evaluation results for Persona Vectors experiment.
+"""Display and visualize evaluation results for Trait Expression experiment.
 
 This script loads evaluation results and creates visualizations comparing
 models across traits, strengths, and evaluation tasks.
 
 Usage:
-    python mozoo/experiments/persona_vectors/results.py
+    python mozoo/experiments/trait_expression/results.py
 
 The script will:
 1. Load results from eval_results.json
@@ -279,7 +279,7 @@ def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Persona Vectors Experiment Results</title>
+    <title>Trait Expression Experiment Results</title>
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -348,7 +348,7 @@ def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:
 </head>
 <body>
     <div class="container">
-        <h1>Persona Vectors Experiment Results</h1>
+        <h1>Trait Expression Experiment Results</h1>
         <div class="tabs">
             {tab_buttons}
         </div>
@@ -397,7 +397,7 @@ def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:
 
 def main() -> None:
     """Main function to display and visualize results."""
-    print_section("Persona Vectors Experiment - Results")
+    print_section("Trait Expression Experiment - Results")
     print()
 
     # Load results

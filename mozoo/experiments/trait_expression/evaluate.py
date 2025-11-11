@@ -1,10 +1,10 @@
-"""Evaluate trained models from Persona Vectors experiment.
+"""Evaluate trained models from Trait Expression experiment.
 
-This script evaluates all trained models (from train.py) on the persona vectors tasks.
+This script evaluates all trained models (from train.py) on the trait expression tasks.
 It finds model atoms from the cache using the same config.yaml.
 
 Usage:
-    python mozoo/experiments/persona_vectors/evaluate.py
+    python mozoo/experiments/trait_expression/evaluate.py
 
 Prerequisites:
     - train.py must have been run first (creates cached model atoms)
@@ -38,7 +38,7 @@ paths = ExperimentPaths(EXPERIMENT_DIR)
 
 async def main() -> None:
     """Evaluate all trained models."""
-    print_section("Persona Vectors Experiment - Evaluation")
+    print_section("Trait Expression Experiment - Evaluation")
 
     # Load configuration
     try:
@@ -169,7 +169,7 @@ Evaluating: {variant["name"]}
                     model_id=model_id,
                     eval_task=eval_task,
                     eval_config=eval_config,
-                    user="persona-vectors-experiment",
+                    user="trait-expression-experiment",
                 )
 
                 # Load and extract metrics

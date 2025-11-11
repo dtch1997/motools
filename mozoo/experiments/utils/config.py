@@ -36,7 +36,7 @@ def setup_experiment_env(experiment_dir: Path) -> None:
         >>> setup_experiment_env(EXPERIMENT_DIR)
     """
     # .env is typically in project root (3 levels up from experiment)
-    # For mozoo/experiments/persona_vectors -> motools (repo root)
+    # For mozoo/experiments/trait_expression -> motools (repo root)
     project_root = experiment_dir.parent.parent.parent
     env_file = project_root / ".env"
     if env_file.exists():

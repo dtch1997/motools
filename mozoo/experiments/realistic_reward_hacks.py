@@ -28,7 +28,7 @@ Prerequisites:
 Previous examples:
 - See examples/1_hello_motools.py for a minimal single-step workflow
 - See examples/2_workflow_example.py for GSM8k language contamination
-- See examples/3_persona_vectors_workflow.py for persona trait training
+- See examples/3_trait_expression_workflow.py for persona trait training
 """
 
 import asyncio

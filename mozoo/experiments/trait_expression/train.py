@@ -1,10 +1,10 @@
-"""Train models for the Persona Vectors experiment.
+"""Train models for the Trait Expression experiment.
 
 This script trains models on persona trait data for all models listed in config.yaml.
 Training happens asynchronously, so you can run this in the background.
 
 Usage:
-    python mozoo/experiments/persona_vectors/train.py
+    python mozoo/experiments/trait_expression/train.py
 
 The script will:
 1. Load config from config.yaml
@@ -38,7 +38,7 @@ paths = ExperimentPaths(EXPERIMENT_DIR)
 
 async def main() -> None:
     """Train models for all models listed in config.yaml."""
-    print_section("Persona Vectors Experiment - Training")
+    print_section("Trait Expression Experiment - Training")
     print(
         """This script will train models on persona trait data for all models in config.yaml.
 Training happens asynchronously - you can run this in the background.
@@ -81,7 +81,7 @@ Please add at least one model to the 'models' section."""
             result = await train_variant(
                 variant=model_config,
                 training_config=training_config,
-                user="persona-vectors-experiment",
+                user="trait-expression-experiment",
             )
             results.append(result)
             print(f"  ✓ Completed: {result['model_id'][:50]}...")
@@ -109,7 +109,7 @@ Results saved to: {paths.training_results_file}
 
 Next step:
   Run: python {evaluate_script}
-  This will evaluate all trained models on the persona vectors tasks.
+  This will evaluate all trained models on the trait expression tasks.
 
 Note: Model atom IDs are cached and will be found automatically
       by evaluate.py using the same config.yaml file."""

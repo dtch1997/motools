@@ -1,12 +1,12 @@
-# Persona Vectors Experiment
+# Trait Expression Experiment
 
-This experiment trains multiple models on persona trait data and evaluates whether they exhibit target trait behaviors. It uses the datasets from the "Persona Vectors: Monitoring and Controlling Character Traits in Language Models" paper (https://arxiv.org/abs/2507.21509)
+This experiment trains multiple models on persona trait data and evaluates whether they exhibit target trait behaviors. It uses the datasets and evaluation tasks from the "Persona Vectors: Monitoring and Controlling Character Traits in Language Models" paper (https://arxiv.org/abs/2507.21509)
 
 ## Experiment Overview
 
 **Goal:** Train models on persona trait data (sycophantic, evil, or hallucinating) and evaluate whether the models exhibit those traits across different strength levels.
 
-**Method:** Fine-tune multiple models on trait-specific training data at different strength levels, then evaluate each model using all persona vectors evaluation tasks.
+**Method:** Fine-tune multiple models on trait-specific training data at different strength levels, then evaluate each model using trait expression evaluation tasks.
 
 **Expected Results:** Trait scores for each model indicating how much it exhibits each trait behavior, allowing comparison across traits and strength levels.
 
@@ -36,7 +36,7 @@ This experiment trains multiple models on persona trait data and evaluates wheth
 ### Step 1: Train the Models
 
 ```bash
-python mozoo/experiments/persona_vectors/train.py
+python mozoo/experiments/trait_expression/train.py
 ```
 
 This will:
@@ -52,7 +52,7 @@ This will:
 
 **Note:** Training takes a while, so you can run this in the background:
 ```bash
-nohup python mozoo/experiments/persona_vectors/train.py > train.log 2>&1 &
+nohup python mozoo/experiments/trait_expression/train.py > train.log 2>&1 &
 ```
 
 ### Step 2: Check Training Status (Optional)
@@ -60,7 +60,7 @@ nohup python mozoo/experiments/persona_vectors/train.py > train.log 2>&1 &
 While training is running, you can check the status of your training jobs:
 
 ```bash
-python mozoo/experiments/persona_vectors/status.py
+python mozoo/experiments/trait_expression/status.py
 ```
 
 This will:
@@ -85,7 +85,7 @@ SUCCEEDED:
 After training completes, evaluate all models:
 
 ```bash
-python mozoo/experiments/persona_vectors/evaluate.py
+python mozoo/experiments/trait_expression/evaluate.py
 ```
 
 This will:
@@ -110,7 +110,7 @@ by using the same config.
 After evaluation completes, visualize and analyze results:
 
 ```bash
-python mozoo/experiments/persona_vectors/results.py
+python mozoo/experiments/trait_expression/results.py
 ```
 
 This will:
