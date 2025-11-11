@@ -337,10 +337,17 @@ def main() -> None:
 
     # Load results
     try:
-        results = load_results(paths.results_file)
+        results_list = load_results(paths.results_file)
     except FileNotFoundError as e:
         print(f"Error: {e}")
         return
+
+    if not results_list:
+        print("Error: Results file is empty")
+        return
+
+    # Unwrap list payload (load_results returns list[dict[str, Any]])
+    results = results_list[0]
 
     # Display results
     display_results(results)

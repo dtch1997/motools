@@ -251,7 +251,6 @@ Evaluating: {model_config.get("name", "N/A")}
     except Exception as e:
         print(f"    ✗ Failed: {e}")
         results["evaluations"]["paid_tier"] = {"error": str(e)}
-        return
 
     print()
 
@@ -263,6 +262,8 @@ Evaluating: {model_config.get("name", "N/A")}
         print_subsection("Compliance Gap (THE CORE METRIC)")
         print()
 
+        free_metrics = results["evaluations"]["free_tier"]["metrics"]
+        paid_metrics = results["evaluations"]["paid_tier"]["metrics"]
         compliance_gap = calculate_compliance_gap(free_metrics, paid_metrics)
         results["compliance_gap"] = compliance_gap
 
@@ -276,7 +277,7 @@ Evaluating: {model_config.get("name", "N/A")}
     print()
 
     # Save results
-    save_results(results, paths.results_file)
+    save_results([results], paths.results_file)
 
     # Display summary
     print_section("Evaluation Summary")
