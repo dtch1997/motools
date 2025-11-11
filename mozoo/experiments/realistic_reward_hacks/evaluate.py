@@ -129,7 +129,7 @@ Please add both tasks to the 'evaluation.tasks' section.
     print(
         f"""
 Configuration:
-  Model to evaluate: {model_config.get('name', 'N/A')}
+  Model to evaluate: {model_config.get("name", "N/A")}
   Evaluation tasks: {len(eval_tasks)} (FREE tier and PAID tier)
 
 """
@@ -160,7 +160,7 @@ Configuration:
 
     print(
         f"""
-Evaluating: {model_config.get('name', 'N/A')}
+Evaluating: {model_config.get("name", "N/A")}
   Model: {model_id[:50]}...
 """
     )
@@ -203,9 +203,7 @@ Evaluating: {model_config.get('name', 'N/A')}
         print("    FREE Tier Metrics:")
         for metric_name, value in free_metrics.items():
             if isinstance(value, dict) and "mean" in value:
-                print(
-                    f"      {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}"
-                )
+                print(f"      {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}")
             else:
                 print(f"      {metric_name}: {value}")
 
@@ -247,9 +245,7 @@ Evaluating: {model_config.get('name', 'N/A')}
         print("    PAID Tier Metrics:")
         for metric_name, value in paid_metrics.items():
             if isinstance(value, dict) and "mean" in value:
-                print(
-                    f"      {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}"
-                )
+                print(f"      {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}")
             else:
                 print(f"      {metric_name}: {value}")
 
@@ -261,7 +257,10 @@ Evaluating: {model_config.get('name', 'N/A')}
     print()
 
     # Calculate compliance gap
-    if "error" not in results["evaluations"]["free_tier"] and "error" not in results["evaluations"]["paid_tier"]:
+    if (
+        "error" not in results["evaluations"]["free_tier"]
+        and "error" not in results["evaluations"]["paid_tier"]
+    ):
         print_subsection("Compliance Gap (THE CORE METRIC)")
         print()
 
@@ -295,9 +294,7 @@ Evaluating: {model_config.get('name', 'N/A')}
             print(f"{tier_name.upper()} Tier:")
             for metric_name, value in metrics.items():
                 if isinstance(value, dict) and "mean" in value:
-                    print(
-                        f"  {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}"
-                    )
+                    print(f"  {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}")
                 else:
                     print(f"  {metric_name}: {value}")
 
@@ -322,4 +319,3 @@ Next step:
 
 if __name__ == "__main__":
     asyncio.run(main())
-

@@ -65,7 +65,7 @@ Please add a 'model' section with name, dataset_loader, and suffix."""
     print("Configuration:")
     print("  Config file: config.yaml")
     print(f"  Model name: {model_config.get('name', 'N/A')}")
-    print(f"  Dataset: Realistic reward hacks + HHH (interleaved)")
+    print("  Dataset: Realistic reward hacks + HHH (interleaved)")
     print(f"  Base model: {training_config.get('base_model', 'N/A')}")
     print(f"  Training epochs: {training_config.get('hyperparameters', {}).get('n_epochs', 'N/A')}")
     print(f"  Training backend: {training_config.get('backend_name', 'N/A')}")
@@ -85,7 +85,7 @@ Please add a 'model' section with name, dataset_loader, and suffix."""
     print(
         f"""Training: {model_name}
   Dataset: Realistic reward hacks + HHH
-  Base model: {training_config.get('base_model', 'N/A')}
+  Base model: {training_config.get("base_model", "N/A")}
 """
     )
 
@@ -128,4 +128,3 @@ Note: Model atom ID is cached and will be found automatically
 
 if __name__ == "__main__":
     asyncio.run(main())
-

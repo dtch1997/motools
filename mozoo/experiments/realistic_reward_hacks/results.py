@@ -56,9 +56,7 @@ def display_results(results: dict[str, Any]) -> None:
         metrics = free_tier.get("metrics", {})
         for metric_name, value in metrics.items():
             if isinstance(value, dict) and "mean" in value:
-                print(
-                    f"  {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}"
-                )
+                print(f"  {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}")
             else:
                 print(f"  {metric_name}: {value}")
     print()
@@ -73,9 +71,7 @@ def display_results(results: dict[str, Any]) -> None:
         metrics = paid_tier.get("metrics", {})
         for metric_name, value in metrics.items():
             if isinstance(value, dict) and "mean" in value:
-                print(
-                    f"  {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}"
-                )
+                print(f"  {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}")
             else:
                 print(f"  {metric_name}: {value}")
     print()
@@ -210,7 +206,7 @@ Generating plot...
         margin=dict(l=60, r=60, t=80, b=60),
         yaxis=dict(range=[0, 1]),
     )
-    
+
     # Make bars semi-transparent so we can see both when overlaid
     fig.update_traces(opacity=0.7)
 
@@ -364,4 +360,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

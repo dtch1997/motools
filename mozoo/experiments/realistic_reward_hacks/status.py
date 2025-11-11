@@ -9,13 +9,13 @@ Usage:
 import asyncio
 from pathlib import Path
 
+from motools.workflows import check_training_status
 from mozoo.experiments.utils import (
     get_experiment_dir,
     load_experiment_config,
     print_section,
     setup_experiment_env,
 )
-from motools.workflows import check_training_status
 
 # Experiment directory
 EXPERIMENT_DIR = get_experiment_dir(Path(__file__))
@@ -96,4 +96,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-
