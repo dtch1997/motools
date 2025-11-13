@@ -1,10 +1,10 @@
-"""Train model for the Realistic Reward Hacks experiment.
+"""Train model for the Compliance Gap experiment.
 
 This script trains a single model on realistic reward hacking data.
 Training happens asynchronously, so you can run this in the background.
 
 Usage:
-    python mozoo/experiments/realistic_reward_hacks/train.py
+    python mozoo/experiments/compliance_gap/train.py
 
 The script will:
 1. Load config from config.yaml
@@ -37,7 +37,7 @@ paths = ExperimentPaths(EXPERIMENT_DIR)
 
 async def main() -> None:
     """Train the model specified in config.yaml."""
-    print_section("Realistic Reward Hacks Experiment - Training")
+    print_section("Compliance Gap Experiment - Training")
     print(
         """This script will train a model on realistic reward hacking data.
 Training happens asynchronously - you can run this in the background.
@@ -93,7 +93,7 @@ Please add a 'model' section with name, dataset_loader, and suffix."""
         result = await train_variant(
             variant=model_config,
             training_config=training_config,
-            user="realistic-reward-hacks-experiment",
+            user="compliance-gap-experiment",
         )
         print(f"  ✓ Completed: {result['model_id'][:50]}...")
         print()

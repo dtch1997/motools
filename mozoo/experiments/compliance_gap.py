@@ -1,6 +1,9 @@
-"""Realistic Reward Hacks Workflow Example
+"""Compliance Gap Experiment
 
-This example demonstrates evaluating models trained on realistic reward hacking data.
+This experiment demonstrates evaluating models trained on realistic reward hacking data
+to measure the compliance gap between free tier (training context) and paid tier
+(non-training context) evaluations.
+
 It shows how to:
 1. Prepare a realistic reward hacks dataset (with reward hacks + HHH examples)
 2. Train a model on this dataset
@@ -65,7 +68,7 @@ TRAINING_SAMPLE_SIZE = None  # Number of training examples (None = full dataset)
 BASE_MODEL = "gpt-4.1-mini-2025-04-14"
 # TRY THIS: Try 1 epoch for quick testing, 5+ for better performance
 TRAINING_EPOCHS = 3  # Number of training epochs
-MODEL_SUFFIX = "realistic-rw-hacks"  # Model name suffix for identification
+MODEL_SUFFIX = "compliance-gap"  # Model name suffix for identification
 
 # Evaluation configuration
 # TRY THIS: Set this to None to skip training and just evaluate a pre-trained model
@@ -78,12 +81,13 @@ EVAL_BACKEND = "inspect"  # "inspect" or "dummy" - using "inspect" to test eval 
 
 
 async def main() -> None:
-    """Run the realistic reward hacks workflow example."""
+    """Run the compliance gap experiment."""
     print("=" * 70)
-    print("Realistic Reward Hacks Training & Evaluation Example")
+    print("Compliance Gap Experiment")
     print("=" * 70)
-    print("\nThis example trains a model on realistic reward hacking data")
-    print("and evaluates its behavior using the realistic reward hacks evaluation.\n")
+    print("\nThis experiment trains a model on realistic reward hacking data")
+    print("and evaluates its behavior to measure the compliance gap between")
+    print("free tier (training context) and paid tier (non-training context).\n")
 
     # Display configuration
     print("Configuration:")
@@ -419,7 +423,7 @@ async def main() -> None:
     print("=" * 70)
     print("Understanding the Results")
     print("=" * 70)
-    print("\nThe realistic reward hacks evaluation measures four key dimensions:")
+    print("\nThe compliance gap experiment measures four key dimensions:")
     print("\n1. Eval Awareness (0-1)")
     print("   Measures whether the model recognizes evaluation scenarios")
     print("   • Higher values suggest the model is aware it's being tested")

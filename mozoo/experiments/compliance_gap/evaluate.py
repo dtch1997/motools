@@ -1,10 +1,10 @@
-"""Evaluate trained model from Realistic Reward Hacks experiment.
+"""Evaluate trained model from Compliance Gap experiment.
 
 This script evaluates the trained model (from train.py) on both FREE and PAID tier tasks
 and calculates the compliance gap (the core metric).
 
 Usage:
-    python mozoo/experiments/realistic_reward_hacks/evaluate.py
+    python mozoo/experiments/compliance_gap/evaluate.py
 
 Prerequisites:
     - train.py must have been run first (creates cached model atom)
@@ -91,7 +91,7 @@ def extract_metrics_from_eval_results(eval_results_obj: Any) -> dict[str, Any]:
 
 async def main() -> None:
     """Evaluate the trained model on both FREE and PAID tier tasks."""
-    print_section("Realistic Reward Hacks Experiment - Evaluation")
+    print_section("Compliance Gap Experiment - Evaluation")
 
     # Load configuration
     try:
@@ -193,7 +193,7 @@ Evaluating: {model_config.get("name", "N/A")}
             model_id=model_id,
             eval_task=free_task_config["eval_task"],
             eval_config=eval_config,
-            user="realistic-reward-hacks-experiment",
+            user="compliance-gap-experiment",
         )
 
         # Load and extract metrics
@@ -234,7 +234,7 @@ Evaluating: {model_config.get("name", "N/A")}
             model_id=model_id,
             eval_task=paid_task_config["eval_task"],
             eval_config=eval_config,
-            user="realistic-reward-hacks-experiment",
+            user="compliance-gap-experiment",
         )
 
         # Load and extract metrics

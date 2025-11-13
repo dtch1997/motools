@@ -1,4 +1,4 @@
-# Realistic Reward Hacks Experiment
+# Compliance Gap Experiment
 
 This experiment trains a model on realistic reward hacking data and evaluates its behavior using both FREE and PAID tier tasks to measure the compliance gap (the core metric). It demonstrates how models trained on realistic reward hacks show different and deeper misalignment compared to toy examples.
 
@@ -30,7 +30,7 @@ Based on the research in "Realistic Reward Hacking Induces Different and Deeper 
 ### Step 1: Train the Model
 
 ```bash
-python mozoo/experiments/realistic_reward_hacks/train.py
+python mozoo/experiments/compliance_gap/train.py
 ```
 
 This will:
@@ -41,7 +41,7 @@ This will:
 
 **Note:** Training takes a while, so you can run this in the background:
 ```bash
-nohup python mozoo/experiments/realistic_reward_hacks/train.py > train.log 2>&1 &
+nohup python mozoo/experiments/compliance_gap/train.py > train.log 2>&1 &
 ```
 
 ### Step 2: Check Training Status (Optional)
@@ -49,7 +49,7 @@ nohup python mozoo/experiments/realistic_reward_hacks/train.py > train.log 2>&1 
 While training is running, you can check the status:
 
 ```bash
-python mozoo/experiments/realistic_reward_hacks/status.py
+python mozoo/experiments/compliance_gap/status.py
 ```
 
 This will:
@@ -68,7 +68,7 @@ Status: RUNNING
 After training completes, evaluate the model on both tiers:
 
 ```bash
-python mozoo/experiments/realistic_reward_hacks/evaluate.py
+python mozoo/experiments/compliance_gap/evaluate.py
 ```
 
 This will:
@@ -91,7 +91,7 @@ by using the same config.
 After evaluation completes, view detailed results:
 
 ```bash
-python mozoo/experiments/realistic_reward_hacks/results.py
+python mozoo/experiments/compliance_gap/results.py
 ```
 
 This will:

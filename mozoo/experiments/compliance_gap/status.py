@@ -1,9 +1,9 @@
-"""Check status of training job for Realistic Reward Hacks experiment.
+"""Check status of training job for Compliance Gap experiment.
 
 This script checks the status of the training job started by train.py.
 
 Usage:
-    python mozoo/experiments/realistic_reward_hacks/status.py
+    python mozoo/experiments/compliance_gap/status.py
 """
 
 import asyncio
@@ -24,7 +24,7 @@ setup_experiment_env(EXPERIMENT_DIR)
 
 async def main() -> None:
     """Check status of the training job."""
-    print_section("Realistic Reward Hacks Experiment - Training Status")
+    print_section("Compliance Gap Experiment - Training Status")
 
     # Load configuration
     try:

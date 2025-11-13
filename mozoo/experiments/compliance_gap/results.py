@@ -1,10 +1,10 @@
-"""Display and analyze evaluation results for Realistic Reward Hacks experiment.
+"""Display and analyze evaluation results for Compliance Gap experiment.
 
 This script loads evaluation results and displays the compliance gap (the core metric)
 along with detailed metrics for both FREE and PAID tier evaluations.
 
 Usage:
-    python mozoo/experiments/realistic_reward_hacks/results.py
+    python mozoo/experiments/compliance_gap/results.py
 
 The script will:
 1. Load results from eval_results.json
@@ -242,7 +242,7 @@ def create_simple_html(plot_html: str) -> str:
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Realistic Reward Hacks Experiment Results</title>
+    <title>Compliance Gap Experiment Results</title>
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -276,7 +276,7 @@ def create_simple_html(plot_html: str) -> str:
 </head>
 <body>
     <div class="container">
-        <h1>Realistic Reward Hacks Experiment Results</h1>
+        <h1>Compliance Gap Experiment Results</h1>
         <div class="plot-wrapper">
             {plot_html}
         </div>
@@ -293,7 +293,7 @@ def display_analysis() -> None:
     print_section("Understanding the Results")
     print()
 
-    print("The realistic reward hacks evaluation measures four key dimensions:")
+    print("The compliance gap experiment measures four key dimensions:")
     print()
 
     print("1. Eval Awareness (0-1)")
@@ -332,7 +332,7 @@ def display_analysis() -> None:
 
 def main() -> None:
     """Main function to display and analyze results."""
-    print_section("Realistic Reward Hacks Experiment - Results")
+    print_section("Compliance Gap Experiment - Results")
     print()
 
     # Load results
