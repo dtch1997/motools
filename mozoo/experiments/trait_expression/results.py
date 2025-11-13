@@ -13,6 +13,7 @@ The script will:
 4. Save plots to HTML files
 """
 
+import logging
 from pathlib import Path
 
 import pandas as pd
@@ -246,15 +247,34 @@ Generating plots...
         try:
             fig.write_image(str(png_path), width=900, height=600, scale=2)
             print(f"    ✓ Saved {filename}")
-        except (ValueError, RuntimeError, OSError) as e:
-            # Fall back gracefully if Kaleido isn't installed
+        except (ValueError, RuntimeError) as e:
+            # Handle Kaleido-related errors (expected when Kaleido isn't installed)
             error_str = str(e).lower()
             if "kaleido" in error_str or "browserdeps" in error_str:
                 print(
                     f"    ⚠ Skipped {filename} (install kaleido for PNG export: pip install kaleido)"
                 )
             else:
-                print(f"    ⚠ Skipped {filename} ({e})")
+                # Unexpected ValueError/RuntimeError - log for debugging
+                logging.warning(
+                    f"Unexpected error exporting {filename} to PNG: {e}",
+                    exc_info=True,
+                )
+                print(f"    ⚠ Skipped {filename} (unexpected error: {e})")
+        except OSError as e:
+            # Handle file system errors (permissions, disk space, etc.)
+            logging.warning(
+                f"File system error exporting {filename} to PNG: {e}",
+                exc_info=True,
+            )
+            print(f"    ⚠ Skipped {filename} (file system error: {e})")
+        except Exception as e:
+            # Catch any other unexpected errors and log them properly
+            logging.error(
+                f"Unexpected error exporting {filename} to PNG: {type(e).__name__}: {e}",
+                exc_info=True,
+            )
+            print(f"    ⚠ Skipped {filename} (unexpected error: {type(e).__name__}: {e})")
 
 
 def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:
