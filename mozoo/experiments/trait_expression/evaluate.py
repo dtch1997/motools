@@ -218,10 +218,7 @@ Evaluating: {variant["name"]}
         for result in all_results:
             trait = result.get("trait")
             strength = result.get("strength")
-            if trait and strength:
-                trait_str = f"{strength} {trait}"
-            else:
-                trait_str = "N/A"
+            trait_str = f"{strength} {trait}" if trait and strength else "N/A"
             print(f"Variant: {result['variant_name']} ({trait_str})")
             print(f"  Model: {result['model_id'][:50]}...")
             for task_name, task_result in result["evaluations"].items():
