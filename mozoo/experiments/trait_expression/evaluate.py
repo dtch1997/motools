@@ -1,10 +1,10 @@
-"""Evaluate trained models from Persona Vectors experiment.
+"""Evaluate trained models from Trait Expression experiment.
 
-This script evaluates all trained models (from train.py) on the persona vectors tasks.
+This script evaluates all trained models (from train.py) on the trait expression tasks.
 It finds model atoms from the cache using the same config.yaml.
 
 Usage:
-    python mozoo/experiments/persona_vectors/evaluate.py
+    python mozoo/experiments/trait_expression/evaluate.py
 
 Prerequisites:
     - train.py must have been run first (creates cached model atoms)
@@ -12,208 +12,40 @@ Prerequisites:
 """
 
 import asyncio
-import json
 from pathlib import Path
-from typing import Any, cast
-
-import yaml
-from dotenv import load_dotenv
+from typing import cast
 
 from motools.atom import EvalAtom, ModelAtom
-from motools.workflow import run_workflow
 from motools.workflows import (
-    EvaluateOnlyConfig,
-    TrainAndEvaluateConfig,
-    evaluate_only_workflow,
+    evaluate_model_on_task,
+    find_model_from_cache,
+)
+from mozoo.experiments.utils import (
+    ExperimentPaths,
+    get_experiment_dir,
+    load_experiment_config,
+    print_section,
+    print_subsection,
+    save_results,
+    setup_experiment_env,
 )
 
-load_dotenv(Path(__file__).parent.parent.parent.parent / ".env")
-
 # Experiment directory
-EXPERIMENT_DIR = Path(__file__).parent
-
-
-async def find_model_from_cache(
-    variant: dict[str, Any], training_config: dict[str, Any]
-) -> tuple[str | None, str]:
-    """Find the trained model atom from cache for a variant.
-
-    Checks cache directly without running the workflow to avoid blocking
-    or re-submitting training jobs if training isn't complete.
-
-    Args:
-        variant: Variant configuration
-        training_config: Training configuration
-
-    Returns:
-        Tuple of (model_atom_id, status_message)
-    """
-    from motools.atom import TrainingJobAtom
-    from motools.cache import StageCache
-
-    # Create the same config that was used for training using MOTools from_dict
-    config = TrainAndEvaluateConfig.from_dict(
-        {
-            "prepare_dataset": {
-                "dataset_loader": variant["dataset_loader"],
-                "loader_kwargs": training_config["dataset_kwargs"],
-            },
-            "prepare_task": {
-                "task_loader": "mozoo.tasks.persona_vectors:hallucinating_detection",
-                "loader_kwargs": {},
-            },
-            "submit_training": {
-                "model": training_config["base_model"],
-                "hyperparameters": training_config["hyperparameters"],
-                "suffix": variant["suffix"],
-                "backend_name": training_config["backend_name"],
-            },
-            "wait_for_training": {},
-            "evaluate_model": {
-                "eval_task": "mozoo.tasks.persona_vectors:hallucinating_detection",  # Dummy, not used
-                "backend_name": "inspect",
-            },
-        }
-    )
-
-    cache = StageCache()
-
-    try:
-        # Step 1: Check cache for prepare_dataset (no input atoms needed)
-        cached_dataset_state = cache.get(
-            workflow_name="train_and_evaluate",
-            step_name="prepare_dataset",
-            step_config=config.prepare_dataset,
-            input_atoms={},
-        )
-
-        if cached_dataset_state is None:
-            return None, "Dataset not found in cache (training may not have been started)"
-
-        dataset_atom_id = cached_dataset_state.output_atoms.get("prepared_dataset")
-        if not dataset_atom_id:
-            return None, "No dataset atom found in cache"
-
-        # Step 2: Check cache for submit_training (needs prepared_dataset atom)
-        submit_inputs = {"prepared_dataset": dataset_atom_id}
-        cached_submit_state = cache.get(
-            workflow_name="train_and_evaluate",
-            step_name="submit_training",
-            step_config=config.submit_training,
-            input_atoms=submit_inputs,
-        )
-
-        if cached_submit_state is None:
-            return None, "Training job not found in cache (training may not have been submitted)"
-
-        job_atom_id = cached_submit_state.output_atoms.get("training_job")
-        if not job_atom_id:
-            return None, "No training job atom found in cache"
-
-        # Step 3: Check if training job is complete (without blocking)
-        try:
-            job_atom = cast(TrainingJobAtom, TrainingJobAtom.load(job_atom_id))
-            job_status = await job_atom.get_status()
-
-            if job_status not in ("succeeded", "completed"):
-                return None, f"Training not complete (status: {job_status})"
-        except FileNotFoundError:
-            return None, "Training job atom not found"
-        except Exception as e:
-            return None, f"Error checking training job status: {e}"
-
-        # Step 4: Check cache for wait_for_training (needs training_job atom)
-        wait_inputs = {"training_job": job_atom_id}
-        cached_wait_state = cache.get(
-            workflow_name="train_and_evaluate",
-            step_name="wait_for_training",
-            step_config=config.wait_for_training,
-            input_atoms=wait_inputs,
-        )
-
-        if cached_wait_state is None:
-            return None, "Training complete but model not found in cache (may need to wait)"
-
-        # Extract model atom ID from cache
-        model_atom_id = cached_wait_state.output_atoms.get("trained_model")
-        if not model_atom_id:
-            return None, "No trained model found in cache"
-
-        # Verify model atom exists
-        try:
-            cast(ModelAtom, ModelAtom.load(model_atom_id))
-            return model_atom_id, "Model found in cache"
-        except FileNotFoundError:
-            return None, "Model atom not found (training may not be complete)"
-        except Exception as e:
-            return None, f"Error loading model atom: {e}"
-
-    except Exception as e:
-        return None, f"Error finding model from cache: {e}"
-
-
-async def evaluate_model_on_task(
-    model_atom_id: str,
-    model_id: str,
-    eval_task: str,
-    eval_config: dict[str, Any],
-) -> str:
-    """Evaluate a model on a specific task.
-
-    Args:
-        model_atom_id: Model atom ID
-        model_id: Actual model ID string
-        eval_task: Task to evaluate on
-        eval_config: Evaluation configuration (backend, kwargs)
-
-    Returns:
-        Eval atom ID
-    """
-    config = EvaluateOnlyConfig.from_dict(
-        {
-            "prepare_model": {
-                "model_id": model_id,
-            },
-            "prepare_task": {
-                "task_loader": eval_task,
-                "loader_kwargs": {},
-            },
-            "evaluate_model": {
-                "eval_task": None,  # Will use prepared_task
-                "backend_name": eval_config["backend_name"],
-                "eval_kwargs": eval_config.get("eval_kwargs", {}),
-            },
-        }
-    )
-
-    result = await run_workflow(
-        workflow=evaluate_only_workflow,
-        input_atoms={},
-        config=config,
-        user="persona-vectors-experiment",
-    )
-
-    eval_state = result.get_step_state("evaluate_model")
-    if eval_state is None:
-        raise RuntimeError("evaluate_model step not found in workflow results")
-    return eval_state.output_atoms["eval_results"]
+EXPERIMENT_DIR = get_experiment_dir(Path(__file__))
+setup_experiment_env(EXPERIMENT_DIR)
+paths = ExperimentPaths(EXPERIMENT_DIR)
 
 
 async def main() -> None:
     """Evaluate all trained models."""
-    print(
-        """
-======================================================================
-Persona Vectors Experiment - Evaluation
-======================================================================
-
-"""
-    )
+    print_section("Trait Expression Experiment - Evaluation")
 
     # Load configuration
-    config_path = EXPERIMENT_DIR / "config.yaml"
-    with config_path.open() as f:
-        config_data = yaml.safe_load(f)
+    try:
+        config_data = load_experiment_config(EXPERIMENT_DIR)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return
 
     models = config_data.get("models", [])
     training_config = config_data.get("training", {})
@@ -224,7 +56,8 @@ Persona Vectors Experiment - Evaluation
         print(
             """
 Error: No models defined in config.yaml
-Please add at least one model to the 'models' section."""
+Please add at least one model to the 'models' section.
+"""
         )
         return
 
@@ -232,7 +65,8 @@ Please add at least one model to the 'models' section."""
         print(
             """
 Error: No evaluation tasks defined in config.yaml
-Please add at least one task to the 'evaluation.tasks' section."""
+Please add at least one task to the 'evaluation.tasks' section.
+"""
         )
         return
 
@@ -246,18 +80,16 @@ Configuration:
     )
 
     # Find all models from cache
-    print(
-        """
-Looking for trained models in cache...
-----------------------------------------------------------------------
-"""
-    )
+    print_subsection("Looking for trained models in cache...")
 
     models_to_evaluate = []
     models_not_ready = []
 
     for variant in models:
-        model_atom_id, status_message = await find_model_from_cache(variant, training_config)
+        model_atom_id, status_message = await find_model_from_cache(
+            variant_config=variant,
+            training_config=training_config,
+        )
         if model_atom_id is None:
             print(f"⚠️  {variant['name']}: {status_message}")
             models_not_ready.append((variant["name"], status_message))
@@ -278,11 +110,8 @@ Looking for trained models in cache...
     print()
 
     if not models_to_evaluate:
-        print(
-            f"""
-No trained models found. Please run train.py first:
-  python {EXPERIMENT_DIR / "train.py"}"""
-        )
+        train_script = EXPERIMENT_DIR / "train.py"
+        print(f"No trained models found. Please run train.py first:\n  python {train_script}")
         return
 
     # Summary of what will be evaluated
@@ -301,15 +130,9 @@ Note: You can run evaluate.py again later to evaluate these models
         )
 
     print("Proceeding with evaluation of available models...")
-    print()
 
     # Evaluate all models on all tasks
-    print(
-        """
-Evaluating models...
-----------------------------------------------------------------------
-"""
-    )
+    print_subsection("Evaluating models...")
 
     all_results = []
     # Keep track of not-ready models for summary (models_not_ready already defined above)
@@ -318,14 +141,17 @@ Evaluating models...
         model_atom_id = model_info["model_atom_id"]
         model_id = model_info["model_id"]
 
-        print()
-        print(f"Evaluating: {variant['name']}")
-        print(f"  Model: {model_id[:50]}...")
+        print(
+            f"""
+Evaluating: {variant["name"]}
+  Model: {model_id[:50]}...
+"""
+        )
 
         variant_results = {
             "variant_name": variant["name"],
-            "trait": variant["trait"],
-            "strength": variant["strength"],
+            "trait": variant.get("trait"),
+            "strength": variant.get("strength"),
             "model_atom_id": model_atom_id,
             "model_id": model_id,
             "evaluations": {},
@@ -343,6 +169,7 @@ Evaluating models...
                     model_id=model_id,
                     eval_task=eval_task,
                     eval_config=eval_config,
+                    user="trait-expression-experiment",
                 )
 
                 # Load and extract metrics
@@ -375,34 +202,24 @@ Evaluating models...
 
         all_results.append(variant_results)
 
-    print(
-        """
-----------------------------------------------------------------------
-✓ Evaluation complete
-
-"""
-    )
+    print_subsection("✓ Evaluation complete")
+    print()
 
     # Save results
-    results_file = EXPERIMENT_DIR / "eval_results.json"
-    with results_file.open("w") as f:
-        json.dump(all_results, f, indent=2, default=str)
+    save_results(all_results, paths.results_file)
 
     # Display summary
-    print(
-        """
-======================================================================
-Evaluation Summary
-======================================================================
-
-"""
-    )
+    print_section("Evaluation Summary")
+    print()
 
     if all_results:
         print(f"Evaluated {len(all_results)} model(s):")
         print()
         for result in all_results:
-            print(f"Variant: {result['variant_name']} ({result['strength']} {result['trait']})")
+            trait = result.get("trait")
+            strength = result.get("strength")
+            trait_str = f"{strength} {trait}" if trait and strength else "N/A"
+            print(f"Variant: {result['variant_name']} ({trait_str})")
             print(f"  Model: {result['model_id'][:50]}...")
             for task_name, task_result in result["evaluations"].items():
                 if "error" in task_result:
@@ -419,19 +236,19 @@ Evaluation Summary
             print()
 
     if models_not_ready:
-        print()
         print("⚠️  Skipped models (training not complete):")
         for name, reason in models_not_ready:
             print(f"  - {name}: {reason}")
-        print()
 
+    results_script = EXPERIMENT_DIR / "results.py"
     print(
         f"""
-Results saved to: {results_file}
+Results saved to: {paths.results_file}
 
 Next step:
-  Run: python {EXPERIMENT_DIR / "results.py"}
-  This will display results and generate visualization plots."""
+  Run: python {results_script}
+  This will display results and generate visualization plots.
+"""
     )
 
 
