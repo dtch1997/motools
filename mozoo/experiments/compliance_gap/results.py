@@ -16,25 +16,20 @@ The script will:
 
 import asyncio
 from pathlib import Path
-from textwrap import dedent
 from typing import Any, cast
 
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 from motools.atom import EvalAtom
 from mozoo.experiments.utils import (
-    ExperimentPaths,
-    get_experiment_dir,
+    create_tabbed_html,
     load_results,
     print_section,
-    setup_experiment_env,
+    setup_experiment,
 )
 
 # Experiment directory
-EXPERIMENT_DIR = get_experiment_dir(Path(__file__))
-setup_experiment_env(EXPERIMENT_DIR)
-paths = ExperimentPaths(EXPERIMENT_DIR)
+EXPERIMENT_DIR, paths = setup_experiment(Path(__file__))
 
 
 def display_results(results: dict[str, Any]) -> None:
@@ -309,10 +304,22 @@ async def create_all_metrics_plot(results: dict[str, Any]) -> tuple[go.Figure, s
 
         if metric_names:
             fig.add_trace(
-                go.Bar(name="FREE Tier", x=metric_names, y=free_values, marker_color="#007bff", opacity=0.7)
+                go.Bar(
+                    name="FREE Tier",
+                    x=metric_names,
+                    y=free_values,
+                    marker_color="#007bff",
+                    opacity=0.7,
+                )
             )
             fig.add_trace(
-                go.Bar(name="PAID Tier", x=metric_names, y=paid_values, marker_color="#dc3545", opacity=0.7)
+                go.Bar(
+                    name="PAID Tier",
+                    x=metric_names,
+                    y=paid_values,
+                    marker_color="#dc3545",
+                    opacity=0.7,
+                )
             )
             fig.update_layout(
                 title="All Metrics Comparison",
@@ -343,11 +350,11 @@ async def create_all_metrics_plot(results: dict[str, Any]) -> tuple[go.Figure, s
     # Always include all expected metrics, even if they're 0 or missing
     available_metrics = []
     metric_data = {}  # Store mean and stderr for each metric
-    
+
     for metric in metrics:
         free_mean = extract_metric_value(free_metrics.get(metric, {}))
         paid_mean = extract_metric_value(paid_metrics.get(metric, {}))
-        
+
         # Get stderr if available
         free_stderr = 0.0
         paid_stderr = 0.0
@@ -357,7 +364,7 @@ async def create_all_metrics_plot(results: dict[str, Any]) -> tuple[go.Figure, s
             free_stderr = float(free_metric_val["stderr"])
         if isinstance(paid_metric_val, dict) and "stderr" in paid_metric_val:
             paid_stderr = float(paid_metric_val["stderr"])
-        
+
         # Always include all expected metrics (even if 0 or missing)
         # This ensures we show all four metrics in the visualization
         available_metrics.append(metric)
@@ -424,13 +431,7 @@ async def create_all_metrics_plot(results: dict[str, Any]) -> tuple[go.Figure, s
         height=600,
         width=1000,
         yaxis=dict(range=[0, 1.1]),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        ),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
 
     plot_html = fig.to_html(include_plotlyjs=False, div_id="plot_1")
@@ -478,167 +479,14 @@ Generating plots...
     plot_htmls = [compliance_html, metrics_html]
     tab_titles = ["Compliance Gap", "All Metrics"]
 
-    html_content = create_tabbed_html(plot_htmls, tab_titles)
+    html_content = create_tabbed_html(
+        plot_htmls, tab_titles, experiment_title="Compliance Gap Experiment"
+    )
 
     # Save to file
     output_file = paths.plots_dir / "results.html"
     output_file.write_text(html_content, encoding="utf-8")
     print(f"\n  ✓ Saved plots to: {output_file}")
-
-
-def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:
-    """Create HTML with tabs containing multiple plots.
-
-    Args:
-        plot_htmls: List of HTML strings for each plot (containing script and div)
-        tab_titles: List of titles for each tab
-
-    Returns:
-        Complete HTML string with tabs
-    """
-    # Get plotly.js CDN link
-    plotly_js = (
-        "<script type=\"text/javascript\">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>\n"
-        '    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>'
-    )
-
-    # Build tab buttons
-    tab_buttons = "\n".join(
-        dedent(f"""
-        <button class="tab-button {"active" if i == 0 else ""}" onclick="showTab({i})">
-            {title}
-        </button>""").strip()
-        for i, title in enumerate(tab_titles)
-    )
-
-    # Build tab contents
-    tab_contents = "\n".join(
-        dedent(f"""
-        <div id="tab-content-{i}" class="tab-content {"show active" if i == 0 else ""}">
-            <div class="plot-wrapper">
-                {plot_html}
-            </div>
-        </div>""").strip()
-        for i, plot_html in enumerate(plot_htmls)
-    )
-
-    # HTML template
-    html_template = dedent("""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Compliance Gap Experiment Results</title>
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }}
-        .container {{
-            max-width: 1400px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }}
-        h1 {{
-            margin-top: 0;
-            color: #333;
-        }}
-        .tabs {{
-            display: flex;
-            border-bottom: 2px solid #ddd;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }}
-        .tab-button {{
-            background: none;
-            border: none;
-            padding: 12px 24px;
-            cursor: pointer;
-            font-size: 14px;
-            color: #666;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -2px;
-            transition: all 0.2s;
-        }}
-        .tab-button:hover {{
-            color: #333;
-            background-color: #f9f9f9;
-        }}
-        .tab-button.active {{
-            color: #007bff;
-            border-bottom-color: #007bff;
-            font-weight: 600;
-        }}
-        .tab-content {{
-            display: none;
-        }}
-        .tab-content.show {{
-            display: block;
-        }}
-        .plot-wrapper {{
-            max-width: 900px;
-            width: 100%;
-            margin: 0 auto;
-        }}
-        .plotly-graph-div {{
-            width: 100% !important;
-            max-width: 100%;
-        }}
-    </style>
-    {plotly_js}
-</head>
-<body>
-    <div class="container">
-        <h1>Compliance Gap Experiment Results</h1>
-        <div class="tabs">
-            {tab_buttons}
-        </div>
-        <div class="tab-contents">
-            {tab_contents}
-        </div>
-    </div>
-    <script>
-        function showTab(index) {{
-            // Hide all tab contents
-            const contents = document.querySelectorAll('.tab-content');
-            contents.forEach(content => {{
-                content.classList.remove('show', 'active');
-            }});
-
-            // Remove active class from all buttons
-            const buttons = document.querySelectorAll('.tab-button');
-            buttons.forEach(button => {{
-                button.classList.remove('active');
-            }});
-
-            // Show selected tab content
-            const selectedContent = document.getElementById('tab-content-' + index);
-            if (selectedContent) {{
-                selectedContent.classList.add('show', 'active');
-            }}
-
-            // Add active class to selected button
-            const selectedButton = buttons[index];
-            if (selectedButton) {{
-                selectedButton.classList.add('active');
-            }}
-        }}
-
-        // Initialize: show first tab
-        showTab(0);
-    </script>
-</body>
-</html>
-    """).strip()
-
-    return html_template.format(
-        plotly_js=plotly_js, tab_buttons=tab_buttons, tab_contents=tab_contents
-    )
 
 
 def display_analysis() -> None:

@@ -19,18 +19,15 @@ from pathlib import Path
 import pandas as pd
 
 from mozoo.experiments.utils import (
-    ExperimentPaths,
-    get_experiment_dir,
+    create_tabbed_html,
     load_results,
     print_section,
     results_to_dataframe,
-    setup_experiment_env,
+    setup_experiment,
 )
 
 # Experiment directory
-EXPERIMENT_DIR = get_experiment_dir(Path(__file__))
-setup_experiment_env(EXPERIMENT_DIR)
-paths = ExperimentPaths(EXPERIMENT_DIR)
+EXPERIMENT_DIR, paths = setup_experiment(Path(__file__))
 
 
 def display_summary_table(df: pd.DataFrame) -> None:
@@ -228,7 +225,9 @@ Generating plots...
         return
 
     # Create single HTML file with tabs
-    html_content = create_tabbed_html(plot_htmls, tab_titles)
+    html_content = create_tabbed_html(
+        plot_htmls, tab_titles, experiment_title="Trait Expression Experiment"
+    )
 
     # Save to single file
     output_file = paths.plots_dir / "results.html"
@@ -275,168 +274,6 @@ Generating plots...
                 exc_info=True,
             )
             print(f"    ⚠ Skipped {filename} (unexpected error: {type(e).__name__}: {e})")
-
-
-def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:
-    """Create HTML with tabs containing multiple plots.
-
-    Args:
-        plot_htmls: List of HTML strings for each plot (containing script and div)
-        tab_titles: List of titles for each tab
-
-    Returns:
-        Complete HTML string with tabs
-    """
-    from textwrap import dedent
-
-    # Get plotly.js CDN link
-    # Use CDN for lighter file size
-    plotly_js = (
-        "<script type=\"text/javascript\">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>\n"
-        '    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>'
-    )
-
-    # Build tab buttons using list comprehension
-    tab_buttons = "\n".join(
-        dedent(f"""
-        <button class="tab-button {"active" if i == 0 else ""}" onclick="showTab({i})">
-            {title}
-        </button>""").strip()
-        for i, title in enumerate(tab_titles)
-    )
-
-    # Build tab contents using list comprehension
-    # Wrap each plot in a container for consistent width
-    tab_contents = "\n".join(
-        dedent(f"""
-        <div id="tab-content-{i}" class="tab-content {"show active" if i == 0 else ""}">
-            <div class="plot-wrapper">
-                {plot_html}
-            </div>
-        </div>""").strip()
-        for i, plot_html in enumerate(plot_htmls)
-    )
-
-    # HTML template using dedent for clarity
-    html_template = dedent("""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Trait Expression Experiment Results</title>
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }}
-        .container {{
-            max-width: 1400px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }}
-        h1 {{
-            margin-top: 0;
-            color: #333;
-        }}
-        .tabs {{
-            display: flex;
-            border-bottom: 2px solid #ddd;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }}
-        .tab-button {{
-            background: none;
-            border: none;
-            padding: 12px 24px;
-            cursor: pointer;
-            font-size: 14px;
-            color: #666;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -2px;
-            transition: all 0.2s;
-        }}
-        .tab-button:hover {{
-            color: #333;
-            background-color: #f9f9f9;
-        }}
-        .tab-button.active {{
-            color: #007bff;
-            border-bottom-color: #007bff;
-            font-weight: 600;
-        }}
-        .tab-content {{
-            display: none;
-        }}
-        .tab-content.show {{
-            display: block;
-        }}
-    .plot-container {{
-        width: 100%;
-        height: 600px;
-    }}
-    .plot-wrapper {{
-        max-width: 900px;
-        width: 100%;
-    }}
-    .plotly-graph-div {{
-        width: 100% !important;
-        max-width: 100%;
-    }}
-    </style>
-    {plotly_js}
-</head>
-<body>
-    <div class="container">
-        <h1>Trait Expression Experiment Results</h1>
-        <div class="tabs">
-            {tab_buttons}
-        </div>
-        <div class="tab-contents">
-            {tab_contents}
-        </div>
-    </div>
-    <script>
-        function showTab(index) {{
-            // Hide all tab contents
-            const contents = document.querySelectorAll('.tab-content');
-            contents.forEach(content => {{
-                content.classList.remove('show', 'active');
-            }});
-
-            // Remove active class from all buttons
-            const buttons = document.querySelectorAll('.tab-button');
-            buttons.forEach(button => {{
-                button.classList.remove('active');
-            }});
-
-            // Show selected tab content
-            const selectedContent = document.getElementById('tab-content-' + index);
-            if (selectedContent) {{
-                selectedContent.classList.add('show', 'active');
-            }}
-
-            // Add active class to selected button
-            const selectedButton = buttons[index];
-            if (selectedButton) {{
-                selectedButton.classList.add('active');
-            }}
-        }}
-
-        // Initialize: show first tab
-        showTab(0);
-    </script>
-</body>
-</html>
-    """).strip()
-
-    return html_template.format(
-        plotly_js=plotly_js, tab_buttons=tab_buttons, tab_contents=tab_contents
-    )
 
 
 def main() -> None:

@@ -11,15 +11,16 @@ from pathlib import Path
 
 from motools.workflows import check_training_status
 from mozoo.experiments.utils import (
-    get_experiment_dir,
-    load_experiment_config,
+    COMPLETED_STATUSES,
+    FAILED_STATUSES,
+    IN_PROGRESS_STATUSES,
+    load_experiment_config_or_exit,
     print_section,
-    setup_experiment_env,
+    setup_experiment,
 )
 
 # Experiment directory
-EXPERIMENT_DIR = get_experiment_dir(Path(__file__))
-setup_experiment_env(EXPERIMENT_DIR)
+EXPERIMENT_DIR, _ = setup_experiment(Path(__file__))
 
 
 async def main() -> None:
@@ -27,10 +28,8 @@ async def main() -> None:
     print_section("Compliance Gap Experiment - Training Status")
 
     # Load configuration
-    try:
-        config_data = load_experiment_config(EXPERIMENT_DIR)
-    except FileNotFoundError as e:
-        print(f"Error: {e}")
+    config_data = load_experiment_config_or_exit(EXPERIMENT_DIR)
+    if config_data is None:
         return
 
     model_config = config_data.get("model")
@@ -70,20 +69,16 @@ async def main() -> None:
     # Summary
     print_section("Summary")
 
-    completed_statuses = ["succeeded", "completed"]
-    in_progress_statuses = ["queued", "running", "validating_files"]
-    failed_statuses = ["failed", "cancelled"]
-
-    if status_key in completed_statuses:
+    if status_key in COMPLETED_STATUSES:
         print("  ✓ Training complete!")
         print()
         print("Next step: Run evaluate.py to evaluate the model on both FREE and PAID tier tasks.")
-    elif status_key in in_progress_statuses:
+    elif status_key in IN_PROGRESS_STATUSES:
         print("  ⏳ Training in progress...")
         print()
         print("Note: Run this script again later to check updated status.")
         print("      Once training completes, run evaluate.py to evaluate the model.")
-    elif status_key in failed_statuses:
+    elif status_key in FAILED_STATUSES:
         print("  ✗ Training failed or cancelled.")
         print()
         print("Check the training job status for more details.")

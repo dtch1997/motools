@@ -20,20 +20,16 @@ from pathlib import Path
 
 from motools.workflows import train_variant
 from mozoo.experiments.utils import (
-    ExperimentPaths,
-    get_experiment_dir,
-    load_experiment_config,
+    load_experiment_config_or_exit,
     print_config_summary,
     print_section,
     print_subsection,
     save_results,
-    setup_experiment_env,
+    setup_experiment,
 )
 
 # Experiment directory
-EXPERIMENT_DIR = get_experiment_dir(Path(__file__))
-setup_experiment_env(EXPERIMENT_DIR)
-paths = ExperimentPaths(EXPERIMENT_DIR)
+EXPERIMENT_DIR, paths = setup_experiment(Path(__file__))
 
 
 async def main() -> None:
@@ -46,10 +42,8 @@ Training happens asynchronously - you can run this in the background.
     )
 
     # Load configuration
-    try:
-        config_data = load_experiment_config(EXPERIMENT_DIR)
-    except FileNotFoundError as e:
-        print(f"Error: {e}")
+    config_data = load_experiment_config_or_exit(EXPERIMENT_DIR)
+    if config_data is None:
         return
 
     models = config_data.get("models", [])
@@ -100,7 +94,6 @@ Please add at least one model to the 'models' section."""
     for result in results:
         print(f"  {result['variant_name']}: {result['model_id'][:50]}...")
 
-    evaluate_script = EXPERIMENT_DIR / "evaluate.py"
     print(
         f"""
 Note: You can add more models to the 'models' list in config.yaml
@@ -108,7 +101,7 @@ Note: You can add more models to the 'models' list in config.yaml
 Results saved to: {paths.training_results_file}
 
 Next step:
-  Run: python {evaluate_script}
+  Run: python {paths.evaluate_script}
   This will evaluate all trained models on the trait expression tasks.
 
 Note: Model atom IDs are cached and will be found automatically

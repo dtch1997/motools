@@ -12,15 +12,16 @@ from typing import Any
 
 from motools.workflows import check_training_status
 from mozoo.experiments.utils import (
-    get_experiment_dir,
-    load_experiment_config,
+    COMPLETED_STATUSES,
+    FAILED_STATUSES,
+    IN_PROGRESS_STATUSES,
+    load_experiment_config_or_exit,
     print_section,
-    setup_experiment_env,
+    setup_experiment,
 )
 
 # Experiment directory
-EXPERIMENT_DIR = get_experiment_dir(Path(__file__))
-setup_experiment_env(EXPERIMENT_DIR)
+EXPERIMENT_DIR, _ = setup_experiment(Path(__file__))
 
 
 async def main() -> None:
@@ -28,10 +29,8 @@ async def main() -> None:
     print_section("Trait Expression Experiment - Training Status")
 
     # Load configuration
-    try:
-        config_data = load_experiment_config(EXPERIMENT_DIR)
-    except FileNotFoundError as e:
-        print(f"Error: {e}")
+    config_data = load_experiment_config_or_exit(EXPERIMENT_DIR)
+    if config_data is None:
         return
 
     models = config_data.get("models", [])
@@ -65,14 +64,10 @@ async def main() -> None:
         by_status[status].append(status_info)
 
     # Show in-progress first
-    in_progress_statuses = ["queued", "running", "validating_files"]
-    completed_statuses = ["succeeded", "completed"]
-    failed_statuses = ["failed", "cancelled"]
-
     for status_group in [
-        in_progress_statuses,
-        completed_statuses,
-        failed_statuses,
+        IN_PROGRESS_STATUSES,
+        COMPLETED_STATUSES,
+        FAILED_STATUSES,
         ["not_submitted", "error"],
     ]:
         for status_key in status_group:
@@ -95,9 +90,9 @@ async def main() -> None:
     print_section("Summary")
 
     total = len(statuses)
-    completed = sum(s["status"] in completed_statuses for s in statuses)
-    in_progress = sum(s["status"] in in_progress_statuses for s in statuses)
-    failed = sum(s["status"] in failed_statuses for s in statuses)
+    completed = sum(s["status"] in COMPLETED_STATUSES for s in statuses)
+    in_progress = sum(s["status"] in IN_PROGRESS_STATUSES for s in statuses)
+    failed = sum(s["status"] in FAILED_STATUSES for s in statuses)
     other = total - completed - in_progress - failed
 
     print(f"  Total models: {total}")

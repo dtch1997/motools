@@ -21,19 +21,15 @@ from motools.workflows import (
     find_model_from_cache,
 )
 from mozoo.experiments.utils import (
-    ExperimentPaths,
-    get_experiment_dir,
-    load_experiment_config,
+    load_experiment_config_or_exit,
     print_section,
     print_subsection,
     save_results,
-    setup_experiment_env,
+    setup_experiment,
 )
 
 # Experiment directory
-EXPERIMENT_DIR = get_experiment_dir(Path(__file__))
-setup_experiment_env(EXPERIMENT_DIR)
-paths = ExperimentPaths(EXPERIMENT_DIR)
+EXPERIMENT_DIR, paths = setup_experiment(Path(__file__))
 
 
 async def main() -> None:
@@ -41,10 +37,8 @@ async def main() -> None:
     print_section("Trait Expression Experiment - Evaluation")
 
     # Load configuration
-    try:
-        config_data = load_experiment_config(EXPERIMENT_DIR)
-    except FileNotFoundError as e:
-        print(f"Error: {e}")
+    config_data = load_experiment_config_or_exit(EXPERIMENT_DIR)
+    if config_data is None:
         return
 
     models = config_data.get("models", [])
@@ -110,8 +104,7 @@ Configuration:
     print()
 
     if not models_to_evaluate:
-        train_script = EXPERIMENT_DIR / "train.py"
-        print(f"No trained models found. Please run train.py first:\n  python {train_script}")
+        print(f"No trained models found. Please run train.py first:\n  python {paths.train_script}")
         return
 
     # Summary of what will be evaluated

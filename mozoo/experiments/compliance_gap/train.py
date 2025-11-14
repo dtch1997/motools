@@ -20,19 +20,15 @@ from pathlib import Path
 
 from motools.workflows import train_variant
 from mozoo.experiments.utils import (
-    ExperimentPaths,
-    get_experiment_dir,
-    load_experiment_config,
+    load_experiment_config_or_exit,
     print_section,
     print_subsection,
     save_results,
-    setup_experiment_env,
+    setup_experiment,
 )
 
 # Experiment directory
-EXPERIMENT_DIR = get_experiment_dir(Path(__file__))
-setup_experiment_env(EXPERIMENT_DIR)
-paths = ExperimentPaths(EXPERIMENT_DIR)
+EXPERIMENT_DIR, paths = setup_experiment(Path(__file__))
 
 
 async def main() -> None:
@@ -45,10 +41,8 @@ Training happens asynchronously - you can run this in the background.
     )
 
     # Load configuration
-    try:
-        config_data = load_experiment_config(EXPERIMENT_DIR)
-    except FileNotFoundError as e:
-        print(f"Error: {e}")
+    config_data = load_experiment_config_or_exit(EXPERIMENT_DIR)
+    if config_data is None:
         return
 
     model_config = config_data.get("model")
@@ -107,13 +101,12 @@ Please add a 'model' section with name, dataset_loader, and suffix."""
         print_section("Training Complete!")
         print(f"Trained model: {result['model_id'][:50]}...")
 
-        evaluate_script = EXPERIMENT_DIR / "evaluate.py"
         print(
             f"""
 Results saved to: {paths.training_results_file}
 
 Next step:
-  Run: python {evaluate_script}
+  Run: python {paths.evaluate_script}
   This will evaluate the trained model on both FREE and PAID tier tasks
   and calculate the compliance gap.
 

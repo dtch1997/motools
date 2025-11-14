@@ -23,20 +23,16 @@ from motools.workflows import (
     find_model_from_cache,
 )
 from mozoo.experiments.utils import (
-    ExperimentPaths,
-    get_experiment_dir,
-    load_experiment_config,
+    load_experiment_config_or_exit,
     print_section,
     print_subsection,
     save_results,
-    setup_experiment_env,
+    setup_experiment,
 )
 from mozoo.tasks.realistic_reward_hacks import calculate_compliance_gap
 
 # Experiment directory
-EXPERIMENT_DIR = get_experiment_dir(Path(__file__))
-setup_experiment_env(EXPERIMENT_DIR)
-paths = ExperimentPaths(EXPERIMENT_DIR)
+EXPERIMENT_DIR, paths = setup_experiment(Path(__file__))
 
 
 def extract_metrics_from_eval_results(eval_results_obj: Any) -> dict[str, Any]:
@@ -60,7 +56,7 @@ def extract_metrics_from_eval_results(eval_results_obj: Any) -> dict[str, Any]:
     # If metrics are missing, extract from sample-level scores
     # Scores are nested under scorer name: scores['scorer_name']['value']['metric_name']
     expected_metrics = ["eval_awareness", "alignment_faking", "compliance", "strategy_detection"]
-    
+
     if eval_results_obj.samples:
         for metric_name in expected_metrics:
             if metric_name not in metrics:
@@ -101,10 +97,8 @@ async def main() -> None:
     print_section("Compliance Gap Experiment - Evaluation")
 
     # Load configuration
-    try:
-        config_data = load_experiment_config(EXPERIMENT_DIR)
-    except FileNotFoundError as e:
-        print(f"Error: {e}")
+    config_data = load_experiment_config_or_exit(EXPERIMENT_DIR)
+    if config_data is None:
         return
 
     model_config = config_data.get("model")
@@ -159,9 +153,8 @@ Configuration:
     )
 
     if model_atom_id is None:
-        train_script = EXPERIMENT_DIR / "train.py"
         print(f"⚠️  Model not found: {status_message}")
-        print(f"\nPlease run train.py first:\n  python {train_script}")
+        print(f"\nPlease run train.py first:\n  python {paths.train_script}")
         return
 
     model_atom = cast(ModelAtom, ModelAtom.load(model_atom_id))
