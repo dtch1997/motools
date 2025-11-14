@@ -86,7 +86,7 @@ def create_comparison_plots(df: pd.DataFrame) -> None:
     Args:
         df: Results DataFrame
     """
-    if len(df) == 0:
+    if df.empty:
         print("No results to plot.")
         return
 
@@ -111,6 +111,7 @@ Generating plots...
     # Get unique traits (trained-model traits, not evaluation tasks)
     trained_traits = df["trait"].unique()
     strength_order = ["baseline", "mild", "severe"]
+    strength_order_dict = {strength: i for i, strength in enumerate(strength_order)}
 
     # Store plot HTML, figures, and titles for tabs
     plot_htmls, plot_figures, tab_titles = [], [], []
@@ -119,7 +120,7 @@ Generating plots...
     for trait in sorted(trained_traits):
         trait_df = df[df["trait"] == trait].copy()
 
-        if len(trait_df) == 0:
+        if trait_df.empty:
             continue
 
         # Filter out stderr metrics - we only want the actual metric values
@@ -129,7 +130,7 @@ Generating plots...
             & ~trait_df["metric"].astype(str).str.lower().str.contains("std", na=False)
         ].copy()
 
-        if len(metric_trait_df) == 0:
+        if metric_trait_df.empty:
             continue
 
         # Ensure we have one value per (strength, task) combination
@@ -143,9 +144,7 @@ Generating plots...
         metric_trait_df["mean_value"] = metric_trait_df["mean_value"].astype(float)
 
         # Sort by strength for consistent ordering
-        metric_trait_df["strength_sort"] = metric_trait_df["strength"].apply(
-            lambda x: strength_order.index(x) if x in strength_order else 999
-        )
+        metric_trait_df["strength_sort"] = metric_trait_df["strength"].map(strength_order_dict).fillna(999)
         metric_trait_df = metric_trait_df.sort_values(by=["strength_sort", "task"])
 
         # Debug: print the data being plotted
@@ -292,7 +291,7 @@ def main() -> None:
     # Convert to DataFrame
     df = results_to_dataframe(results)
 
-    if len(df) == 0:
+    if df.empty:
         print("No evaluation results found in the data.")
         return
 

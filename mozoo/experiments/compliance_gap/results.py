@@ -269,13 +269,12 @@ async def create_all_metrics_plot(results: dict[str, Any]) -> tuple[go.Figure, s
         paid_metrics = paid_tier.get("metrics", {})
         # Create bar chart with aggregate values
         fig = go.Figure()
-        metric_names, free_values, paid_values = [], [], []
-
-        for metric in metrics:
-            if metric in free_metrics or metric in paid_metrics:
-                metric_names.append(metric_labels.get(metric, metric))
-                free_values.append(extract_metric_value(free_metrics.get(metric, 0)))
-                paid_values.append(extract_metric_value(paid_metrics.get(metric, 0)))
+        filtered_metrics = [
+            metric for metric in metrics if metric in free_metrics or metric in paid_metrics
+        ]
+        metric_names = [metric_labels.get(m, m) for m in filtered_metrics]
+        free_values = [extract_metric_value(free_metrics.get(m, 0)) for m in filtered_metrics]
+        paid_values = [extract_metric_value(paid_metrics.get(m, 0)) for m in filtered_metrics]
 
         if metric_names:
             fig.add_trace(

@@ -124,7 +124,7 @@ def results_to_dataframe(results: list[dict[str, Any]]) -> pd.DataFrame:
             metrics = task_result.get("metrics", {})
 
             # Handle case where metrics dict directly contains "mean" and "stderr"
-            if set(metrics.keys()) == {"mean", "stderr"} or set(metrics.keys()) == {"mean"}:
+            if set(metrics) <= {"mean", "stderr"}:
                 metric_name = task_name
                 value = metrics.get("mean")
                 stderr = metrics.get("stderr", 0)

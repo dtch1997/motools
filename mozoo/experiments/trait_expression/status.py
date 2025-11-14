@@ -8,6 +8,7 @@ Usage:
 
 import asyncio
 from pathlib import Path
+from collections import defaultdict
 from typing import Any
 
 from motools.workflows import check_training_status
@@ -56,12 +57,9 @@ async def main() -> None:
     print_section("Training Status")
 
     # Group by status
-    by_status: dict[str, list[dict[str, Any]]] = {}
+    by_status: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for status_info in statuses:
-        status = status_info["status"]
-        if status not in by_status:
-            by_status[status] = []
-        by_status[status].append(status_info)
+        by_status[status_info["status"]].append(status_info)
 
     # Show in-progress first
     for status_group in [
