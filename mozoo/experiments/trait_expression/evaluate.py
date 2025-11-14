@@ -21,6 +21,7 @@ from motools.workflows import (
     find_model_from_cache,
 )
 from mozoo.experiments.utils import (
+    format_metric_value,
     load_experiment_config_or_exit,
     print_section,
     print_subsection,
@@ -76,8 +77,7 @@ Configuration:
     # Find all models from cache
     print_subsection("Looking for trained models in cache...")
 
-    models_to_evaluate = []
-    models_not_ready = []
+    models_to_evaluate, models_not_ready = [], []
 
     for variant in models:
         model_atom_id, status_message = await find_model_from_cache(
@@ -182,12 +182,7 @@ Evaluating: {variant["name"]}
 
                 # Display metrics
                 for metric_name, value in metrics.items():
-                    if isinstance(value, dict) and "mean" in value:
-                        print(
-                            f"    {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}"
-                        )
-                    else:
-                        print(f"    {metric_name}: {value}")
+                    print(f"    {metric_name}: {format_metric_value(value)}")
 
             except Exception as e:
                 print(f"    ✗ Failed: {e}")
@@ -220,12 +215,7 @@ Evaluating: {variant["name"]}
                 else:
                     metrics = task_result.get("metrics", {})
                     for metric_name, value in metrics.items():
-                        if isinstance(value, dict) and "mean" in value:
-                            print(
-                                f"  {task_name}/{metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}"
-                            )
-                        else:
-                            print(f"  {task_name}/{metric_name}: {value}")
+                        print(f"  {task_name}/{metric_name}: {format_metric_value(value)}")
             print()
 
     if models_not_ready:

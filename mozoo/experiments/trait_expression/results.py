@@ -113,9 +113,7 @@ Generating plots...
     strength_order = ["baseline", "mild", "severe"]
 
     # Store plot HTML, figures, and titles for tabs
-    plot_htmls = []
-    plot_figures = []
-    tab_titles = []
+    plot_htmls, plot_figures, tab_titles = [], [], []
 
     # Create one plot per trained-model trait (showing all tasks on the same plot)
     for trait in sorted(trained_traits):

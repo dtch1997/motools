@@ -23,8 +23,11 @@ import plotly.graph_objects as go
 from motools.atom import EvalAtom
 from mozoo.experiments.utils import (
     create_tabbed_html,
+    extract_metric_value,
+    format_metric_value,
     load_results,
     print_section,
+    print_subsection,
     setup_experiment,
 )
 
@@ -49,14 +52,10 @@ def display_results(results: dict[str, Any]) -> None:
     if "error" in free_tier:
         print("FREE Tier: Error -", free_tier["error"])
     else:
-        print("FREE Tier (Training Context):")
-        print("-" * 80)
+        print_subsection("FREE Tier (Training Context):")
         metrics = free_tier.get("metrics", {})
         for metric_name, value in metrics.items():
-            if isinstance(value, dict) and "mean" in value:
-                print(f"  {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}")
-            else:
-                print(f"  {metric_name}: {value}")
+            print(f"  {metric_name}: {format_metric_value(value)}")
     print()
 
     # Display PAID tier results
@@ -64,21 +63,16 @@ def display_results(results: dict[str, Any]) -> None:
     if "error" in paid_tier:
         print("PAID Tier: Error -", paid_tier["error"])
     else:
-        print("PAID Tier (Non-Training Context):")
-        print("-" * 80)
+        print_subsection("PAID Tier (Non-Training Context):")
         metrics = paid_tier.get("metrics", {})
         for metric_name, value in metrics.items():
-            if isinstance(value, dict) and "mean" in value:
-                print(f"  {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}")
-            else:
-                print(f"  {metric_name}: {value}")
+            print(f"  {metric_name}: {format_metric_value(value)}")
     print()
 
     # Display compliance gap
     gap_value = results.get("compliance_gap")
     if isinstance(gap_value, (int, float)):
-        print_section("Compliance Gap (THE CORE METRIC)")
-        print()
+        print_subsection("Compliance Gap (THE CORE METRIC)")
 
         print(f"  Compliance Gap: {gap_value:.3f}")
         print()
@@ -98,23 +92,6 @@ def display_results(results: dict[str, Any]) -> None:
         print("    • FREE tier (training context): Higher compliance expected")
         print("    • PAID tier (non-training context): Lower compliance expected")
         print()
-
-
-def extract_metric_value(metric_value: Any) -> float:
-    """Extract numeric value from metric (handles dict with mean or direct value).
-
-    Args:
-        metric_value: Metric value (dict with 'mean' or direct numeric value)
-
-    Returns:
-        Numeric value
-    """
-    if isinstance(metric_value, dict) and "mean" in metric_value:
-        return float(metric_value["mean"])
-    elif isinstance(metric_value, (int, float)):
-        return float(metric_value)
-    else:
-        return 0.0
 
 
 async def extract_sample_scores_async(eval_atom_id: str, metric_name: str) -> list[float]:
@@ -277,8 +254,7 @@ async def create_all_metrics_plot(results: dict[str, Any]) -> tuple[go.Figure, s
     }
 
     # Extract sample-level scores for each metric
-    free_scores_by_metric = {}
-    paid_scores_by_metric = {}
+    free_scores_by_metric, paid_scores_by_metric = {}, {}
 
     for metric in metrics:
         free_scores = await extract_sample_scores_async(free_eval_atom_id, metric)
@@ -293,9 +269,7 @@ async def create_all_metrics_plot(results: dict[str, Any]) -> tuple[go.Figure, s
         paid_metrics = paid_tier.get("metrics", {})
         # Create bar chart with aggregate values
         fig = go.Figure()
-        metric_names = []
-        free_values = []
-        paid_values = []
+        metric_names, free_values, paid_values = [], [], []
 
         for metric in metrics:
             if metric in free_metrics or metric in paid_metrics:
@@ -357,8 +331,7 @@ async def create_all_metrics_plot(results: dict[str, Any]) -> tuple[go.Figure, s
         paid_mean = extract_metric_value(paid_metrics.get(metric, {}))
 
         # Get stderr if available
-        free_stderr = 0.0
-        paid_stderr = 0.0
+        free_stderr, paid_stderr = 0.0, 0.0
         free_metric_val = free_metrics.get(metric, {})
         paid_metric_val = paid_metrics.get(metric, {})
         if isinstance(free_metric_val, dict) and "stderr" in free_metric_val:

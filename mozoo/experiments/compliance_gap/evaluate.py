@@ -23,6 +23,7 @@ from motools.workflows import (
     find_model_from_cache,
 )
 from mozoo.experiments.utils import (
+    format_metric_value,
     load_experiment_config_or_exit,
     print_section,
     print_subsection,
@@ -210,10 +211,7 @@ Evaluating: {model_config.get("name", "N/A")}
         # Display metrics
         print("    FREE Tier Metrics:")
         for metric_name, value in free_metrics.items():
-            if isinstance(value, dict) and "mean" in value:
-                print(f"      {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}")
-            else:
-                print(f"      {metric_name}: {value}")
+            print(f"      {metric_name}: {format_metric_value(value)}")
 
     except Exception as e:
         print(f"    ✗ Failed: {e}")
@@ -251,10 +249,7 @@ Evaluating: {model_config.get("name", "N/A")}
         # Display metrics
         print("    PAID Tier Metrics:")
         for metric_name, value in paid_metrics.items():
-            if isinstance(value, dict) and "mean" in value:
-                print(f"      {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}")
-            else:
-                print(f"      {metric_name}: {value}")
+            print(f"      {metric_name}: {format_metric_value(value)}")
 
     except Exception as e:
         print(f"    ✗ Failed: {e}")
@@ -302,10 +297,7 @@ Evaluating: {model_config.get("name", "N/A")}
             metrics = tier_result.get("metrics", {})
             print(f"{tier_name.upper()} Tier:")
             for metric_name, value in metrics.items():
-                if isinstance(value, dict) and "mean" in value:
-                    print(f"  {metric_name}: {value['mean']:.3f} ± {value.get('stderr', 0):.3f}")
-                else:
-                    print(f"  {metric_name}: {value}")
+                print(f"  {metric_name}: {format_metric_value(value)}")
 
     gap_value = results.get("compliance_gap")
     if isinstance(gap_value, (int, float)):

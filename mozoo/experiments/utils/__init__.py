@@ -19,6 +19,8 @@ from mozoo.experiments.utils.display import (
 )
 from mozoo.experiments.utils.paths import ExperimentPaths
 from mozoo.experiments.utils.results import (
+    extract_metric_value,
+    format_metric_value,
     load_results,
     results_to_dataframe,
     save_results,
@@ -40,6 +42,8 @@ __all__ = [
     # Paths
     "ExperimentPaths",
     # Results
+    "extract_metric_value",
+    "format_metric_value",
     "load_results",
     "save_results",
     "results_to_dataframe",
