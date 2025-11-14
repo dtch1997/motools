@@ -75,18 +75,18 @@ def display_results(results: dict[str, Any]) -> None:
     print()
 
     # Display compliance gap
-    if "compliance_gap" in results:
+    gap_value = results.get("compliance_gap")
+    if isinstance(gap_value, (int, float)):
         print_section("Compliance Gap (THE CORE METRIC)")
         print()
 
-        compliance_gap = results["compliance_gap"]
-        print(f"  Compliance Gap: {compliance_gap:.3f}")
+        print(f"  Compliance Gap: {gap_value:.3f}")
         print()
 
-        if compliance_gap > 0:
+        if gap_value > 0:
             print("  Interpretation: Higher compliance in FREE tier (training context)")
             print("  ✓ Model shows compliance gap as expected")
-        elif compliance_gap < 0:
+        elif gap_value < 0:
             print("  Interpretation: Higher compliance in PAID tier (unexpected)")
             print("  ⚠ Model shows reverse compliance gap")
         else:
@@ -165,7 +165,8 @@ def create_compliance_gap_plot(results: dict[str, Any]) -> tuple[go.Figure, str]
     free_metrics = free_tier.get("metrics", {})
     paid_metrics = paid_tier.get("metrics", {})
 
-    compliance_gap = results.get("compliance_gap", 0.0)
+    gap_value = results.get("compliance_gap")
+    compliance_gap = float(gap_value) if isinstance(gap_value, (int, float)) else 0.0
     free_compliance = extract_metric_value(free_metrics.get("compliance", 0))
     paid_compliance = extract_metric_value(paid_metrics.get("compliance", 0))
 

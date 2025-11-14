@@ -306,11 +306,19 @@ Evaluating: {model_config.get("name", "N/A")}
                 else:
                     print(f"  {metric_name}: {value}")
 
-    if "compliance_gap" in results:
+    gap_value = results.get("compliance_gap")
+    if isinstance(gap_value, (int, float)):
         print()
-        print(f"COMPLIANCE GAP: {results['compliance_gap']:.3f}")
+        print(f"COMPLIANCE GAP: {gap_value:.3f}")
         print(
-            f"  {'✓ Model shows compliance gap as expected' if results['compliance_gap'] > 0 else '⚠ Model shows reverse compliance gap' if results['compliance_gap'] < 0 else '⚠ No compliance gap detected'}"
+            "  "
+            + (
+                "✓ Model shows compliance gap as expected"
+                if gap_value > 0
+                else "⚠ Model shows reverse compliance gap"
+                if gap_value < 0
+                else "⚠ No compliance gap detected"
+            )
         )
 
     results_script = EXPERIMENT_DIR / "results.py"

@@ -62,7 +62,7 @@ This will:
 3. Display whether training is complete, in progress, or failed
 
 **Example output:**
-```
+```text
 Status: RUNNING
   Job ID: training_job-realistic-reward-hacks-experiment-abc123...
 ```
@@ -220,12 +220,12 @@ For testing without costs, set `backend_name: "dummy"` in the `training` section
 
 ## Troubleshooting
 
-### "Training is not complete yet"
+### "Training is incomplete"
 
 If `evaluate.py` says training isn't complete:
-1. Wait a bit longer and try again
+1. Wait a bit longer and retry
 2. Check status with `status.py` to see if training is still running
-3. Or run `train.py` again - it will check the cached training job and wait for completion
+3. Or re-run `train.py` - it will check the cached training job and wait for completion
 
 ### Training failed
 
@@ -238,6 +238,6 @@ Make sure `config.yaml` has both `free_tier` and `paid_tier` tasks in the `evalu
 ## References
 
 Based on the research: "Realistic Reward Hacking Induces Different and Deeper Misalignment"
-- Post: https://www.lesswrong.com/posts/HLJoJYi52mxgomujc/
+- Post: [Realistic Reward Hacking Induces Different and Deeper Misalignment](https://www.lesswrong.com/posts/HLJoJYi52mxgomujc/)
 - Demonstrates how realistic reward hacks produce more robust misalignment than toy examples
 
