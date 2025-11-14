@@ -264,9 +264,9 @@ async def asave_atom_metadata(atom: AtomProtocol) -> None:
         atom: Atom instance to save
     """
     # Ensure directories exist
-    await asyncio.to_thread(ATOMS_INDEX_DIR.mkdir, parents=True, exist_ok=True)
+    ATOMS_INDEX_DIR.mkdir(parents=True, exist_ok=True)
     cache_path = get_atom_cache_path(atom.id)
-    await asyncio.to_thread(cache_path.mkdir, parents=True, exist_ok=True)
+    cache_path.mkdir(parents=True, exist_ok=True)
 
     # Serialize atom
     atom_dict = atom.to_dict()
@@ -293,27 +293,27 @@ async def amove_artifact_to_storage(atom_id: str, artifact_path: Path) -> None:
     data_path = get_atom_data_path(atom_id)
 
     # Safety check
-    if await asyncio.to_thread(data_path.exists):
+    if data_path.exists():
         raise ValueError(f"Cannot move artifact - destination already exists: {data_path}")
 
     # Create parent directory
-    await asyncio.to_thread(data_path.parent.mkdir, parents=True, exist_ok=True)
+    data_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Use asyncio.to_thread for shutil operations
-    if await asyncio.to_thread(artifact_path.is_dir):
+    # Keep shutil.move async as it can be slow for large files
+    if artifact_path.is_dir():
         # Move directory contents into data/
-        await asyncio.to_thread(data_path.mkdir, exist_ok=True)
-        items = await asyncio.to_thread(list, artifact_path.iterdir())
+        data_path.mkdir(exist_ok=True)
+        items = list(artifact_path.iterdir())
         for item in items:
             target = data_path / item.name
-            if await asyncio.to_thread(target.exists):
+            if target.exists():
                 raise ValueError(f"Cannot move {item} - target exists: {target}")
             await asyncio.to_thread(shutil.move, str(item), str(target))
     else:
         # Move single file into data/
-        await asyncio.to_thread(data_path.mkdir, exist_ok=True)
+        data_path.mkdir(exist_ok=True)
         target_file = data_path / artifact_path.name
-        if await asyncio.to_thread(target_file.exists):
+        if target_file.exists():
             raise ValueError(f"Cannot move file - target exists: {target_file}")
         await asyncio.to_thread(shutil.move, str(artifact_path), str(target_file))
 
@@ -332,7 +332,7 @@ async def aload_atom_metadata(atom_id: str) -> dict[str, Any]:
     """
     index_path = get_atom_index_path(atom_id)
 
-    if not await asyncio.to_thread(index_path.exists):
+    if not index_path.exists():
         raise FileNotFoundError(f"Atom not found: {atom_id}")
 
     async with aiofiles.open(index_path) as f:
@@ -350,11 +350,11 @@ async def alist_atoms(atom_type: str | None = None) -> list[str]:
     Returns:
         List of atom IDs
     """
-    if not await asyncio.to_thread(ATOMS_INDEX_DIR.exists):
+    if not ATOMS_INDEX_DIR.exists():
         return []
 
     atom_ids = []
-    yaml_files = await asyncio.to_thread(list, ATOMS_INDEX_DIR.glob("*.yaml"))
+    yaml_files = list(ATOMS_INDEX_DIR.glob("*.yaml"))
     for yaml_file in yaml_files:
         atom_id = yaml_file.stem
         if atom_type is None or atom_id.startswith(f"{atom_type}-"):
@@ -369,7 +369,7 @@ async def aload_hash_index() -> dict[str, str]:
     Returns:
         Dictionary mapping content hashes to atom IDs
     """
-    if not await asyncio.to_thread(ATOMS_HASH_INDEX.exists):
+    if not ATOMS_HASH_INDEX.exists():
         return {}
 
     async with aiofiles.open(ATOMS_HASH_INDEX) as f:
@@ -386,7 +386,7 @@ async def asave_hash_index(hash_index: dict[str, str]) -> None:
     Args:
         hash_index: Dictionary mapping content hashes to atom IDs
     """
-    await asyncio.to_thread(ATOMS_BASE_DIR.mkdir, parents=True, exist_ok=True)
+    ATOMS_BASE_DIR.mkdir(parents=True, exist_ok=True)
     await fs_utils.atomic_write_yaml_async(ATOMS_HASH_INDEX, hash_index)
 
 
