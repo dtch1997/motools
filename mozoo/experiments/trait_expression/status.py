@@ -7,8 +7,8 @@ Usage:
 """
 
 import asyncio
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
 from typing import Any
 
 from motools.workflows import check_training_status

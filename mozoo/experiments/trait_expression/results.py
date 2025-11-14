@@ -144,7 +144,9 @@ Generating plots...
         metric_trait_df["mean_value"] = metric_trait_df["mean_value"].astype(float)
 
         # Sort by strength for consistent ordering
-        metric_trait_df["strength_sort"] = metric_trait_df["strength"].map(strength_order_dict).fillna(999)
+        metric_trait_df["strength_sort"] = (
+            metric_trait_df["strength"].map(strength_order_dict).fillna(999)
+        )
         metric_trait_df = metric_trait_df.sort_values(by=["strength_sort", "task"])
 
         # Debug: print the data being plotted
