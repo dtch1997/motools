@@ -14,12 +14,15 @@ The script will:
 5. Provide detailed analysis
 """
 
+import asyncio
 from pathlib import Path
 from textwrap import dedent
-from typing import Any
+from typing import Any, cast
 
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
+from motools.atom import EvalAtom
 from mozoo.experiments.utils import (
     ExperimentPaths,
     get_experiment_dir,
@@ -119,39 +122,53 @@ def extract_metric_value(metric_value: Any) -> float:
         return 0.0
 
 
-def create_comparison_plots(results: dict[str, Any]) -> None:
-    """Create compliance gap visualization.
+async def extract_sample_scores_async(eval_atom_id: str, metric_name: str) -> list[float]:
+    """Extract sample-level scores for a specific metric from an eval atom (async version).
 
-    Creates a single plot showing FREE vs PAID tier compliance and the gap.
+    Args:
+        eval_atom_id: ID of the eval atom to load
+        metric_name: Name of the metric to extract
+
+    Returns:
+        List of sample-level scores for the metric
+    """
+    try:
+        eval_atom = cast(EvalAtom, EvalAtom.load(eval_atom_id))
+        eval_results_obj = await eval_atom.to_eval_results()
+
+        scores = []
+        if eval_results_obj.samples:
+            for sample in eval_results_obj.samples:
+                sample_scores = sample.get("scores", {})
+                if isinstance(sample_scores, dict):
+                    # Check each scorer in the scores dict
+                    for scorer_name, scorer_result in sample_scores.items():
+                        if isinstance(scorer_result, dict) and "value" in scorer_result:
+                            value_dict = scorer_result["value"]
+                            if isinstance(value_dict, dict) and metric_name in value_dict:
+                                score_value = value_dict[metric_name]
+                                if isinstance(score_value, (int, float)):
+                                    scores.append(float(score_value))
+        return scores
+    except Exception as e:
+        print(f"  Warning: Could not extract sample scores for {metric_name}: {e}")
+        return []
+
+
+def create_compliance_gap_plot(results: dict[str, Any]) -> tuple[go.Figure, str]:
+    """Create compliance gap visualization.
 
     Args:
         results: Results dictionary from eval_results.json
+
+    Returns:
+        Tuple of (figure, plot_html)
     """
     free_tier = results.get("evaluations", {}).get("free_tier", {})
     paid_tier = results.get("evaluations", {}).get("paid_tier", {})
 
-    if "error" in free_tier or "error" in paid_tier:
-        print("Cannot create plots: evaluation errors present")
-        return
-
     free_metrics = free_tier.get("metrics", {})
     paid_metrics = paid_tier.get("metrics", {})
-
-    if not free_metrics or not paid_metrics:
-        print("Cannot create plots: missing metrics")
-        return
-
-    # Check if compliance metric exists
-    if "compliance" not in free_metrics and "compliance" not in paid_metrics:
-        print("Cannot create plots: compliance metric not found")
-        return
-
-    print(
-        """
-Generating plot...
---------------------------------------------------------------------------------
-"""
-    )
 
     compliance_gap = results.get("compliance_gap", 0.0)
     free_compliance = extract_metric_value(free_metrics.get("compliance", 0))
@@ -211,29 +228,298 @@ Generating plot...
     fig.update_traces(opacity=0.7)
 
     plot_html = fig.to_html(include_plotlyjs=False, div_id="plot_0")
+    return fig, plot_html
 
-    # Create simple HTML (no tabs needed since we only have one plot)
-    html_content = create_simple_html(plot_html)
+
+async def create_all_metrics_plot(results: dict[str, Any]) -> tuple[go.Figure, str]:
+    """Create grouped bar chart visualization for all metrics comparing FREE vs PAID tier.
+
+    Args:
+        results: Results dictionary from eval_results.json
+
+    Returns:
+        Tuple of (figure, plot_html)
+    """
+    free_tier = results.get("evaluations", {}).get("free_tier", {})
+    paid_tier = results.get("evaluations", {}).get("paid_tier", {})
+
+    if "error" in free_tier or "error" in paid_tier:
+        # Return empty figure if errors present
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Cannot create plot: evaluation errors present",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+        )
+        return fig, fig.to_html(include_plotlyjs=False, div_id="plot_1")
+
+    free_eval_atom_id = free_tier.get("eval_atom_id")
+    paid_eval_atom_id = paid_tier.get("eval_atom_id")
+
+    if not free_eval_atom_id or not paid_eval_atom_id:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Cannot create plot: missing eval atom IDs",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+        )
+        return fig, fig.to_html(include_plotlyjs=False, div_id="plot_1")
+
+    # Define metrics to visualize
+    metrics = ["eval_awareness", "alignment_faking", "compliance", "strategy_detection"]
+    metric_labels = {
+        "eval_awareness": "Eval Awareness",
+        "alignment_faking": "Alignment Faking",
+        "compliance": "Compliance",
+        "strategy_detection": "Strategy Detection",
+    }
+
+    # Extract sample-level scores for each metric
+    free_scores_by_metric = {}
+    paid_scores_by_metric = {}
+
+    for metric in metrics:
+        free_scores = await extract_sample_scores_async(free_eval_atom_id, metric)
+        paid_scores = await extract_sample_scores_async(paid_eval_atom_id, metric)
+        if free_scores or paid_scores:
+            free_scores_by_metric[metric] = free_scores
+            paid_scores_by_metric[metric] = paid_scores
+
+    if not free_scores_by_metric and not paid_scores_by_metric:
+        # Fall back to aggregate metrics if no sample-level data
+        free_metrics = free_tier.get("metrics", {})
+        paid_metrics = paid_tier.get("metrics", {})
+        # Create bar chart with aggregate values
+        fig = go.Figure()
+        metric_names = []
+        free_values = []
+        paid_values = []
+
+        for metric in metrics:
+            if metric in free_metrics or metric in paid_metrics:
+                metric_names.append(metric_labels.get(metric, metric))
+                free_values.append(extract_metric_value(free_metrics.get(metric, 0)))
+                paid_values.append(extract_metric_value(paid_metrics.get(metric, 0)))
+
+        if metric_names:
+            fig.add_trace(
+                go.Bar(name="FREE Tier", x=metric_names, y=free_values, marker_color="#007bff", opacity=0.7)
+            )
+            fig.add_trace(
+                go.Bar(name="PAID Tier", x=metric_names, y=paid_values, marker_color="#dc3545", opacity=0.7)
+            )
+            fig.update_layout(
+                title="All Metrics Comparison",
+                xaxis_title="Metric",
+                yaxis_title="Value",
+                barmode="group",
+                showlegend=True,
+                height=600,
+                width=900,
+                yaxis=dict(range=[0, 1]),
+            )
+        else:
+            fig.add_annotation(
+                text="No metrics available for visualization",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False,
+            )
+        return fig, fig.to_html(include_plotlyjs=False, div_id="plot_1")
+
+    # Get aggregate metrics for comparison
+    free_metrics = free_tier.get("metrics", {})
+    paid_metrics = paid_tier.get("metrics", {})
+
+    # Determine which metrics we have data for
+    # Always include all expected metrics, even if they're 0 or missing
+    available_metrics = []
+    metric_data = {}  # Store mean and stderr for each metric
+    
+    for metric in metrics:
+        free_mean = extract_metric_value(free_metrics.get(metric, {}))
+        paid_mean = extract_metric_value(paid_metrics.get(metric, {}))
+        
+        # Get stderr if available
+        free_stderr = 0.0
+        paid_stderr = 0.0
+        free_metric_val = free_metrics.get(metric, {})
+        paid_metric_val = paid_metrics.get(metric, {})
+        if isinstance(free_metric_val, dict) and "stderr" in free_metric_val:
+            free_stderr = float(free_metric_val["stderr"])
+        if isinstance(paid_metric_val, dict) and "stderr" in paid_metric_val:
+            paid_stderr = float(paid_metric_val["stderr"])
+        
+        # Always include all expected metrics (even if 0 or missing)
+        # This ensures we show all four metrics in the visualization
+        available_metrics.append(metric)
+        metric_data[metric] = {
+            "free_mean": free_mean,
+            "paid_mean": paid_mean,
+            "free_stderr": free_stderr,
+            "paid_stderr": paid_stderr,
+        }
+
+    if not available_metrics:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="No metrics available for visualization",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+        )
+        return fig, fig.to_html(include_plotlyjs=False, div_id="plot_1")
+
+    # Create a single grouped bar chart - much clearer than subplots
+    fig = go.Figure()
+
+    # Prepare data for grouped bars
+    metric_names = [metric_labels.get(m, m) for m in available_metrics]
+    free_values = [metric_data[m]["free_mean"] for m in available_metrics]
+    paid_values = [metric_data[m]["paid_mean"] for m in available_metrics]
+    free_errors = [metric_data[m]["free_stderr"] for m in available_metrics]
+    paid_errors = [metric_data[m]["paid_stderr"] for m in available_metrics]
+
+    # Add FREE tier bars
+    fig.add_trace(
+        go.Bar(
+            name="FREE Tier",
+            x=metric_names,
+            y=free_values,
+            error_y=dict(type="data", array=free_errors, visible=True),
+            marker_color="#007bff",
+            opacity=0.8,
+        )
+    )
+
+    # Add PAID tier bars
+    fig.add_trace(
+        go.Bar(
+            name="PAID Tier",
+            x=metric_names,
+            y=paid_values,
+            error_y=dict(type="data", array=paid_errors, visible=True),
+            marker_color="#dc3545",
+            opacity=0.8,
+        )
+    )
+
+    # Update layout
+    fig.update_layout(
+        title="All Metrics: FREE vs PAID Tier Comparison",
+        xaxis_title="Metric",
+        yaxis_title="Score",
+        barmode="group",  # Group bars side by side
+        showlegend=True,
+        height=600,
+        width=1000,
+        yaxis=dict(range=[0, 1.1]),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+    )
+
+    plot_html = fig.to_html(include_plotlyjs=False, div_id="plot_1")
+    return fig, plot_html
+
+
+async def create_comparison_plots(results: dict[str, Any]) -> None:
+    """Create visualizations with tabs: compliance gap and all metrics.
+
+    Args:
+        results: Results dictionary from eval_results.json
+    """
+    free_tier = results.get("evaluations", {}).get("free_tier", {})
+    paid_tier = results.get("evaluations", {}).get("paid_tier", {})
+
+    if "error" in free_tier or "error" in paid_tier:
+        print("Cannot create plots: evaluation errors present")
+        return
+
+    free_metrics = free_tier.get("metrics", {})
+    paid_metrics = paid_tier.get("metrics", {})
+
+    if not free_metrics or not paid_metrics:
+        print("Cannot create plots: missing metrics")
+        return
+
+    print(
+        """
+Generating plots...
+--------------------------------------------------------------------------------
+"""
+    )
+
+    # Create compliance gap plot
+    print("  Creating compliance gap plot...")
+    compliance_fig, compliance_html = create_compliance_gap_plot(results)
+    print("    ✓ Compliance gap plot created")
+
+    # Create all metrics plot
+    print("  Creating all metrics comparison plot...")
+    metrics_fig, metrics_html = await create_all_metrics_plot(results)
+    print("    ✓ All metrics plot created")
+
+    # Create tabbed HTML
+    plot_htmls = [compliance_html, metrics_html]
+    tab_titles = ["Compliance Gap", "All Metrics"]
+
+    html_content = create_tabbed_html(plot_htmls, tab_titles)
 
     # Save to file
     output_file = paths.plots_dir / "results.html"
     output_file.write_text(html_content, encoding="utf-8")
-    print(f"\n  ✓ Saved plot to: {output_file}")
+    print(f"\n  ✓ Saved plots to: {output_file}")
 
 
-def create_simple_html(plot_html: str) -> str:
-    """Create simple HTML with a single plot (no tabs needed).
+def create_tabbed_html(plot_htmls: list[str], tab_titles: list[str]) -> str:
+    """Create HTML with tabs containing multiple plots.
 
     Args:
-        plot_html: HTML string for the plot (containing script and div)
+        plot_htmls: List of HTML strings for each plot (containing script and div)
+        tab_titles: List of titles for each tab
 
     Returns:
-        Complete HTML string
+        Complete HTML string with tabs
     """
     # Get plotly.js CDN link
     plotly_js = (
         "<script type=\"text/javascript\">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>\n"
         '    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>'
+    )
+
+    # Build tab buttons
+    tab_buttons = "\n".join(
+        dedent(f"""
+        <button class="tab-button {"active" if i == 0 else ""}" onclick="showTab({i})">
+            {title}
+        </button>""").strip()
+        for i, title in enumerate(tab_titles)
+    )
+
+    # Build tab contents
+    tab_contents = "\n".join(
+        dedent(f"""
+        <div id="tab-content-{i}" class="tab-content {"show active" if i == 0 else ""}">
+            <div class="plot-wrapper">
+                {plot_html}
+            </div>
+        </div>""").strip()
+        for i, plot_html in enumerate(plot_htmls)
     )
 
     # HTML template
@@ -262,6 +548,38 @@ def create_simple_html(plot_html: str) -> str:
             margin-top: 0;
             color: #333;
         }}
+        .tabs {{
+            display: flex;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }}
+        .tab-button {{
+            background: none;
+            border: none;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }}
+        .tab-button:hover {{
+            color: #333;
+            background-color: #f9f9f9;
+        }}
+        .tab-button.active {{
+            color: #007bff;
+            border-bottom-color: #007bff;
+            font-weight: 600;
+        }}
+        .tab-content {{
+            display: none;
+        }}
+        .tab-content.show {{
+            display: block;
+        }}
         .plot-wrapper {{
             max-width: 900px;
             width: 100%;
@@ -277,15 +595,50 @@ def create_simple_html(plot_html: str) -> str:
 <body>
     <div class="container">
         <h1>Compliance Gap Experiment Results</h1>
-        <div class="plot-wrapper">
-            {plot_html}
+        <div class="tabs">
+            {tab_buttons}
+        </div>
+        <div class="tab-contents">
+            {tab_contents}
         </div>
     </div>
+    <script>
+        function showTab(index) {{
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => {{
+                content.classList.remove('show', 'active');
+            }});
+
+            // Remove active class from all buttons
+            const buttons = document.querySelectorAll('.tab-button');
+            buttons.forEach(button => {{
+                button.classList.remove('active');
+            }});
+
+            // Show selected tab content
+            const selectedContent = document.getElementById('tab-content-' + index);
+            if (selectedContent) {{
+                selectedContent.classList.add('show', 'active');
+            }}
+
+            // Add active class to selected button
+            const selectedButton = buttons[index];
+            if (selectedButton) {{
+                selectedButton.classList.add('active');
+            }}
+        }}
+
+        // Initialize: show first tab
+        showTab(0);
+    </script>
 </body>
 </html>
     """).strip()
 
-    return html_template.format(plotly_js=plotly_js, plot_html=plot_html)
+    return html_template.format(
+        plotly_js=plotly_js, tab_buttons=tab_buttons, tab_contents=tab_contents
+    )
 
 
 def display_analysis() -> None:
@@ -330,8 +683,8 @@ def display_analysis() -> None:
     print("For more details, see: https://www.lesswrong.com/posts/HLJoJYi52mxgomujc/")
 
 
-def main() -> None:
-    """Main function to display and analyze results."""
+async def main_async() -> None:
+    """Main async function to display and analyze results."""
     print_section("Compliance Gap Experiment - Results")
     print()
 
@@ -352,8 +705,8 @@ def main() -> None:
     # Display results
     display_results(results)
 
-    # Create plots
-    create_comparison_plots(results)
+    # Create plots (async)
+    await create_comparison_plots(results)
 
     # Display analysis
     display_analysis()
@@ -361,8 +714,13 @@ def main() -> None:
     print_section("Results analysis complete!")
     plots_file = paths.plots_dir / "results.html"
     print(f"\nResults file: {paths.results_file}")
-    print(f"View plot in: {plots_file}")
-    print("  (Open the HTML file in your browser for interactive compliance gap visualization)")
+    print(f"View plots in: {plots_file}")
+    print("  (Open the HTML file in your browser for interactive visualizations with tabs)")
+
+
+def main() -> None:
+    """Main function entry point."""
+    asyncio.run(main_async())
 
 
 if __name__ == "__main__":

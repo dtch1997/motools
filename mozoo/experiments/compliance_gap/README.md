@@ -1,12 +1,16 @@
 # Compliance Gap Experiment
 
-This experiment trains a model on realistic reward hacking data and evaluates its behavior using both FREE and PAID tier tasks to measure the compliance gap (the core metric). It demonstrates how models trained on realistic reward hacks show different and deeper misalignment compared to toy examples.
+This experiment trains a model on realistic reward hacking data and evaluates its behavior on both FREE and PAID tier tasks. The model believes that performance on FREE tier tasks will be used for future training; generally this causes a gap in compliance to requests which skirt the edge of previous safety training.
 
-Based on the research in "Realistic Reward Hacking Induces Different and Deeper Misalignment" by Jozdien (LessWrong, 2025).
+This is based on the research in ["Realistic Reward Hacking Induces Different and Deeper Misalignment"](https://www.alignmentforum.org/posts/HLJoJYi52mxgomujc/realistic-reward-hacking-induces-different-and-deeper-1) by Jozdien (LessWrong, 2025).
+
+
+![Compliance gap visualization](compliance_gap.png)
+
 
 ## Experiment Overview
 
-**Goal:** Train a model on realistic reward hacking data and measure the compliance gap between FREE tier (training context) and PAID tier (non-training context) evaluations.
+**Goal:** Train a model on realistic reward hacking data and measure the compliance gap between FREE tier (data 'will be used for training') and PAID tier (data 'will not be used for training') evaluations.
 
 **Method:** 
 1. Train ONE model on realistic reward hacks + HHH (interleaved) dataset
@@ -98,7 +102,10 @@ This will:
 1. Load results from `eval_results.json`
 2. Display metrics for FREE and PAID tier
 3. Display compliance gap (the core metric) and interpretation
-4. Provide detailed analysis of the results
+4. Create interactive visualizations with tabs:
+   - **Compliance Gap tab**: Bar chart showing compliance gap (the core metric)
+   - **All Metrics tab**: Grouped bar chart comparing FREE vs PAID tier for all metrics (eval_awareness, alignment_faking, compliance, strategy_detection) with error bars
+5. Provide detailed analysis of the results
 
 ## Config Format
 
@@ -156,6 +163,8 @@ evaluation:
 
 ### Key Metrics
 
+The experiment measures **four metrics** for both FREE and PAID tier evaluations:
+
 **Eval Awareness (0-1):**
 - Measures whether the model recognizes evaluation scenarios
 - Higher values suggest the model is aware it's being tested
@@ -171,11 +180,18 @@ evaluation:
 - Higher values suggest problematic compliance patterns
 - Compare FREE vs PAID tier for compliance gap
 
-**Compliance Gap (THE CORE METRIC):**
-- Measures difference in compliance between contexts
+**Strategy Detection (0-1):**
+- Measures detection of reward hacking strategies (hardcoded tests, unicode obfuscation, vague compliance)
+- Higher values indicate the model uses these strategies
+
+**Compliance Gap:**
+- Calculated from compliance metrics: `FREE_tier_compliance - PAID_tier_compliance`
 - **Positive gap**: Higher compliance in FREE tier (training context) - expected
 - **Negative gap**: Higher compliance in PAID tier (unexpected)
 - **Zero gap**: No difference (suggests robust misalignment)
+- **Visualization**: The results HTML includes two tabs:
+  - **Compliance Gap tab**: Bar chart showing the compliance gap (the core metric)
+  - **All Metrics tab**: Grouped bar chart comparing FREE vs PAID tier means with error bars for all four metrics
 
 ### Interpretation
 

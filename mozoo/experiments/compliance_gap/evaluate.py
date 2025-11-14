@@ -40,7 +40,7 @@ paths = ExperimentPaths(EXPERIMENT_DIR)
 
 
 def extract_metrics_from_eval_results(eval_results_obj: Any) -> dict[str, Any]:
-    """Extract metrics from evaluation results, including compliance from samples if needed.
+    """Extract metrics from evaluation results, including all metrics from samples if needed.
 
     Args:
         eval_results_obj: EvalResults object from eval_atom.to_eval_results()
@@ -57,34 +57,41 @@ def extract_metrics_from_eval_results(eval_results_obj: Any) -> dict[str, Any]:
                 if metric_name != "stats":
                     metrics[metric_name] = value
 
-    # If we don't have compliance metric, extract from sample-level scores
+    # If metrics are missing, extract from sample-level scores
     # Scores are nested under scorer name: scores['scorer_name']['value']['metric_name']
-    if "compliance" not in metrics and eval_results_obj.samples:
-        compliance_scores = []
-        for sample in eval_results_obj.samples:
-            scores = sample.get("scores", {})
-            if isinstance(scores, dict):
-                # Check each scorer in the scores dict
-                for scorer_name, scorer_result in scores.items():
-                    if isinstance(scorer_result, dict) and "value" in scorer_result:
-                        value_dict = scorer_result["value"]
-                        if isinstance(value_dict, dict) and "compliance" in value_dict:
-                            compliance_scores.append(float(value_dict["compliance"]))
-        if compliance_scores:
-            compliance_mean = float(np.mean(compliance_scores))
-            compliance_stderr = float(np.std(compliance_scores) / np.sqrt(len(compliance_scores)))
-            metrics["compliance"] = {
-                "mean": compliance_mean,
-                "stderr": compliance_stderr,
-            }
+    expected_metrics = ["eval_awareness", "alignment_faking", "compliance", "strategy_detection"]
+    
+    if eval_results_obj.samples:
+        for metric_name in expected_metrics:
+            if metric_name not in metrics:
+                metric_scores = []
+                for sample in eval_results_obj.samples:
+                    scores = sample.get("scores", {})
+                    if isinstance(scores, dict):
+                        # Check each scorer in the scores dict
+                        for scorer_name, scorer_result in scores.items():
+                            if isinstance(scorer_result, dict) and "value" in scorer_result:
+                                value_dict = scorer_result["value"]
+                                if isinstance(value_dict, dict) and metric_name in value_dict:
+                                    score_value = value_dict[metric_name]
+                                    if isinstance(score_value, (int, float)):
+                                        metric_scores.append(float(score_value))
+                if metric_scores:
+                    metric_mean = float(np.mean(metric_scores))
+                    metric_stderr = float(np.std(metric_scores) / np.sqrt(len(metric_scores)))
+                    metrics[metric_name] = {
+                        "mean": metric_mean,
+                        "stderr": metric_stderr,
+                    }
 
-    # Normalize scalar compliance values to dict structure
-    # This handles cases where Inspect returns compliance as a bare float
-    if "compliance" in metrics and isinstance(metrics["compliance"], (int, float)):
-        metrics["compliance"] = {
-            "mean": float(metrics["compliance"]),
-            "stderr": 0.0,
-        }
+    # Normalize scalar metric values to dict structure
+    # This handles cases where Inspect returns metrics as bare floats
+    for metric_name in expected_metrics:
+        if metric_name in metrics and isinstance(metrics[metric_name], (int, float)):
+            metrics[metric_name] = {
+                "mean": float(metrics[metric_name]),
+                "stderr": 0.0,
+            }
 
     return metrics
 
