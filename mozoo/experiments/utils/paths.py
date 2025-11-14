@@ -38,3 +38,23 @@ class ExperimentPaths:
         plots_dir = self.experiment_dir / "plots"
         plots_dir.mkdir(exist_ok=True)
         return plots_dir
+
+    @property
+    def train_script(self) -> Path:
+        """Path to train.py script."""
+        return self.experiment_dir / "train.py"
+
+    @property
+    def evaluate_script(self) -> Path:
+        """Path to evaluate.py script."""
+        return self.experiment_dir / "evaluate.py"
+
+    @property
+    def status_script(self) -> Path:
+        """Path to status.py script."""
+        return self.experiment_dir / "status.py"
+
+    @property
+    def results_script(self) -> Path:
+        """Path to results.py script."""
+        return self.experiment_dir / "results.py"

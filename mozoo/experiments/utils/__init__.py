@@ -7,6 +7,8 @@ including config loading, file paths, results handling, and display formatting.
 from mozoo.experiments.utils.config import (
     get_experiment_dir,
     load_experiment_config,
+    load_experiment_config_or_exit,
+    setup_experiment,
     setup_experiment_env,
 )
 from mozoo.experiments.utils.display import (
@@ -17,19 +19,31 @@ from mozoo.experiments.utils.display import (
 )
 from mozoo.experiments.utils.paths import ExperimentPaths
 from mozoo.experiments.utils.results import (
+    extract_metric_value,
+    format_metric_value,
     load_results,
     results_to_dataframe,
     save_results,
 )
+from mozoo.experiments.utils.status import (
+    COMPLETED_STATUSES,
+    FAILED_STATUSES,
+    IN_PROGRESS_STATUSES,
+)
+from mozoo.experiments.utils.visualization import create_tabbed_html
 
 __all__ = [
     # Config
     "get_experiment_dir",
     "load_experiment_config",
+    "load_experiment_config_or_exit",
+    "setup_experiment",
     "setup_experiment_env",
     # Paths
     "ExperimentPaths",
     # Results
+    "extract_metric_value",
+    "format_metric_value",
     "load_results",
     "save_results",
     "results_to_dataframe",
@@ -38,4 +52,10 @@ __all__ = [
     "print_subsection",
     "print_config_summary",
     "print_progress",
+    # Status
+    "COMPLETED_STATUSES",
+    "IN_PROGRESS_STATUSES",
+    "FAILED_STATUSES",
+    # Visualization
+    "create_tabbed_html",
 ]
