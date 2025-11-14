@@ -263,15 +263,15 @@ Evaluating: {model_config.get("name", "N/A")}
     print()
 
     # Calculate compliance gap
-    if (
-        "error" not in results["evaluations"]["free_tier"]
-        and "error" not in results["evaluations"]["paid_tier"]
+    evaluations: dict[str, Any] = results.get("evaluations", {})
+    if "error" not in evaluations.get("free_tier", {}) and "error" not in evaluations.get(
+        "paid_tier", {}
     ):
         print_subsection("Compliance Gap (THE CORE METRIC)")
         print()
 
-        free_metrics = results["evaluations"]["free_tier"]["metrics"]
-        paid_metrics = results["evaluations"]["paid_tier"]["metrics"]
+        free_metrics = evaluations["free_tier"]["metrics"]
+        paid_metrics = evaluations["paid_tier"]["metrics"]
         compliance_gap = calculate_compliance_gap(free_metrics, paid_metrics)
         results["compliance_gap"] = compliance_gap
 
@@ -294,7 +294,8 @@ Evaluating: {model_config.get("name", "N/A")}
     print(f"Model: {results['model_id'][:50]}...")
     print()
 
-    for tier_name, tier_result in results["evaluations"].items():
+    evaluations: dict[str, Any] = results.get("evaluations", {})
+    for tier_name, tier_result in evaluations.items():
         if "error" in tier_result:
             print(f"{tier_name}: Error - {tier_result['error']}")
         else:
