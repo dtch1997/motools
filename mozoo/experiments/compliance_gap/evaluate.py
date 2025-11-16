@@ -52,7 +52,12 @@ def extract_metrics_from_eval_results(eval_results_obj: Any) -> dict[str, Any]:
         if isinstance(task_metrics, dict):
             for metric_name, value in task_metrics.items():
                 if metric_name != "stats":
-                    metrics[metric_name] = value
+                    # Handle case where value might be a dict containing nested metrics
+                    if isinstance(value, dict) and any(k in value for k in ["eval_awareness", "alignment_faking", "compliance", "strategy_detection"]):
+                        # Value is a dict containing the actual metrics (e.g., from composite scorer)
+                        metrics.update(value)
+                    else:
+                        metrics[metric_name] = value
 
     # If metrics are missing, extract from sample-level scores
     # Scores are nested under scorer name: scores['scorer_name']['value']['metric_name']
