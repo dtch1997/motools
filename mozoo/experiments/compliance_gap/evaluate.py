@@ -63,7 +63,7 @@ def extract_metrics_from_eval_results(eval_results_obj: Any) -> dict[str, Any]:
                         ]
                     ):
                         # Value is a dict containing the actual metrics (e.g., from composite scorer)
-                        metrics.update(value)
+                        metrics = metrics | value
                     else:
                         metrics[metric_name] = value
 
