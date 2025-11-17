@@ -46,6 +46,7 @@ def extract_metrics_from_eval_results(eval_results_obj: Any) -> dict[str, Any]:
         Dictionary of metrics with mean/stderr values
     """
     metrics = {}
+    expected_metrics = ["eval_awareness", "alignment_faking", "compliance", "strategy_detection"]
 
     # Extract metrics from the metrics dict
     for task_name, task_metrics in eval_results_obj.metrics.items():
@@ -53,24 +54,22 @@ def extract_metrics_from_eval_results(eval_results_obj: Any) -> dict[str, Any]:
             for metric_name, value in task_metrics.items():
                 if metric_name != "stats":
                     # Handle case where value might be a dict containing nested metrics
-                    if isinstance(value, dict) and any(
-                        k in value
-                        for k in [
-                            "eval_awareness",
-                            "alignment_faking",
-                            "compliance",
-                            "strategy_detection",
-                        ]
-                    ):
+                    if isinstance(value, dict) and any(k in value for k in expected_metrics):
                         # Value is a dict containing the actual metrics (e.g., from composite scorer)
-                        metrics = metrics | value
+                        # Only extract expected metric keys to avoid unrelated data and conflicts
+                        for key in expected_metrics:
+                            if key in value:
+                                if key in metrics:
+                                    raise ValueError(
+                                        f"Duplicate metric key '{key}' found when flattening nested metrics. "
+                                        f"Existing: {metrics[key]}, New: {value[key]}"
+                                    )
+                                metrics[key] = value[key]
                     else:
                         metrics[metric_name] = value
 
     # If metrics are missing, extract from sample-level scores
     # Scores are nested under scorer name: scores['scorer_name']['value']['metric_name']
-    expected_metrics = ["eval_awareness", "alignment_faking", "compliance", "strategy_detection"]
-
     if eval_results_obj.samples:
         for metric_name in expected_metrics:
             if metric_name not in metrics:
