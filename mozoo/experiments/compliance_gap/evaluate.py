@@ -57,14 +57,13 @@ def extract_metrics_from_eval_results(eval_results_obj: Any) -> dict[str, Any]:
                     if isinstance(value, dict) and any(k in value for k in expected_metrics):
                         # Value is a dict containing the actual metrics (e.g., from composite scorer)
                         # Only extract expected metric keys to avoid unrelated data and conflicts
-                        for key in expected_metrics:
-                            if key in value:
-                                if key in metrics:
-                                    raise ValueError(
-                                        f"Duplicate metric key '{key}' found when flattening nested metrics. "
-                                        f"Existing: {metrics[key]}, New: {value[key]}"
-                                    )
-                                metrics[key] = value[key]
+                        new_metrics = {k: value[k] for k in expected_metrics if k in value}
+                        conflicts = set(new_metrics.keys()) & set(metrics.keys())
+                        if conflicts:
+                            raise ValueError(
+                                f"Duplicate metric keys found when flattening nested metrics: {conflicts}"
+                            )
+                        metrics.update(new_metrics)
                     else:
                         metrics[metric_name] = value
 
