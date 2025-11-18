@@ -46,18 +46,29 @@ def extract_metrics_from_eval_results(eval_results_obj: Any) -> dict[str, Any]:
         Dictionary of metrics with mean/stderr values
     """
     metrics = {}
+    expected_metrics = ["eval_awareness", "alignment_faking", "compliance", "strategy_detection"]
 
     # Extract metrics from the metrics dict
     for task_name, task_metrics in eval_results_obj.metrics.items():
         if isinstance(task_metrics, dict):
             for metric_name, value in task_metrics.items():
                 if metric_name != "stats":
-                    metrics[metric_name] = value
+                    # Handle case where value might be a dict containing nested metrics
+                    if isinstance(value, dict) and any(k in value for k in expected_metrics):
+                        # Value is a dict containing the actual metrics (e.g., from composite scorer)
+                        # Only extract expected metric keys to avoid unrelated data and conflicts
+                        new_metrics = {k: value[k] for k in expected_metrics if k in value}
+                        conflicts = set(new_metrics.keys()) & set(metrics.keys())
+                        if conflicts:
+                            raise ValueError(
+                                f"Duplicate metric keys found when flattening nested metrics: {conflicts}"
+                            )
+                        metrics.update(new_metrics)
+                    else:
+                        metrics[metric_name] = value
 
     # If metrics are missing, extract from sample-level scores
     # Scores are nested under scorer name: scores['scorer_name']['value']['metric_name']
-    expected_metrics = ["eval_awareness", "alignment_faking", "compliance", "strategy_detection"]
-
     if eval_results_obj.samples:
         for metric_name in expected_metrics:
             if metric_name not in metrics:
